@@ -12,13 +12,48 @@ namespace DaJet.Metadata.Test
     {
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
+        private InfoBaseParser InfoBaseParser { get; }
+
+        public Test_ConfigParser()
+        {
+            if (!MetadataParserFactory.TryGetParser(MetadataRegistry.Root, out IMetadataObjectParser parser))
+            {
+                throw new Exception("InfoBase parser is not found");
+            }
+
+            InfoBaseParser = parser as InfoBaseParser;
+
+            if (InfoBaseParser == null)
+            {
+                throw new Exception("Failed to get InfoBase parser");
+            }
+        }
+        private void ShowInfoBase(in InfoBase infoBase)
+        {
+            foreach (PropertyInfo property in typeof(InfoBase).GetProperties())
+            {
+                Console.WriteLine($"{property.Name,-20} = {property.GetValue(infoBase)}");
+            }
+        }
+        private void ShowCollections(in Dictionary<Guid, List<Guid>> collections)
+        {
+            foreach (var item in collections)
+            {
+                Console.WriteLine($"{item.Key}");
+
+                foreach (Guid uuid in item.Value)
+                {
+                    Console.WriteLine($"{uuid,40}");
+                }
+            }
+        }
 
         [TestMethod] public void MS_ROOT()
         {
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetUuid(1).ToString();
+                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
@@ -26,7 +61,7 @@ namespace DaJet.Metadata.Test
 
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
             {
-                new InfoBaseParser().Parse(in reader, out infoBase, out collections);
+                InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
 
             ShowInfoBase(in infoBase);
@@ -34,12 +69,10 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void PG_ROOT()
         {
-            InfoBaseParser parser = new InfoBaseParser();
-
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetUuid(1).ToString();
+                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
@@ -47,7 +80,7 @@ namespace DaJet.Metadata.Test
 
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
             {
-                parser.Parse(in reader, out infoBase, out collections);
+                InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
 
             ShowInfoBase(in infoBase);
@@ -59,15 +92,15 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetUuid(1).ToString();
+                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
             }
 
-            ApplicationObject target;
+            MetadataObject target;
             string name = "ÂõîäÿùàÿÎ÷åðåäüRabbitMQ";
 
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
             {
-                new InfoBaseParser().ParseByName(in reader, MetadataRegistry.InformationRegisters, in name , out target);
+                InfoBaseParser.ParseByName(in reader, MetadataRegistry.InformationRegisters, in name , out target);
             }
 
             if (target == null)
@@ -84,15 +117,15 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetUuid(1).ToString();
+                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
             }
 
-            ApplicationObject target;
+            MetadataObject target;
             Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7");
 
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
             {
-                new InfoBaseParser().ParseByUuid(in reader, MetadataRegistry.InformationRegisters, uuid, out target);
+                InfoBaseParser.ParseByUuid(in reader, MetadataRegistry.InformationRegisters, uuid, out target);
             }
 
             if (target == null)
@@ -102,27 +135,6 @@ namespace DaJet.Metadata.Test
             else
             {
                 Console.WriteLine($"{target.Name} {{{target.Uuid}}} is found successfully");
-            }
-        }
-
-
-        private void ShowInfoBase(in InfoBase infoBase)
-        {
-            foreach (PropertyInfo property in typeof(InfoBase).GetProperties())
-            {
-                Console.WriteLine($"{property.Name, -20} = {property.GetValue(infoBase)}");
-            }
-        }
-        private void ShowCollections(in Dictionary<Guid, List<Guid>> collections)
-        {
-            foreach (var item in collections)
-            {
-                Console.WriteLine($"{item.Key}");
-
-                foreach (Guid uuid in item.Value)
-                {
-                    Console.WriteLine($"{uuid, 40}");
-                }
             }
         }
     }

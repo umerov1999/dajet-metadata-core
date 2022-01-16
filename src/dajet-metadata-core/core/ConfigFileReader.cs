@@ -68,6 +68,11 @@ namespace DaJet.Metadata.Core
             InitializePath();
             _stream = stream;
         }
+        public ConfigFileReader(DatabaseProvider provider, in string connectionString, in string tableName, Guid fileUuid)
+            : this(provider, in connectionString, in tableName, fileUuid.ToString())
+        {
+            //  Convenience constructor
+        }
         public ConfigFileReader(DatabaseProvider provider, in string connectionString, in string tableName, in string fileName)
         {
             InitializePath();

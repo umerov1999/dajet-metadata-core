@@ -5,7 +5,7 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class InformationRegisterParser
+    public sealed class InformationRegisterParser : IMetadataObjectParser
     {
         private string _name;
         private InformationRegister _target;
@@ -20,7 +20,11 @@ namespace DaJet.Metadata.Parsers
             _converter[1][18] += Periodicity;
             _converter[1][19] += UseRecorder;
         }
-        public void Parse(in ConfigFileReader reader, out ApplicationObject target, in string name = null)
+        public void Parse(in ConfigFileReader reader, out MetadataObject target)
+        {
+            Parse(in reader, null, out target);
+        }
+        public void Parse(in ConfigFileReader reader, in string name, out MetadataObject target)
         {
             ConfigureConfigFileConverter();
 
@@ -30,7 +34,7 @@ namespace DaJet.Metadata.Parsers
             };
 
             _name = name; // filter
-            
+
             ConfigFileParser.Parse(in reader, in _converter);
 
             target = _target; // result

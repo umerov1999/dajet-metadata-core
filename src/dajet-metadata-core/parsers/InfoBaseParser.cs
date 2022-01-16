@@ -6,7 +6,7 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class InfoBaseParser
+    public sealed class InfoBaseParser : IMetadataObjectParser
     {
         private ConfigFileConverter _converter;
 
@@ -16,8 +16,8 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            // TODO: take file name from reader
-            _converter[1][0] += FileName; // Значение поля FileName в таблице Config
+            // DONE: take file name from reader
+            //_converter[1][0] += FileName; // Значение поля FileName в таблице Config
 
             // Свойства конфигурации
             _converter[3][1][1][1][1][2] += Name; // Наименование конфигурации
@@ -55,6 +55,7 @@ namespace DaJet.Metadata.Parsers
 
             _infoBase = new InfoBase()
             {
+                Uuid = new Guid(reader.FileName),
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
@@ -65,12 +66,21 @@ namespace DaJet.Metadata.Parsers
 
             ConfigFileParser.Parse(in reader, in _converter);
 
-            // Dispose parser variables
+            // TODO: Dispose()
             _infoBase = null;
-            _collections = null;
+            _collections = null; // Do not call _collections.Clear() here =) This will clear collections parameter also =)
             _converter = null;
         }
-        
+
+        public void Parse(in ConfigFileReader source, out MetadataObject target)
+        {
+            throw new NotImplementedException();
+        }
+        public void Parse(in ConfigFileReader source, in string name, out MetadataObject target)
+        {
+            throw new NotImplementedException();
+        }
+
         #region "Свойства конфигурации"
 
         private void FileName(in ConfigFileReader source, in CancelEventArgs args)
@@ -218,9 +228,9 @@ namespace DaJet.Metadata.Parsers
 
                     if (_name != null)
                     {
-                        if (IsNameEquals(in source, type, uuid))
+                        if (ParseApplicationObjectByName(in source, type, uuid))
                         {
-                            collection.Add(uuid);
+                            //collection.Add(uuid);
                             args.Cancel = true;
                             return;
                         }
@@ -228,7 +238,7 @@ namespace DaJet.Metadata.Parsers
                     else if (_uuid != Guid.Empty && _uuid == uuid)
                     {
                         ParseApplicationObject(in source, type);
-                        collection.Add(uuid);
+                        //collection.Add(uuid);
                         args.Cancel = true;
                         return;
                     }
@@ -239,18 +249,21 @@ namespace DaJet.Metadata.Parsers
                 }
             }
         }
-        private bool IsNameEquals(in ConfigFileReader source, Guid type, Guid uuid)
+        private bool ParseApplicationObjectByName(in ConfigFileReader source, Guid type, Guid uuid)
         {
             if (_name == null)
             {
                 return false;
             }
 
-            // TODO: get parser by type uuid
-
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, uuid.ToString()))
+            if (!MetadataParserFactory.TryGetParser(type, out IMetadataObjectParser parser))
             {
-                new InformationRegisterParser().Parse(in reader, out _target, in _name);
+                return false;
+            }
+
+            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, uuid))
+            {
+                parser.Parse(in reader, in _name, out _target);
             }
 
             return (_target != null);
@@ -262,22 +275,25 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            // TODO: get parser by type uuid
-
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, _uuid.ToString()))
+            if (!MetadataParserFactory.TryGetParser(type, out IMetadataObjectParser parser))
             {
-                new InformationRegisterParser().Parse(in reader, out _target);
+                return;
+            }
+
+            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, _uuid))
+            {
+                parser.Parse(in reader, out _target);
             }
         }
 
         #endregion
 
-        #region "Поиск и загрузка объектов метаданных по имени или их уникальному идентификатору"
+        #region "Поиск и загрузка объекта метаданных по его имени или уникальному идентификатору"
         
         private Guid _uuid;
         private string _name;
-        private ApplicationObject _target;
-        public void ParseByName(in ConfigFileReader reader, Guid type, in string name, out ApplicationObject target)
+        private MetadataObject _target;
+        public void ParseByName(in ConfigFileReader reader, Guid type, in string name, out MetadataObject target)
         {
             _converter = new ConfigFileConverter();
             _converter[2] += ConfigureMetadataCollections;
@@ -298,7 +314,7 @@ namespace DaJet.Metadata.Parsers
             _collections.Clear();
             _collections = null;
         }
-        public void ParseByUuid(in ConfigFileReader reader, Guid type, Guid uuid, out ApplicationObject target)
+        public void ParseByUuid(in ConfigFileReader reader, Guid type, Guid uuid, out MetadataObject target)
         {
             _converter = new ConfigFileConverter();
             _converter[2] += ConfigureMetadataCollections;

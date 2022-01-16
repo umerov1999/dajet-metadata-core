@@ -4,6 +4,8 @@ namespace DaJet.Metadata.Core
 {
     public static class MetadataRegistry
     {
+        public static Guid Root = Guid.Empty; // Идентификатор корневого файла конфигурации
+
         #region "ИДЕНТИФИКАТОРЫ ПОДСИСТЕМ ОБЪЕКТОВ МЕТАДАННЫХ"
 
         public static Guid Subsystem_Common = new Guid("9cd510cd-abfc-11d4-9434-004095e12fc7"); // 3.0 - Общие объекты
