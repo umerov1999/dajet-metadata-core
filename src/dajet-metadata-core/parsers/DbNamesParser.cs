@@ -7,6 +7,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class DbNamesParser
     {
+        private readonly ConfigFileParser _parser = new ConfigFileParser();
         private ConfigFileReader Reader { get; }
         public DbNamesParser(ConfigFileReader reader)
         {
@@ -16,9 +17,8 @@ namespace DaJet.Metadata.Parsers
         public void Parse(in DbNamesLookup target)
         {
             _lookup = target;
-            ConfigFileParser.Parse(Reader, _converter);
+            _parser.Parse(Reader, _converter);
         }
-        public void Parse(in InfoBase context, in DbNamesLookup target) { throw new NotImplementedException(); }
 
         int _count = 0;
         DbNamesLookup _lookup;

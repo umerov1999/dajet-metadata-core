@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -423,6 +424,7 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
+        public List<Guid> References { get; set; } // TODO: ???
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType

@@ -10,10 +10,10 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Test_ConfigParser
     {
+        private readonly ConfigFileParser _parser = new ConfigFileParser();
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
         private InfoBaseParser InfoBaseParser { get; }
-
         public Test_ConfigParser()
         {
             if (!MetadataParserFactory.TryGetParser(MetadataRegistry.Root, out IMetadataObjectParser parser))
@@ -53,7 +53,7 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
+                rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
@@ -72,7 +72,7 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
+                rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
@@ -92,7 +92,7 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
+                rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             MetadataObject target;
@@ -117,7 +117,7 @@ namespace DaJet.Metadata.Test
             string rootFile = null;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = ConfigFileParser.Parse(in reader).GetString(1);
+                rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             MetadataObject target;

@@ -7,6 +7,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class SharedPropertyParser
     {
+        private readonly ConfigFileParser _parser = new ConfigFileParser();
         private ConfigFileReader Reader { get; }
         public SharedPropertyParser(ConfigFileReader reader)
         {
@@ -18,7 +19,7 @@ namespace DaJet.Metadata.Parsers
             _infoBase = context;
             _property = target;
             ConfigureDbName();
-            ConfigFileParser.Parse(Reader, _converter);
+            _parser.Parse(Reader, _converter);
         }
 
         int _count = 0;
@@ -87,8 +88,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            DataTypeSet target = new DataTypeSet();
-            DataTypeSetParser.Parse(in source, in _infoBase, in target);
+            DataTypeSetParser.Parse(in source, out DataTypeSet target);
             bool test = target.IsMultipleType;
             // TODO: add property DataTypeSet to MetadataProperty class ???
             // TODO: Configurator.ConfigureDatabaseFields(property); !!!

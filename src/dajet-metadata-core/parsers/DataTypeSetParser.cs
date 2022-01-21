@@ -40,8 +40,11 @@ namespace DaJet.Metadata.Parsers
             return null;
         }
 
-        public static void Parse(in ConfigFileReader reader, in InfoBase context, in DataTypeSet target)
+        public static void Parse(in ConfigFileReader reader, out DataTypeSet target)
         {
+            target = new DataTypeSet();
+            List<Guid> references = new List<Guid>();
+
             int level = reader.Level; // root level of the data type set description object
 
             _ = reader.Read(); // 0 index
@@ -49,9 +52,7 @@ namespace DaJet.Metadata.Parsers
             {
                 return; // это не объект описания типов
             }
-
-            List<Guid> references = new List<Guid>();
-
+            
             while (reader.Read())
             {
                 if (reader.Token == TokenType.StartObject)
@@ -84,7 +85,7 @@ namespace DaJet.Metadata.Parsers
                         }
                         else if (reader.Value == MetadataTokens.R) // {"#",70497451-981e-43b8-af46-fae8d65d16f2}
                         {
-                            ReadReference(in reader, in context, in target, in references);
+                            ReadReference(in reader, in target, in references);
                         }
                     }
                 }
@@ -95,6 +96,11 @@ namespace DaJet.Metadata.Parsers
                         break;
                     }
                 }
+            }
+
+            if (references.Count > 0)
+            {
+                target.References = references;
             }
 
             if (references.Count == 1) // single reference type value
@@ -179,7 +185,7 @@ namespace DaJet.Metadata.Parsers
                 target.NumericKind = (NumericKind)int.Parse(_qualifiers[2]);
             }
         }
-        private static void ReadReference(in ConfigFileReader reader, in InfoBase context, in DataTypeSet target, in List<Guid> references)
+        private static void ReadReference(in ConfigFileReader reader, in DataTypeSet target, in List<Guid> references)
         {
             ReadQualifiers(in reader);
 
@@ -203,7 +209,7 @@ namespace DaJet.Metadata.Parsers
 
             if (ReferenceBaseTypes.Contains(typeUuid))
             {
-                ApplyReferenceType(in context, in target, in references, typeUuid);
+                ApplyReferenceType(in target, in references, typeUuid);
             }
             //else if (context.CompoundTypes.TryGetValue(typeUuid, out NamedDataTypeSet compound))
             //{
@@ -219,7 +225,7 @@ namespace DaJet.Metadata.Parsers
                 references.Add(typeUuid);
             }
         }
-        private static void ApplyReferenceType(in InfoBase context, in DataTypeSet target, in List<Guid> references, Guid typeUuid)
+        private static void ApplyReferenceType(in DataTypeSet target, in List<Guid> references, Guid typeUuid)
         {
             if (typeUuid == ANY_REFERENCE)
             {

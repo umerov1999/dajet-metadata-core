@@ -5,16 +5,17 @@ namespace DaJet.Metadata.Core
 {
     public delegate void ConfigFileTokenHandler(in ConfigFileReader source, in CancelEventArgs args);
 
-    public static class ConfigFileParser
+    public sealed class ConfigFileParser
     {
-        private static readonly CancelEventArgs _args = new CancelEventArgs(false);
-        public static ConfigObject Parse(in ConfigFileReader reader)
+        private readonly CancelEventArgs _args = new CancelEventArgs(false);
+        
+        public ConfigObject Parse(in ConfigFileReader reader)
         {
             ConfigObject config = new ConfigObject();
             ParseFile(in config, in reader);
             return config;
         }
-        private static void ParseFile(in ConfigObject parent, in ConfigFileReader reader)
+        private void ParseFile(in ConfigObject parent, in ConfigFileReader reader)
         {
             while (reader.Read())
             {
@@ -43,34 +44,36 @@ namespace DaJet.Metadata.Core
             }
         }
 
-        public static void Parse(in ConfigFileReader source, in ConfigFileConverter converter)
+        public void Parse(in ConfigFileReader source, in ConfigFileConverter converter)
         {
             _args.Cancel = false;
-
-            ConfigFileConverter current = converter;
 
             while (source.Read())
             {
                 if (source.Token == TokenType.StartFile || source.Token == TokenType.EndFile)
                 {
-                    converter.TokenHandler?.Invoke(in source, in _args);
+                    converter.Root.TokenHandler?.Invoke(in source, in _args);
                     if (_args.Cancel) { break; }
                 }
                 else if (source.Token == TokenType.StartObject)
                 {
-                    current = current[source.ValuePointer];
-                    current.TokenHandler?.Invoke(in source, in _args);
+                    // synchronize converter with source and invoke token handler if present
+                    // after token handler has been invoked converter and source may get out of sync
+                    converter.GetTokenHandler(source.Level - 1, source.Path)?.Invoke(in source, in _args);
                     if (_args.Cancel) { break; }
                 }
                 else if (source.Token == TokenType.EndObject)
                 {
-                    current.TokenHandler?.Invoke(in source, in _args);
+                    // synchronize converter with source and invoke token handler if present
+                    // after token handler has been invoked converter and source may get out of sync
+                    converter.GetTokenHandler(source.Level, source.Path)?.Invoke(in source, in _args);
                     if (_args.Cancel) { break; }
-                    current = current.Parent;
                 }
                 else if (source.Token == TokenType.Value || source.Token == TokenType.String)
                 {
-                    current[source.ValuePointer].TokenHandler?.Invoke(in source, in _args);
+                    // synchronize converter with source and invoke token handler if present
+                    // after token handler has been invoked converter and source may get out of sync
+                    converter.GetTokenHandler(source.Level, source.Path)?.Invoke(in source, in _args);
                     if (_args.Cancel) { break; }
                 }
             }

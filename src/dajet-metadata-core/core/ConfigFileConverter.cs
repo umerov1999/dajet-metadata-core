@@ -11,7 +11,7 @@ namespace DaJet.Metadata.Core
         public ConfigFileTokenHandler TokenHandler;
         private List<ConfigFileConverter> _list = new List<ConfigFileConverter>();
         public ConfigFileConverter() { }
-        public ConfigFileConverter(ConfigFileConverter parent)
+        private ConfigFileConverter(ConfigFileConverter parent)
         {
             Parent = parent;
         }
@@ -66,6 +66,25 @@ namespace DaJet.Metadata.Core
             }
 
             return current;
+        }
+        public ConfigFileTokenHandler GetTokenHandler(int level, in int[] path)
+        {
+            // This method is called by ConfigFileParser:
+            // synchronizes converter with file reader and returns token handler if present
+            // (after token handler has been invoked converter and file reader may get out of sync)
+
+            ConfigFileConverter current = Root;
+
+            for (int i = 0; i <= level; i++)
+            {
+                if (path[i] >= current.Count)
+                {
+                    return null;
+                }
+                current = current[path[i]];
+            }
+
+            return current.TokenHandler;
         }
         public static ConfigFileConverter operator +(ConfigFileConverter list, ConfigFileTokenHandler handler)
         {

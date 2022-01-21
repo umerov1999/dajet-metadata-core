@@ -8,6 +8,8 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InfoBaseParser : IMetadataObjectParser
     {
+        private readonly ConfigFileParser _parser = new ConfigFileParser();
+
         private ConfigFileConverter _converter;
 
         InfoBase _infoBase;
@@ -64,7 +66,7 @@ namespace DaJet.Metadata.Parsers
             infoBase = _infoBase;
             collections = _collections;
 
-            ConfigFileParser.Parse(in reader, in _converter);
+            _parser.Parse(in reader, in _converter);
 
             // TODO: Dispose()
             _infoBase = null;
@@ -303,7 +305,7 @@ namespace DaJet.Metadata.Parsers
             _collections = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
 
             // execute parser
-            ConfigFileParser.Parse(in reader, in _converter);
+            _parser.Parse(in reader, in _converter);
 
             target = _target; // result
 
@@ -324,7 +326,7 @@ namespace DaJet.Metadata.Parsers
             _collections = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
 
             // execute parser
-            ConfigFileParser.Parse(in reader, in _converter);
+            _parser.Parse(in reader, in _converter);
 
             target = _target; // result
 
