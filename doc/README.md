@@ -91,7 +91,9 @@ string fileText = stream.ReadToEnd();
 
 ```C#
 Guid root = Guid.Empty;
-using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+using (ConfigFileReader reader = new ConfigFileReader(
+           DatabaseProvider.SQLServer, MS_CONNECTION_STRING,
+           ConfigTableNames.Config, "root"))
 {
     root = new RootFileParser().Parse(in reader);
 }
