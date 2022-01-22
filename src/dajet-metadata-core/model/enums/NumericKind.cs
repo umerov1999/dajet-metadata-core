@@ -2,7 +2,7 @@
 {
     public enum NumericKind
     {
-        Signed = 1,
-        Unsigned = 0
+        CanBeNegative = 0,
+        AlwaysPositive = 1
     }
 }

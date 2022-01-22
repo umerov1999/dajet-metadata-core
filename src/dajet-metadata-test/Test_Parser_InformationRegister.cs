@@ -88,6 +88,12 @@ namespace DaJet.Metadata.Test
                 return;
             }
 
+            if (type.IsMultipleType)
+            {
+                Console.WriteLine("  * MULTIPLE");
+                return;
+            }
+
             if (!type.IsMultipleType)
             {
                 if (type.IsUuid)

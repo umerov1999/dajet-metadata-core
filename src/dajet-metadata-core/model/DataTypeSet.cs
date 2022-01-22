@@ -136,7 +136,7 @@ namespace DaJet.Metadata.Model
             }
         }
         public int StringLength { get; set; } = 10;
-        public StringKind StringKind { get; set; } = StringKind.Unlimited;
+        public StringKind StringKind { get; set; } = StringKind.Variable;
 
         ///<summary>Типом значения свойства может быть "Число" (поддерживает составной тип данных)</summary>
         public bool CanBeNumeric
@@ -160,7 +160,7 @@ namespace DaJet.Metadata.Model
         }
         public int NumericScale { get; set; } = 0;
         public int NumericPrecision { get; set; } = 10;
-        public NumericKind NumericKind { get; set; } = NumericKind.Unsigned;
+        public NumericKind NumericKind { get; set; } = NumericKind.CanBeNegative;
 
         ///<summary>Типом значения свойства может быть "Дата" (поддерживает составной тип данных)</summary>
         public bool CanBeDateTime
@@ -424,7 +424,7 @@ namespace DaJet.Metadata.Model
                 }
             }
         }
-        public List<Guid> References { get; set; } // TODO: ???
+        public List<Guid> References { get; set; }
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType

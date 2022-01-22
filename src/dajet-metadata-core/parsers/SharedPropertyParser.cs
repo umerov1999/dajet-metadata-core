@@ -88,7 +88,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            DataTypeSetParser.Parse(in source, out DataTypeSet target);
+            new DataTypeSetParser().Parse(in source, out DataTypeSet target);
             bool test = target.IsMultipleType;
             // TODO: add property DataTypeSet to MetadataProperty class ???
             // TODO: Configurator.ConfigureDatabaseFields(property); !!!

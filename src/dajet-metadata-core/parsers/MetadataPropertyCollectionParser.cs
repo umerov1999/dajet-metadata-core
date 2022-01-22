@@ -9,6 +9,7 @@ namespace DaJet.Metadata.Parsers
     public sealed class MetadataPropertyCollectionParser
     {
         private ConfigFileParser _parser;
+        private DataTypeSetParser _typeParser;
 
         private Guid _type; // тип коллекции свойств
         private int _count; // количество свойств
@@ -22,6 +23,8 @@ namespace DaJet.Metadata.Parsers
 
             _target = new List<MetadataProperty>();
 
+            _typeParser = new DataTypeSetParser();
+
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
 
@@ -31,6 +34,7 @@ namespace DaJet.Metadata.Parsers
             _target = null;
             _parser = null;
             _converter = null;
+            _typeParser = null;
         }
         
         private void ConfigureCollectionConverter(in ConfigFileReader source)
@@ -150,9 +154,9 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                // FIXME: DataTypeSetParser.Parse(in source, out DataTypeSet type);
+                _typeParser.Parse(in source, out DataTypeSet type);
 
-                //_item.PropertyType = type;
+                _item.PropertyType = type;
             }
         }
 

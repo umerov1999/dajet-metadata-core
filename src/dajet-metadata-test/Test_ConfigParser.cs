@@ -50,10 +50,10 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_ROOT()
         {
-            string rootFile = null;
+            Guid rootFile;
             using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
             {
-                rootFile = _parser.Parse(in reader).GetString(1);
+                rootFile = new RootFileParser().Parse(in reader);
             }
 
             InfoBase infoBase;

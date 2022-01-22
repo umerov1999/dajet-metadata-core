@@ -3,6 +3,6 @@
     public enum StringKind
     {
         Fixed = 0,
-        Unlimited = 1
+        Variable = 1
     }
 }
