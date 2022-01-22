@@ -1,6 +1,7 @@
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
+using DaJet.Metadata.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,27 @@ namespace DaJet.Metadata.Test
                     Console.WriteLine($"{uuid,40}");
                 }
             }
+        }
+
+        [TestMethod] public void WriteRootConfigToFile()
+        {
+            Guid root;
+            
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+            {
+                root = new RootFileParser().Parse(in reader);
+            }
+
+            ConfigObject config;
+
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, root))
+            {
+                config = new ConfigFileParser().Parse(in reader);
+            }
+
+            new ConfigFileWriter().Write(config, "C:\\temp\\config.txt");
         }
 
         [TestMethod] public void MS_ROOT()
