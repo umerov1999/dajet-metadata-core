@@ -2,7 +2,7 @@
 
 0. [Введение](#введение)
 1. [Описание формата файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/format-description/README.md)
-2. [Методика исследования файлов метаданных]()
+2. [Методика исследования файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/reverse-engineering/README.md)
 3. [Принцип работы парсера файлов метаданных]()
 4. [Описание работы парсера файла **root**]()
 5. [Описание работы вложенного парсера]()
