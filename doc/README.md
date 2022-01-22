@@ -30,8 +30,8 @@
 Прочитать данные файла можно при помощи следующего кода SQL:
 
 ```SQL
-
 -- Microsoft SQL Server
+
 SELECT
     (CASE WHEN SUBSTRING(BinaryData, 1, 3) = 0xEFBBBF THEN 1 ELSE 0 END) AS UTF8,
     CAST(DataSize AS int) AS DataSize,
@@ -42,6 +42,7 @@ WHERE
     FileName = @FileName;
 
 -- PostgreSQL
+
 SELECT
     (CASE WHEN SUBSTRING(binarydata, 1, 3) = E'\\\\xEFBBBF' THEN 1 ELSE 0 END) AS UTF8,
     CAST(datasize AS int) AS datasize,
