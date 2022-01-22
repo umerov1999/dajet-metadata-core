@@ -2,7 +2,7 @@
 
 Клиент-серверная версия 1С:Предприятие 8 (далее просто 1С) хранит описание своих объетов (метаданные)
 в таблицах СУБД. В частности, библиотека DaJet.Metadata.Core использует следующие таблицы:
-- **_YearOffset** - смещение дат
+- **_YearOffset** - смещение дат (добавляется ко всем пользовательским значениям дат в СУБД)
 - **IBVersion** - версия среды выполнения конфигурации 1С
 - **Params** - файл DBNames хранит сопоставление объектов метаданных соответствующим объектам СУБД
 - **Config** - хранит описание объектов метаданных основной конфигурации (root - корневой файл)
@@ -13,7 +13,7 @@
 
 | **Имя поля**   | **Тип данных** | **Назначение**                                 |
 |----------------|----------------|------------------------------------------------|
-| **FileName**   | nvarchar(128)  | Идентификатор файла и часто объекта метаданных |
+| **FileName**   | nvarchar(128)  | Идентификатор (GUID) файла и часто объекта метаданных |
 | **Creation**   | datetime2      | Дата создания файла данных |
 | **Modified**   | datetime2      | Дата последнего изменения файла данных |
 | **Attributes** | smallint       | Атрибуты файла данных |
@@ -85,3 +85,15 @@ else
 string fileText = stream.ReadToEnd();
 
 ```
+
+Для чтения файлов конфигурации 1С библиотека DaJet.Metadata.Core использует класс
+[ConfigFileReader](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileReader.cs).
+
+```C#
+Guid root = Guid.Empty;
+using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+{
+    root = new RootFileParser().Parse(in reader);
+}
+```
+
