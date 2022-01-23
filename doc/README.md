@@ -3,7 +3,7 @@
 0. [Введение](#введение)
 1. [Описание формата файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/format-description/README.md)
 2. [Схема хранения метаданных и связи между ними](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/metadata-storage/README.md)
-3. [Описание типов реквизитов объекта метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/datatypes-description/README.md)
+3. [Описание типов реквизита объекта метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/datatypes-description/README.md)
 4. [Методика исследования файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/reverse-engineering/README.md)
 5. Принцип работы парсера файлов метаданных
 6. Описание работы парсера файла **root**
