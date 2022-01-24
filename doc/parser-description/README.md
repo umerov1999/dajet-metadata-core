@@ -125,13 +125,13 @@ using (ConfigFileReader reader = new ConfigFileReader(
 а также выгрузку файлов метаданных в формате DaJet на диск, мы можем точно определить нужные нам значения и их пути.
 Остаётся открытым только один вопрос: как удобно обрабатывать эти значения программно ?
 
-Для удобства программирования по путям в иерархической структуре был разработано ещё два вспомогательных класса:
+Для удобства программирования по путям в иерархической структуре разработано ещё два вспомогательных класса:
 [**ConfigFileParser**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileParser.cs)
 и [**ConfigFileConverter**](https://github.com/zhichkin/dajet-metadata-core/blob/main/src/dajet-metadata-core/core/ConfigFileConverter.cs).
 Оба этих класса фактически реализуют паттерн программирования [Visitor (Посетитель)](https://ru.wikipedia.org/wiki/%D0%9F%D0%BE%D1%81%D0%B5%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C_(%D1%88%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F)).
 
 Класс **ConfigFileParser** обходит дерево объектов и для каждого пути выполняет заданный для него обработчик.
-Обработчики для путей задаёт класс **ConfigFileConverter**, являясь таким образом настроечным для первого класса.
+Обработчики для путей задаёт класс **ConfigFileConverter**, являясь таким образом настроечным для класса **ConfigFileParser**.
 
 Для нашего примера выше разработаем специализированный класс-парсер:
 
