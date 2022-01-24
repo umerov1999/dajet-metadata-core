@@ -2,6 +2,6 @@
 {
     public sealed class NamedDataTypeSet : MetadataObject
     {
-        public DataTypeSet TypeInfo { get; set; }
+        public DataTypeSet DataTypeSet { get; set; }
     }
 }

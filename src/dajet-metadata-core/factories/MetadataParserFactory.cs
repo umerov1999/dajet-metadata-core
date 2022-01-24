@@ -11,7 +11,7 @@ namespace DaJet.Metadata.Parsers
         {
             _parsers.Add(MetadataRegistry.Root, new InfoBaseParser());
             _parsers.Add(MetadataRegistry.Subsystems, null); // Подсистемы
-            _parsers.Add(MetadataRegistry.NamedDataTypeSets, null); // Определяемые типы
+            _parsers.Add(MetadataRegistry.NamedDataTypeSets, new NamedDataTypeSetParser()); // Определяемые типы
             _parsers.Add(MetadataRegistry.SharedProperties, null); // Общие реквизиты
             _parsers.Add(MetadataRegistry.Catalogs, null);
             _parsers.Add(MetadataRegistry.Constants, null);

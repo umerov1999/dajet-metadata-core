@@ -223,41 +223,42 @@ namespace DaJet.Metadata.Parsers
                 target.IsAnyCharacteristic = true;
             }
         }
-        private void ApplyCharacteristic(in Characteristic source, in DataTypeSet target, in List<Guid> references)
-        {
-            // TODO: use internal flags fields of the DataTypeSet class to perform bitwise operations
+        
+        //private void ApplyCharacteristic(in Characteristic source, in DataTypeSet target, in List<Guid> references)
+        //{
+        //    // TODO: use internal flags fields of the DataTypeSet class to perform bitwise operations
 
-            if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
-            if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
-            if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
-            if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
-            if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
-            if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
-            if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
-            if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
+        //    if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
+        //    if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
+        //    if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
+        //    if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
+        //    if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
+        //    if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
+        //    if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
+        //    if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
 
-            if (source.TypeInfo.CanBeReference)
-            {
-                references.Add(source.TypeInfo.ReferenceTypeUuid);
-            }
-        }
-        private void ApplyNamedDataTypeSet(in NamedDataTypeSet source, in DataTypeSet target, in List<Guid> references)
-        {
-            // TODO: add internal flags field to the DataTypeInfo class so as to use bitwise operations
+        //    if (source.TypeInfo.CanBeReference)
+        //    {
+        //        references.Add(source.TypeInfo.ReferenceTypeUuid);
+        //    }
+        //}
+        //private void ApplyNamedDataTypeSet(in NamedDataTypeSet source, in DataTypeSet target, in List<Guid> references)
+        //{
+        //    // TODO: add internal flags field to the DataTypeInfo class so as to use bitwise operations
 
-            if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
-            if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
-            if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
-            if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
-            if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
-            if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
-            if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
-            if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
+        //    if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
+        //    if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
+        //    if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
+        //    if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
+        //    if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
+        //    if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
+        //    if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
+        //    if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
 
-            if (source.TypeInfo.CanBeReference)
-            {
-                references.Add(source.TypeInfo.ReferenceTypeUuid);
-            }
-        }
+        //    if (source.TypeInfo.CanBeReference)
+        //    {
+        //        references.Add(source.TypeInfo.ReferenceTypeUuid);
+        //    }
+        //}
     }
 }

@@ -50,10 +50,15 @@ namespace DaJet.Metadata.Core
 
             while (source.Read())
             {
-                if (source.Token == TokenType.StartFile || source.Token == TokenType.EndFile)
+                if (source.Token == TokenType.StartFile)
                 {
                     converter.Root.TokenHandler?.Invoke(in source, in _args);
                     if (_args.Cancel) { break; }
+                }
+                else if (source.Token == TokenType.EndFile)
+                {
+                    converter.Root.TokenHandler?.Invoke(in source, in _args);
+                    break;
                 }
                 else if (source.Token == TokenType.StartObject)
                 {

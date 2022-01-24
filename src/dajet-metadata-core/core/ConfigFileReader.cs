@@ -358,6 +358,11 @@ namespace DaJet.Metadata.Core
 
         public bool Read()
         {
+            //if (_char == char.MinValue)
+            //{
+            //    return false;
+            //}
+
             if (_stream.EndOfStream)
             {
                 return false;
