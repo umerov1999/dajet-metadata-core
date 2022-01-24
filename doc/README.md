@@ -6,10 +6,6 @@
 3. [Описание типов реквизита объекта метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/datatypes-description/README.md)
 4. [Методика исследования файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/reverse-engineering/README.md)
 5. [Принцип работы парсера файлов метаданных](https://github.com/zhichkin/dajet-metadata-core/blob/main/doc/parser-description/README.md)
-6. Описание работы парсера файла **root**
-7. Описание работы вложенного парсера
-8. Создание простого парсера для файла DBNames
-9. Создание парсера для регистра сведений
 
 ### Введение
 
