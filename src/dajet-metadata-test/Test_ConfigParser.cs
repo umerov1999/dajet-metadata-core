@@ -69,6 +69,29 @@ namespace DaJet.Metadata.Test
 
             new ConfigFileWriter().Write(config, "C:\\temp\\config.txt");
         }
+        [TestMethod] public void MS_WriteDBSchemaToFile()
+        {
+            ConfigObject config;
+
+            string CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata;Integrated Security=True";
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, CONNECTION_STRING, ConfigTableNames.DBSchema))
+            {
+                config = new ConfigFileParser().Parse(in reader);
+            }
+
+            new ConfigFileWriter().Write(config, "C:\\temp\\db-schema-ms.txt");
+        }
+        [TestMethod] public void PG_WriteDBSchemaToFile()
+        {
+            ConfigObject config;
+
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.DBSchema))
+            {
+                config = new ConfigFileParser().Parse(in reader);
+            }
+
+            new ConfigFileWriter().Write(config, "C:\\temp\\db-schema-pg.txt");
+        }
 
         [TestMethod] public void MS_ROOT()
         {

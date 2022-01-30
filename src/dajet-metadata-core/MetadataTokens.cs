@@ -4,8 +4,6 @@
     {
         #region "Постфиксы наименования полей таблиц СУБД и идентификаторы типов данных"
 
-        ///<summary>Boolean (SQL table fields postfix)</summary>
-        public const string L = "L";
         ///<summary>Boolean (config file metadata)</summary>
         public const string B = "B";
         ///<summary>Numeric</summary>
@@ -14,10 +12,20 @@
         public const string S = "S";
         ///<summary>DateTime (config file metadata)</summary>
         public const string D = "D";
-        ///<summary>DateTime (SQL table fields postfix)</summary>
-        public const string T = "T";
         ///<summary>Reference type, УникальныйИдентификатор или ХранилищеЗначения</summary>
         public const string R = "#";
+
+        ///<summary>Поле таблицы СУБД - дискриминатор. Имеет постфикс _TYPE.</summary>
+        public const string E = "E";
+        ///<summary>Поле таблицы СУБД - версия данных. _Version (timestamp).</summary>
+        public const string V = "V";
+
+        //public const string R = "R"; - DbSchema - reference type field
+
+        ///<summary>DateTime (SQL table fields postfix)</summary>
+        public const string T = "T";
+        ///<summary>Boolean (SQL table fields postfix)</summary>
+        public const string L = "L";
 
         public const string RRef = "RRef";
         public const string TRef = "TRef";

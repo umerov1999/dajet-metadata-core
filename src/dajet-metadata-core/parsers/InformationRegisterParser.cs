@@ -29,10 +29,13 @@ namespace DaJet.Metadata.Parsers
             {
                 Uuid = new Guid(reader.FileName)
             };
-
+            
             _name = name; // filter
 
             _parser.Parse(in reader, in _converter);
+
+            // Состав системных свойств регистра сведений зависит от прочитанных метаданных
+            Configurator.ConfigureInformationRegister(in _target, reader.DatabaseProvider);
 
             target = _target; // result
 

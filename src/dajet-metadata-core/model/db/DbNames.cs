@@ -3,18 +3,18 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class DbNameItem
+    public sealed class DbName
     {
         public int Code { get; set; } // Unique code
         public Guid Uuid { get; set; } // File name (not unique because of duplicates in service items)
-        public string DbName { get; set; } // Prefix of the database object name
-        public List<DbNameItem> ServiceItems { get; } = new List<DbNameItem>(); // VT + LineNo | Reference + ReferenceChngR
+        public string Name { get; set; } // Prefix of the database object name
+        public List<DbName> ServiceItems { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
         public override string ToString()
         {
-            return $"{DbName} {{{Code}:{Uuid}}}";
+            return $"{Name} {{{Code}:{Uuid}}}";
         }
     }
-    public sealed class DbNamesLookup
+    public sealed class DbNames
     {
         private readonly HashSet<string> _main = new HashSet<string>()
         {
@@ -31,44 +31,44 @@ namespace DaJet.Metadata.Model
             MetadataTokens.Reference
         };
 
-        private readonly Dictionary<Guid, DbNameItem> _lookup = new Dictionary<Guid, DbNameItem>();
-        public Dictionary<Guid, DbNameItem> Lookup { get { return _lookup; } }
+        private readonly Dictionary<Guid, DbName> _lookup = new Dictionary<Guid, DbName>();
+        public Dictionary<Guid, DbName> Lookup { get { return _lookup; } }
 
         public void Add(int code, Guid uuid, string name)
         {
-            if (_lookup.TryGetValue(uuid, out DbNameItem entry))
+            if (_lookup.TryGetValue(uuid, out DbName entry))
             {
                 if (_main.Contains(name))
                 {
                     entry.Code = code;
-                    entry.DbName = name;
+                    entry.Name = name;
                 }
                 else
                 {
-                    entry.ServiceItems.Add(new DbNameItem()
+                    entry.ServiceItems.Add(new DbName()
                     {
                         Uuid = uuid,
                         Code = code,
-                        DbName = name
+                        Name = name
                     });
                 }
             }
             else
             {
-                DbNameItem item = new DbNameItem()
+                DbName item = new DbName()
                 {
                     Uuid = uuid,
                     Code = code,
-                    DbName = name
+                    Name = name
                 };
 
                 if (!_main.Contains(name))
                 {
-                    item.ServiceItems.Add(new DbNameItem()
+                    item.ServiceItems.Add(new DbName()
                     {
                         Uuid = uuid,
                         Code = code,
-                        DbName = name
+                        Name = name
                     });
                 }
 

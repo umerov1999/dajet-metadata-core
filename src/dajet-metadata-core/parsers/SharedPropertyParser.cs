@@ -38,7 +38,7 @@ namespace DaJet.Metadata.Parsers
         }
         private void ConfigureDbName()
         {
-            //if (_infoBase.DbNames.Lookup.TryGetValue(_property.FileName, out DbNameItem info))
+            //if (_infoBase.DbNames.Lookup.TryGetValue(_property.FileName, out DbName info))
             //{
             //    _property.DbName = DbNamesFactory.CreateDbName(Reader.DatabaseProvider, info.DbName, info.Code);
             //}

@@ -1,12 +1,199 @@
 ﻿using DaJet.Metadata.Model;
-using DaJet.Metadata.Parsers;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace DaJet.Metadata.Services
+namespace DaJet.Metadata.Core
 {
-    //public sealed class Configurator
+    public static class Configurator
+    {
+        #region "Information register system properties"
+
+        // Последовательность сериализации системных свойств регистра в формат 1С JDTO
+        // 1. "Регистратор" = Recorder   - uuid
+        // 2. "Период"      = Period     - DateTime
+        // 3. "ВидДвижения" = RecordType - string { "Receipt", "Expense" }
+        // 4. "Активность"  = Active     - bool
+        public static void ConfigureInformationRegister(in InformationRegister register, DatabaseProvider provider)
+        {
+            if (register == null)
+            {
+                return;
+            }
+
+            if (register.UseRecorder)
+            {
+                // Описание типов свойства "Регистратор" конфигурируется после чтения метаданных документов:
+                // именно объект метаданных "Документ" содержит ссылки на свои регистры движения.
+                ConfigurePropertyРегистратор(register, provider);
+            }
+
+            if (register.Periodicity != RegisterPeriodicity.None)
+            {
+                ConfigurePropertyПериод(register, provider);
+            }
+
+            if (register.UseRecorder)
+            {
+                ConfigurePropertyАктивность(register, provider);
+                ConfigurePropertyНомерЗаписи(register, provider);
+            }
+        }
+        public static void ConfigurePropertyПериод(in ApplicationObject register, DatabaseProvider provider)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Период",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = (provider == DatabaseProvider.SQLServer ? "_Period" : "_period")
+            };
+            property.PropertyType.CanBeDateTime = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+
+            register.Properties.Add(property);
+        }
+        public static void ConfigurePropertyНомерЗаписи(in ApplicationObject register, DatabaseProvider provider)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "НомерСтроки",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = (provider == DatabaseProvider.SQLServer ? "_LineNo" : "_lineno")
+            };
+            property.PropertyType.CanBeNumeric = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 9,
+                TypeName = "numeric"
+            });
+            
+            register.Properties.Add(property);
+        }
+        public static void ConfigurePropertyАктивность(in ApplicationObject register, DatabaseProvider provider)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Активность",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = (provider == DatabaseProvider.SQLServer ? "_Active" : "_active")
+            };
+
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            register.Properties.Add(property);
+        }
+        public static void ConfigurePropertyРегистратор(in ApplicationObject register, DatabaseProvider provider)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Uuid = Guid.Empty,
+                Name = "Регистратор",
+                Purpose = PropertyPurpose.System,
+                DbName = (provider == DatabaseProvider.SQLServer ? "_Recorder" : "_recorder")
+            };
+
+            property.PropertyType.CanBeReference = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = (provider == DatabaseProvider.SQLServer ? "_RecorderRRef" : "_recorderrref"),
+                Length = 16,
+                TypeName = "binary",
+                IsPrimaryKey = true,
+                Purpose = FieldPurpose.Value
+            });
+
+            register.Properties.Add(property);
+
+            //MetadataProperty property = register.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
+
+            //if (property == null)
+            //{
+            //    // добавляем новое свойство
+            //    property = new MetadataProperty()
+            //    {
+            //        Name = "Регистратор",
+            //        Purpose = PropertyPurpose.System,
+            //        Uuid = Guid.Empty,
+            //        DbName = (provider == DatabaseProvider.SQLServer ? "_Recorder" : "_recorder")
+            //    };
+            //    property.PropertyType.CanBeReference = true;
+            //    property.PropertyType.ReferenceTypeUuid = document.Uuid; // single type value
+            //                                                             //property.PropertyType.ReferenceTypeCode = document.TypeCode; // single type value
+            //    property.Fields.Add(new DatabaseField()
+            //    {
+            //        Name = (provider == DatabaseProvider.SQLServer ? "_RecorderRRef" : "_recorderrref"),
+            //        Length = 16,
+            //        TypeName = "binary",
+            //        Scale = 0,
+            //        Precision = 0,
+            //        IsNullable = false,
+            //        KeyOrdinal = 0,
+            //        IsPrimaryKey = true,
+            //        Purpose = FieldPurpose.Value
+            //    });
+            //    register.Properties.Add(property);
+            //    return;
+            //}
+
+            //// На всякий случай проверям повторное обращение одного и того же документа
+            //if (property.PropertyType.ReferenceTypeUuid == document.Uuid) return;
+
+            //// Проверям необходимость добавления поля для хранения кода типа документа
+            //if (property.PropertyType.ReferenceTypeUuid == Guid.Empty) return;
+
+            //// Изменяем назначение поля для хранения ссылки на документ, предварительно убеждаясь в его наличии
+            //DatabaseField field = property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recorderrref").FirstOrDefault();
+            //if (field != null)
+            //{
+            //    field.Purpose = FieldPurpose.Object;
+            //}
+
+            //// Добавляем поле для хранения кода типа документа, предварительно убеждаясь в его отсутствии
+            //if (property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recordertref").FirstOrDefault() == null)
+            //{
+            //    property.Fields.Add(new DatabaseField()
+            //    {
+            //        Name = (provider == DatabaseProvider.SQLServer ? "_RecorderTRef" : "_recordertref"),
+            //        Length = 4,
+            //        TypeName = "binary",
+            //        Scale = 0,
+            //        Precision = 0,
+            //        IsNullable = false,
+            //        KeyOrdinal = 0,
+            //        IsPrimaryKey = true,
+            //        Purpose = FieldPurpose.TypeCode
+            //    });
+            //}
+
+            //// Устанавливаем признак множественного типа значения (составного типа данных)
+            ////property.PropertyType.ReferenceTypeCode = 0; // multiple type value
+            //property.PropertyType.ReferenceTypeUuid = Guid.Empty; // multiple type value
+        }
+
+        #endregion
+    }
+
+
+
     //{
     //    internal InfoBase InfoBase;
 
@@ -44,7 +231,7 @@ namespace DaJet.Metadata.Services
 
     //    private Configurator()
     //    {
-            
+
     //    }
 
     //    #region "DbNames"
@@ -876,73 +1063,7 @@ namespace DaJet.Metadata.Services
     //            ConfigurePropertyРегистраторSynchronized(register, document);
     //        }
     //    }
-    //    private void ConfigurePropertyРегистраторSynchronized(ApplicationObject register, Document document)
-    //    {
-    //        MetadataProperty property = register.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
 
-    //        if (property == null)
-    //        {
-    //            // добавляем новое свойство
-    //            property = new MetadataProperty()
-    //            {
-    //                Name = "Регистратор",
-    //                Purpose = PropertyPurpose.System,
-    //                FileName = Guid.Empty,
-    //                DbName = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_Recorder" : "_recorder")
-    //            };
-    //            property.PropertyType.CanBeReference = true;
-    //            property.PropertyType.ReferenceTypeUuid = document.Uuid; // single type value
-    //            //property.PropertyType.ReferenceTypeCode = document.TypeCode; // single type value
-    //            property.Fields.Add(new DatabaseField()
-    //            {
-    //                Name = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_RecorderRRef" : "_recorderrref"),
-    //                Length = 16,
-    //                TypeName = "binary",
-    //                Scale = 0,
-    //                Precision = 0,
-    //                IsNullable = false,
-    //                KeyOrdinal = 0,
-    //                IsPrimaryKey = true,
-    //                Purpose = FieldPurpose.Value
-    //            });
-    //            register.Properties.Add(property);
-    //            return;
-    //        }
-
-    //        // На всякий случай проверям повторное обращение одного и того же документа
-    //        if (property.PropertyType.ReferenceTypeUuid == document.Uuid) return;
-
-    //        // Проверям необходимость добавления поля для хранения кода типа документа
-    //        if (property.PropertyType.ReferenceTypeUuid == Guid.Empty) return;
-
-    //        // Изменяем назначение поля для хранения ссылки на документ, предварительно убеждаясь в его наличии
-    //        DatabaseField field = property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recorderrref").FirstOrDefault();
-    //        if (field != null)
-    //        {
-    //            field.Purpose = FieldPurpose.Object;
-    //        }
-
-    //        // Добавляем поле для хранения кода типа документа, предварительно убеждаясь в его отсутствии
-    //        if (property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recordertref").FirstOrDefault() == null)
-    //        {
-    //            property.Fields.Add(new DatabaseField()
-    //            {
-    //                Name = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_RecorderTRef" : "_recordertref"),
-    //                Length = 4,
-    //                TypeName = "binary",
-    //                Scale = 0,
-    //                Precision = 0,
-    //                IsNullable = false,
-    //                KeyOrdinal = 0,
-    //                IsPrimaryKey = true,
-    //                Purpose = FieldPurpose.TypeCode
-    //            });
-    //        }
-
-    //        // Устанавливаем признак множественного типа значения (составного типа данных)
-    //        //property.PropertyType.ReferenceTypeCode = 0; // multiple type value
-    //        property.PropertyType.ReferenceTypeUuid = Guid.Empty; // multiple type value
-    //    }
     //    public void ConfigureRegistersToPost(Document document, ConfigObject registers)
     //    {
     //        int registersCount = registers.GetInt32(new int[] { 1 }); // количество регистров
@@ -1042,66 +1163,7 @@ namespace DaJet.Metadata.Services
 
     //    #endregion
 
-    //    #region "Information register system properties"
 
-    //    public void ConfigurePropertyПериод(ApplicationObject register)
-    //    {
-    //        MetadataProperty property = new MetadataProperty()
-    //        {
-    //            Name = "Период",
-    //            FileName = Guid.Empty,
-    //            Purpose = PropertyPurpose.System,
-    //            DbName = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_Period" : "_period")
-    //        };
-    //        property.PropertyType.CanBeDateTime = true;
-    //        property.Fields.Add(new DatabaseField()
-    //        {
-    //            Name = property.DbName,
-    //            Length = 6,
-    //            Precision = 19,
-    //            TypeName = "datetime2"
-    //        });
-    //        register.Properties.Add(property);
-    //    }
-    //    public void ConfigurePropertyНомерЗаписи(ApplicationObject register)
-    //    {
-    //        MetadataProperty property = new MetadataProperty()
-    //        {
-    //            Name = "НомерСтроки",
-    //            FileName = Guid.Empty,
-    //            Purpose = PropertyPurpose.System,
-    //            DbName = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_LineNo" : "_lineno")
-    //        };
-    //        property.PropertyType.CanBeNumeric = true;
-    //        property.Fields.Add(new DatabaseField()
-    //        {
-    //            Name = property.DbName,
-    //            Length = 5,
-    //            Precision = 9,
-    //            TypeName = "numeric"
-    //        });
-    //        register.Properties.Add(property);
-    //    }
-    //    public void ConfigurePropertyАктивность(ApplicationObject register)
-    //    {
-    //        MetadataProperty property = new MetadataProperty()
-    //        {
-    //            Name = "Активность",
-    //            FileName = Guid.Empty,
-    //            Purpose = PropertyPurpose.System,
-    //            DbName = (FileReader.DatabaseProvider == DatabaseProvider.SQLServer ? "_Active" : "_active")
-    //        };
-    //        property.PropertyType.CanBeBoolean = true;
-    //        property.Fields.Add(new DatabaseField()
-    //        {
-    //            Name = property.DbName,
-    //            Length = 1,
-    //            TypeName = "binary"
-    //        });
-    //        register.Properties.Add(property);
-    //    }
-
-    //    #endregion
 
     //    #region "Accumulation register system properties"
 

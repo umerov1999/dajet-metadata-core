@@ -14,14 +14,14 @@ namespace DaJet.Metadata.Parsers
             Reader = reader;
             ConfigureConfigFileConverter();
         }
-        public void Parse(in DbNamesLookup target)
+        public void Parse(in DbNames target)
         {
             _lookup = target;
             _parser.Parse(Reader, _converter);
         }
 
         int _count = 0;
-        DbNamesLookup _lookup;
+        DbNames _lookup;
         ConfigFileConverter _converter;
         private void ConfigureConfigFileConverter()
         {
