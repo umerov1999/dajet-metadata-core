@@ -73,8 +73,7 @@ namespace DaJet.Metadata.Test
         {
             ConfigObject config;
 
-            string CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata;Integrated Security=True";
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, CONNECTION_STRING, ConfigTableNames.DBSchema))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.DBSchema))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }

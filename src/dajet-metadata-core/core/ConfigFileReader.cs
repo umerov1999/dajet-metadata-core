@@ -456,6 +456,7 @@ namespace DaJet.Metadata.Core
                 {
                     _ = _stream.Read();
                     _offset++;
+                    continue;
                 }
 
                 return next;
@@ -499,11 +500,19 @@ namespace DaJet.Metadata.Core
 
             _value.Append(_char);
 
+            char next;
+
             while (!_stream.EndOfStream)
             {
-                char next = PeekNext();
+                next = PeekNext();
 
-                if (next == ',' || next == '}')
+                if (next == '}')
+                {
+                    _path[_level]++;
+                    return; // ReadEndFileOrObject()
+                }
+
+                if (next == ',')
                 {
                     _path[_level]++; // point to the value, which has been just read, at the current level
                     _token = TokenType.Value;
