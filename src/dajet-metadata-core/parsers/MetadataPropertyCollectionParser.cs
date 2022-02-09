@@ -72,15 +72,15 @@ namespace DaJet.Metadata.Parsers
         }
         private void ConfigurePropertyPurpose()
         {
-            if (_type == MetadataRegistry.InformationRegister_Measure)
+            if (_type == PropertyTypes.InformationRegister_Measure)
             {
                 _purpose = PropertyPurpose.Measure;
             }
-            else if (_type == MetadataRegistry.InformationRegister_Property)
+            else if (_type == PropertyTypes.InformationRegister_Property)
             {
                 _purpose = PropertyPurpose.Property;
             }
-            else if (_type == MetadataRegistry.InformationRegister_Dimension)
+            else if (_type == PropertyTypes.InformationRegister_Dimension)
             {
                 _purpose = PropertyPurpose.Dimension;
             }

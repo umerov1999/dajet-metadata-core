@@ -13,7 +13,7 @@ namespace DaJet.Metadata.Test
         private InformationRegisterParser Parser { get; }
         public Test_Parser_InformationRegister()
         {
-            if (!MetadataParserFactory.TryGetParser(MetadataRegistry.InformationRegisters, out IMetadataObjectParser parser))
+            if (!MetadataParserFactory.TryGetParser(MetadataTypes.InformationRegister, out IMetadataObjectParser parser))
             {
                 throw new Exception("InformationRegister parser is not found");
             }
@@ -30,7 +30,7 @@ namespace DaJet.Metadata.Test
             MetadataObject target;
             Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7"); // Идентификатор объекта метаданных
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, uuid))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
             {
                 Parser.Parse(in reader, out target);
             }
@@ -49,7 +49,7 @@ namespace DaJet.Metadata.Test
             MetadataObject target;
             Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7"); // Идентификатор объекта метаданных
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, uuid))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, uuid))
             {
                 Parser.Parse(in reader, out target);
             }

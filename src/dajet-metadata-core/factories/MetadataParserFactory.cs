@@ -9,18 +9,17 @@ namespace DaJet.Metadata.Parsers
         private static readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new Dictionary<Guid, IMetadataObjectParser>();
         static MetadataParserFactory()
         {
-            _parsers.Add(MetadataRegistry.Root, new InfoBaseParser());
-            _parsers.Add(MetadataRegistry.Subsystems, null); // Подсистемы
-            _parsers.Add(MetadataRegistry.NamedDataTypeSets, new NamedDataTypeSetParser()); // Определяемые типы
-            _parsers.Add(MetadataRegistry.SharedProperties, null); // Общие реквизиты
-            _parsers.Add(MetadataRegistry.Catalogs, null);
-            _parsers.Add(MetadataRegistry.Constants, null);
-            _parsers.Add(MetadataRegistry.Documents, null);
-            _parsers.Add(MetadataRegistry.Enumerations, null);
-            _parsers.Add(MetadataRegistry.Publications, null); // Планы обмена
-            _parsers.Add(MetadataRegistry.Characteristics, null);
-            _parsers.Add(MetadataRegistry.InformationRegisters, new InformationRegisterParser());
-            _parsers.Add(MetadataRegistry.AccumulationRegisters, null);
+            _parsers.Add(MetadataTypes.Subsystem, null); // Подсистемы
+            _parsers.Add(MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser()); // Определяемые типы
+            _parsers.Add(MetadataTypes.SharedProperty, null); // Общие реквизиты
+            _parsers.Add(MetadataTypes.Catalog, null);
+            _parsers.Add(MetadataTypes.Constant, null);
+            _parsers.Add(MetadataTypes.Document, null);
+            _parsers.Add(MetadataTypes.Enumeration, null);
+            _parsers.Add(MetadataTypes.Publication, null); // Планы обмена
+            _parsers.Add(MetadataTypes.Characteristic, null);
+            _parsers.Add(MetadataTypes.InformationRegister, new InformationRegisterParser());
+            _parsers.Add(MetadataTypes.AccumulationRegister, null);
         }
         public static bool TryGetParser(Guid type, out IMetadataObjectParser parser)
         {

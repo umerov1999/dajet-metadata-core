@@ -9,26 +9,12 @@ using System.Reflection;
 
 namespace DaJet.Metadata.Test
 {
-    [TestClass] public class Test_ConfigParser
+    [TestClass] public class Test_Parser_InfoBase
     {
         private readonly ConfigFileParser _parser = new ConfigFileParser();
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
-        private InfoBaseParser InfoBaseParser { get; }
-        public Test_ConfigParser()
-        {
-            if (!MetadataParserFactory.TryGetParser(MetadataRegistry.Root, out IMetadataObjectParser parser))
-            {
-                throw new Exception("InfoBase parser is not found");
-            }
-
-            InfoBaseParser = parser as InfoBaseParser;
-
-            if (InfoBaseParser == null)
-            {
-                throw new Exception("Failed to get InfoBase parser");
-            }
-        }
+        private InfoBaseParser InfoBaseParser { get; } = new InfoBaseParser();
         private void ShowInfoBase(in InfoBase infoBase)
         {
             foreach (PropertyInfo property in typeof(InfoBase).GetProperties())
@@ -54,7 +40,7 @@ namespace DaJet.Metadata.Test
             Guid root;
             
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 root = new RootFileParser().Parse(in reader);
             }
@@ -62,7 +48,7 @@ namespace DaJet.Metadata.Test
             ConfigObject config;
 
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, root))
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, root))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -73,7 +59,7 @@ namespace DaJet.Metadata.Test
         {
             ConfigObject config;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.DBSchema))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.DBSchema))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -84,7 +70,7 @@ namespace DaJet.Metadata.Test
         {
             ConfigObject config;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.DBSchema))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.DBSchema))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -92,10 +78,48 @@ namespace DaJet.Metadata.Test
             new ConfigFileWriter().Write(config, "C:\\temp\\db-schema-pg.txt");
         }
 
-        [TestMethod] public void MS_ROOT()
+        [TestMethod] public void MS_InfoBase_Only()
         {
             Guid rootFile;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            {
+                rootFile = new RootFileParser().Parse(in reader);
+            }
+
+            InfoBase infoBase;
+
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            {
+                InfoBaseParser.Parse(in reader, out infoBase);
+            }
+
+            ShowInfoBase(in infoBase);
+        }
+        [TestMethod] public void PG_InfoBase_Only()
+        {
+            string rootFile = null;
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            {
+                rootFile = _parser.Parse(in reader).GetString(1);
+            }
+
+            InfoBase infoBase;
+
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            {
+                InfoBaseParser.Parse(in reader, out infoBase);
+            }
+
+            ShowInfoBase(in infoBase);
+        }
+
+        [TestMethod] public void MS_InfoBase_And_Metadata()
+        {
+            Guid rootFile;
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = new RootFileParser().Parse(in reader);
             }
@@ -103,7 +127,8 @@ namespace DaJet.Metadata.Test
             InfoBase infoBase;
             Dictionary<Guid, List<Guid>> collections;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
@@ -111,10 +136,10 @@ namespace DaJet.Metadata.Test
             ShowInfoBase(in infoBase);
             ShowCollections(in collections);
         }
-        [TestMethod] public void PG_ROOT()
+        [TestMethod] public void PG_InfoBase_And_Metadata()
         {
             string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = _parser.Parse(in reader).GetString(1);
             }
@@ -122,7 +147,7 @@ namespace DaJet.Metadata.Test
             InfoBase infoBase;
             Dictionary<Guid, List<Guid>> collections;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
@@ -134,7 +159,7 @@ namespace DaJet.Metadata.Test
         [TestMethod] public void MS_ParseByName()
         {
             string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = _parser.Parse(in reader).GetString(1);
             }
@@ -142,9 +167,9 @@ namespace DaJet.Metadata.Test
             MetadataObject target;
             string name = "ÂõîäÿùàÿÎ÷åðåäüRabbitMQ";
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
-                InfoBaseParser.ParseByName(in reader, MetadataRegistry.InformationRegisters, in name , out target);
+                InfoBaseParser.ParseByName(in reader, MetadataTypes.InformationRegister, in name , out target);
             }
 
             if (target == null)
@@ -159,7 +184,7 @@ namespace DaJet.Metadata.Test
         [TestMethod] public void MS_ParseByUuid()
         {
             string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, "root"))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = _parser.Parse(in reader).GetString(1);
             }
@@ -167,9 +192,9 @@ namespace DaJet.Metadata.Test
             MetadataObject target;
             Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7");
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTableNames.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
-                InfoBaseParser.ParseByUuid(in reader, MetadataRegistry.InformationRegisters, uuid, out target);
+                InfoBaseParser.ParseByUuid(in reader, MetadataTypes.InformationRegister, uuid, out target);
             }
 
             if (target == null)

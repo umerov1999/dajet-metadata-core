@@ -5,9 +5,12 @@ namespace DaJet.Metadata.Model
     public abstract class ReferenceObject : ApplicationObject
     {
         ///<summary>
-        ///Внутренний идентификатор ссылочного объекта метаданных.
+        ///Идентификатор ссылочного типа данных, например,
+        ///"СправочникСсылка.Номенклатура" или "ДокументСсылка.ЗаказКлиента".
+        ///<br>
         ///Используется для определения типов данных свойств объектов.
+        ///</br>
         ///</summary>
-        public Guid TypeUuid { get; set; } = Guid.Empty;
+        public Guid RefUuid { get; set; } = Guid.Empty;
     }
 }

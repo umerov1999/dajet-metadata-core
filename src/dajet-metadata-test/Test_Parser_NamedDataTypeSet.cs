@@ -13,15 +13,11 @@ namespace DaJet.Metadata.Test
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
         private InfoBaseParser GetInfoBaseParser()
         {
-            if (!MetadataParserFactory.TryGetParser(MetadataRegistry.Root, out IMetadataObjectParser parser))
-            {
-                throw new Exception("InfoBase parser is not found");
-            }
-            return parser as InfoBaseParser;
+            return new InfoBaseParser();
         }
         private NamedDataTypeSetParser GetNamedDataTypeSetParser()
         {
-            if (!MetadataParserFactory.TryGetParser(MetadataRegistry.NamedDataTypeSets, out IMetadataObjectParser parser))
+            if (!MetadataParserFactory.TryGetParser(MetadataTypes.NamedDataTypeSet, out IMetadataObjectParser parser))
             {
                 throw new Exception("NamedDataTypeSet parser is not found");
             }
@@ -30,7 +26,7 @@ namespace DaJet.Metadata.Test
         private Guid GetRootFileUuid(DatabaseProvider provider, string connectionString)
         {
             Guid root;
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTableNames.Config, "root"))
+            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, "root"))
             {
                 root = new RootFileParser().Parse(in reader);
             }
@@ -42,7 +38,7 @@ namespace DaJet.Metadata.Test
 
             InfoBaseParser parser = GetInfoBaseParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTableNames.Config, root))
+            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
             {
                 parser.Parse(in reader, out infoBase, out metadata);
             }
@@ -53,9 +49,9 @@ namespace DaJet.Metadata.Test
 
             InfoBaseParser parser = GetInfoBaseParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTableNames.Config, root))
+            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
             {
-                parser.ParseByUuid(in reader, MetadataRegistry.NamedDataTypeSets, guid, out target);
+                parser.ParseByUuid(in reader, MetadataTypes.NamedDataTypeSet, guid, out target);
             }
         }
         private void GetMetadataByName(DatabaseProvider provider, string connectionString, in string name, out MetadataObject target)
@@ -64,9 +60,9 @@ namespace DaJet.Metadata.Test
 
             InfoBaseParser parser = GetInfoBaseParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTableNames.Config, root))
+            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
             {
-                parser.ParseByName(in reader, MetadataRegistry.NamedDataTypeSets, in name, out target);
+                parser.ParseByName(in reader, MetadataTypes.NamedDataTypeSet, in name, out target);
             }
         }
 
@@ -192,7 +188,7 @@ namespace DaJet.Metadata.Test
 
             GetMetadata(provider, connectionString, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata);
 
-            if (!metadata.TryGetValue(MetadataRegistry.NamedDataTypeSets, out List<Guid> items))
+            if (!metadata.TryGetValue(MetadataTypes.NamedDataTypeSet, out List<Guid> items))
             {
                 Console.WriteLine($"NamedDataTypeSet list is empty.");
                 return;
@@ -202,7 +198,7 @@ namespace DaJet.Metadata.Test
 
             foreach (Guid guid in items)
             {
-                using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTableNames.Config, guid))
+                using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, guid))
                 {
                     parser.Parse(in reader, out MetadataObject item);
 

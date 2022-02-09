@@ -1,6 +1,6 @@
-﻿namespace DaJet.Metadata.Model
+﻿namespace DaJet.Metadata.Core
 {
-    public static class ConfigTableNames
+    public static class ConfigTables
     {
         public const string Params = "Params";
         public const string Config = "Config";

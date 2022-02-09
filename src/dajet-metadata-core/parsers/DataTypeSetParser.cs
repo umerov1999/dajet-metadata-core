@@ -9,13 +9,13 @@ namespace DaJet.Metadata.Parsers
     {
         private readonly HashSet<Guid> ReferenceBaseTypes = new HashSet<Guid>()
         {
-            MetadataRegistry.ANY_REFERENCE,
-            MetadataRegistry.ACCOUNT_REFERENCE,
-            MetadataRegistry.CATALOG_REFERENCE,
-            MetadataRegistry.DOCUMENT_REFERENCE,
-            MetadataRegistry.ENUMERATION_REFERENCE,
-            MetadataRegistry.PUBLICATION_REFERENCE,
-            MetadataRegistry.CHARACTERISTIC_REFERENCE
+            ReferenceTypes.AnyReference,
+            ReferenceTypes.Account,
+            ReferenceTypes.Catalog,
+            ReferenceTypes.Document,
+            ReferenceTypes.Enumeration,
+            ReferenceTypes.Publication,
+            ReferenceTypes.Characteristic
         };
 
         public void Parse(in ConfigFileReader source, out DataTypeSet target)
@@ -158,13 +158,13 @@ namespace DaJet.Metadata.Parsers
 
             Guid typeUuid = new Guid(_qualifiers[_pointer]);
 
-            if (typeUuid == MetadataRegistry.VALUE_STORAGE) // ХранилищеЗначения - varbinary(max)
+            if (typeUuid == SingleTypes.ValueStorage) // ХранилищеЗначения - varbinary(max)
             {
                 target.IsValueStorage = true; // Не может быть составным типом !
                 return;
             }
             
-            if (typeUuid == MetadataRegistry.UNIQUEIDENTIFIER) // УникальныйИдентификатор - binary(16)
+            if (typeUuid == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
             {
                 target.IsUuid = true; // Не может быть составным типом !
                 return;
@@ -194,31 +194,31 @@ namespace DaJet.Metadata.Parsers
         }
         private void ApplyReferenceTypeQualifier(in DataTypeSet target, Guid typeUuid)
         {
-            if (typeUuid == MetadataRegistry.ANY_REFERENCE)
+            if (typeUuid == ReferenceTypes.AnyReference)
             {
                 target.IsAnyReference = true;
             }
-            else if (typeUuid == MetadataRegistry.ACCOUNT_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Account)
             {
                 target.IsAnyAccount = true;
             }
-            else if (typeUuid == MetadataRegistry.CATALOG_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Catalog)
             {
                 target.IsAnyCatalog = true;
             }
-            else if (typeUuid == MetadataRegistry.DOCUMENT_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Document)
             {
                 target.IsAnyDocument = true;
             }
-            else if (typeUuid == MetadataRegistry.ENUMERATION_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Enumeration)
             {
                 target.IsAnyEnumeration = true;
             }
-            else if (typeUuid == MetadataRegistry.PUBLICATION_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Publication)
             {
                 target.IsAnyPublication = true;
             }
-            else if (typeUuid == MetadataRegistry.CHARACTERISTIC_REFERENCE)
+            else if (typeUuid == ReferenceTypes.Characteristic)
             {
                 target.IsAnyCharacteristic = true;
             }

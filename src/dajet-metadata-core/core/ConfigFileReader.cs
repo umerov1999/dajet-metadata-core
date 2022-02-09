@@ -72,7 +72,7 @@ namespace DaJet.Metadata.Core
         }
         public ConfigFileReader(DatabaseProvider provider, in string connectionString, in string tableName)
         {
-            if (tableName != ConfigTableNames.DBSchema)
+            if (tableName != ConfigTables.DBSchema)
             {
                 throw new ArgumentOutOfRangeException(nameof(tableName));
             }
@@ -156,7 +156,7 @@ namespace DaJet.Metadata.Core
 
         private string GetSelectConfigFileScript(string tableName)
         {
-            if (tableName == ConfigTableNames.Config)
+            if (tableName == ConfigTables.Config)
             {
                 if (_provider == DatabaseProvider.SQLServer)
                 {
@@ -164,7 +164,7 @@ namespace DaJet.Metadata.Core
                 }
                 return PG_CONFIG_SCRIPT;
             }
-            else if (tableName == ConfigTableNames.Params)
+            else if (tableName == ConfigTables.Params)
             {
                 if (_provider == DatabaseProvider.SQLServer)
                 {

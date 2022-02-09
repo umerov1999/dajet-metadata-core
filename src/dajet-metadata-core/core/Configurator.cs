@@ -1381,10 +1381,10 @@ namespace DaJet.Metadata.Core
 
     //        try
     //        {
-    //            string fileName = ConfigFileReader.ReadConfigObject(ConfigTableNames.Config, ROOT_FILE_NAME).GetString(1);
+    //            string fileName = ConfigFileReader.ReadConfigObject(ConfigTable.Config, ROOT_FILE_NAME).GetString(1);
 
     //            using (ConfigFileReader reader = new ConfigFileReader(
-    //                ConfigFileReader.ConnectionString, ConfigTableNames.Config, fileName))
+    //                ConfigFileReader.ConnectionString, ConfigTable.Config, fileName))
     //            {
     //                new InfoBaseParser(reader).Parse(in infoBase);
     //            }
@@ -1406,7 +1406,7 @@ namespace DaJet.Metadata.Core
     //        try
     //        {
     //            using (ConfigFileReader reader = new ConfigFileReader(
-    //                ConfigFileReader.ConnectionString, ConfigTableNames.Params, DBNAMES_FILE_NAME))
+    //                ConfigFileReader.ConnectionString, ConfigTable.Params, DBNAMES_FILE_NAME))
     //            {
     //                new DbNamesParser(reader).Parse(in dbnames);
     //            }
@@ -1442,7 +1442,7 @@ namespace DaJet.Metadata.Core
     //    private void ConfigureSharedProperty(in InfoBase infoBase, in SharedProperty property)
     //    {
     //        using (ConfigFileReader reader = new ConfigFileReader(
-    //                ConfigFileReader.ConnectionString, ConfigTableNames.Config, property.FileName.ToString()))
+    //                ConfigFileReader.ConnectionString, ConfigTable.Config, property.FileName.ToString()))
     //        {
     //            new SharedPropertyParser(reader).Parse(in infoBase, in property);
     //        }

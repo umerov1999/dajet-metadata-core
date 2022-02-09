@@ -6,15 +6,15 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class InfoBaseParser : IMetadataObjectParser
+    public sealed class InfoBaseParser
     {
         private readonly ConfigFileParser _parser = new ConfigFileParser();
 
         private ConfigFileConverter _converter;
 
         InfoBase _infoBase;
-        private Dictionary<Guid, List<Guid>> _collections;
-        private void ConfigureConfigFileConverter()
+        private Dictionary<Guid, List<Guid>> _metadata;
+        private void ConfigureConfigFileConverter(bool includeMetadata)
         {
             _converter = new ConfigFileConverter();
 
@@ -33,27 +33,38 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][19] += AutoNumberingMode; // Режим автонумерации объектов
             _converter[3][1][1][38] += UICompatibilityMode; // Режим совместимости интерфейса
 
-            // Коллекции объектов метаданных
-            _converter[2] += ConfigureMetadataCollections;
+            if (includeMetadata)
+            {
+                // Коллекция объектов метаданных
+                _converter[2] += ConfigureMetadataDictionary;
+            }
+            else
+            {
+                // Прервать чтение файла после прочтения свойств конфигурации
+                _converter[3][1][1] += Cancel;
+            }
         }
-        private void InitializeMetadataCollectionsLookup()
+        private void InitializeMetadataDictionary()
         {
-            _collections = new Dictionary<Guid, List<Guid>>();
-            _collections.Add(MetadataRegistry.Subsystems, new List<Guid>()); // Подсистемы
-            _collections.Add(MetadataRegistry.NamedDataTypeSets, new List<Guid>()); // Определяемые типы
-            _collections.Add(MetadataRegistry.SharedProperties, new List<Guid>()); // Общие реквизиты
-            _collections.Add(MetadataRegistry.Catalogs, new List<Guid>());
-            _collections.Add(MetadataRegistry.Constants, new List<Guid>());
-            _collections.Add(MetadataRegistry.Documents, new List<Guid>());
-            _collections.Add(MetadataRegistry.Enumerations, new List<Guid>());
-            _collections.Add(MetadataRegistry.Publications, new List<Guid>()); // Планы обмена
-            _collections.Add(MetadataRegistry.Characteristics, new List<Guid>());
-            _collections.Add(MetadataRegistry.InformationRegisters, new List<Guid>());
-            _collections.Add(MetadataRegistry.AccumulationRegisters, new List<Guid>());
+            _metadata = new Dictionary<Guid, List<Guid>>()
+            {
+                { MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
+                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
+                { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
+                { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
+                { MetadataTypes.Constant,             new List<Guid>() }, // Константы
+                { MetadataTypes.Document,             new List<Guid>() }, // Документы
+                { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
+                { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
+                { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
+                { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
+                { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
+            };
         }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> collections)
+
+        public void Parse(in ConfigFileReader reader, out InfoBase infoBase)
         {
-            ConfigureConfigFileConverter();
+            ConfigureConfigFileConverter(false);
 
             _infoBase = new InfoBase()
             {
@@ -61,26 +72,46 @@ namespace DaJet.Metadata.Parsers
                 YearOffset = reader.YearOffset,
                 PlatformVersion = reader.PlatformVersion
             };
-            InitializeMetadataCollectionsLookup();
-
-            infoBase = _infoBase;
-            collections = _collections;
 
             _parser.Parse(in reader, in _converter);
 
-            // TODO: Dispose()
+            // Parsing result
+            infoBase = _infoBase;
+
+            // Dispose private variables
             _infoBase = null;
-            _collections = null; // Do not call _collections.Clear() here =) This will clear collections parameter also =)
             _converter = null;
         }
+        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata)
+        {
+            ConfigureConfigFileConverter(true);
 
-        public void Parse(in ConfigFileReader source, out MetadataObject target)
-        {
-            throw new NotImplementedException();
+            _infoBase = new InfoBase()
+            {
+                Uuid = new Guid(reader.FileName),
+                YearOffset = reader.YearOffset,
+                PlatformVersion = reader.PlatformVersion
+            };
+
+            InitializeMetadataDictionary();
+
+            _parser.Parse(in reader, in _converter);
+
+            // Parsing results
+            infoBase = _infoBase;
+            metadata = _metadata;
+
+            // Dispose private variables
+            _infoBase = null;
+            _metadata = null;
+            _converter = null;
         }
-        public void Parse(in ConfigFileReader source, in string name, out MetadataObject target)
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {
-            throw new NotImplementedException();
+            if (source.Token == TokenType.EndObject)
+            {
+                args.Cancel = true;
+            }
         }
 
         #region "Свойства конфигурации"
@@ -149,108 +180,144 @@ namespace DaJet.Metadata.Parsers
 
         #endregion
 
-        #region "Коллекции объектов метаданных"
+        #region "Коллекция объектов метаданных"
 
-        private void ConfigureMetadataCollections(in ConfigFileReader source, in CancelEventArgs args)
+        private void ConfigureMetadataDictionary(in ConfigFileReader source, in CancelEventArgs args)
         {
-            int offset = 2; // текущая позиция - последующие позиции +1
-            int count = source.GetInt32();
+            int offset = 2; // текущая позиция [2] - последующие позиции +1
+            int count = source.GetInt32(); // количество компонентов платформы
+
             while (count > 0)
             {
-                _converter[offset + count][0] += ConfigureMetadataCollection;
+                _converter[offset + count][0] += ConfigureComponent;
                 count--;
             }
         }
-        private void ConfigureMetadataCollection(in ConfigFileReader source, in CancelEventArgs args)
+        private void ConfigureComponent(in ConfigFileReader source, in CancelEventArgs args)
         {
-            Guid uuid = source.GetUuid();
+            Guid uuid = source.GetUuid(); // Идентификатор компоненты платформы
 
-            if (uuid == Guid.Empty)
-            {
-                return;
-            }
-            
-            try
-            {
-                int node = source.Path[0]; // последовательность описания подсистем платформы не гарантирована !
+            // Родительский узел компоненты платформы
+            // NOTE: Последовательность узлов компонентов платформы может быть не гарантирована.
+            int node = source.Path[0];
 
-                if (uuid == MetadataRegistry.Subsystem_Common) // 3.0 - Подсистема общих объектов
-                {
-                    _converter[node][1][2] += ConfigureReadingTypedCollections; // начало типизированного списка
-                }
-                else if (uuid == MetadataRegistry.Subsystem_Operations) // 4.0 - Подсистема прикладных объектов
-                {
-                    _converter[node][1][1][2] += ConfigureReadingTypedCollections; // начало типизированного списка
-                }
-            }
-            catch
+            if (uuid == Components.General) // 3.0 - Компонента платформы "Общие объекты"
             {
-                // do nothing
-            }       
+                _converter[node][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
+            }
+            else if (uuid == Components.Operations) // 4.0 - Компонента платформы "Оперативный учёт"
+            {
+                _converter[node][1][1][2] += ConfigureMetadata; // начало коллекции объектов метаданных компоненты
+            }   
         }
-        private void ConfigureReadingTypedCollections(in ConfigFileReader source, in CancelEventArgs args)
+        private void ConfigureMetadata(in ConfigFileReader source, in CancelEventArgs args)
         {
-            int count = source.GetInt32(); // количество элементов типизированной коллекции
+            int count = source.GetInt32(); // количество объектов метаданных компоненты
             int offset = source.Path[source.Level]; // 3.1.2 текущая позиция - последующие позиции +1
-            ConfigFileConverter node = _converter.Path(source.Level - 1, source.Path); // родительский узел коллекции
+            
+            ConfigFileConverter node = _converter.Path(source.Level - 1, source.Path); // родительский узел компоненты
+            
             while (count > 0)
             {
-                node[offset + count] += ReadTypedCollection;
+                node[offset + count] += MetadataCollection;
                 count--;
             }
         }
-        private void ReadTypedCollection(in ConfigFileReader source, in CancelEventArgs args)
+        private void MetadataCollection(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (source.Token == TokenType.EndObject)
             {
                 return;
             }
 
-            int count = 0; // 1 - number of items in the collection
-            Guid type = Guid.Empty; // 0 - type uuid of the collection
+            int count = 0;
+            Guid type = Guid.Empty;
 
-            if (source.Read()) { type = source.GetUuid(); }
-            if (type == Guid.Empty) { return; }
-
-            if (!_collections.TryGetValue(type, out List<Guid> collection))
+            if (source.Read()) // 0 - Идентификатор типа объекта метаданных
             {
-                return;
+                type = source.GetUuid();
             }
 
-            if (source.Read()) { count = source.GetInt32(); }
-            if (count == 0 || count == -1) { return; }
-
-            for (int i = 0; i < count; i++)
+            if (!_metadata.TryGetValue(type, out List<Guid> collection))
             {
-                if (source.Read())
+                return; // Неподдерживаемый или неизвестный тип объекта метаданных
+            }
+
+            if (source.Read()) // 1 - Количество объектов метаданных в коллекции
+            {
+                count = source.GetInt32();
+            }
+
+            while (count > 0)
+            {
+                if (!source.Read())
                 {
-                    Guid uuid = source.GetUuid();
-
-                    if (uuid == Guid.Empty) { continue; }
-
-                    if (_name != null)
-                    {
-                        if (ParseApplicationObjectByName(in source, type, uuid))
-                        {
-                            //collection.Add(uuid);
-                            args.Cancel = true;
-                            return;
-                        }
-                    }
-                    else if (_uuid != Guid.Empty && _uuid == uuid)
-                    {
-                        ParseApplicationObject(in source, type);
-                        //collection.Add(uuid);
-                        args.Cancel = true;
-                        return;
-                    }
-                    else // no filter
-                    {
-                        collection.Add(uuid);
-                    }
+                    break;
                 }
+
+                Guid uuid = source.GetUuid(); // Идентификатор объекта метаданных
+
+                if (uuid != Guid.Empty)
+                {
+                    collection.Add(uuid);
+                }
+
+                count--;
             }
         }
+
+        #endregion
+
+        // TODO: move filtering code below to another class
+
+        #region "Поиск и загрузка объекта метаданных по его имени или уникальному идентификатору"
+
+        private Guid _uuid;
+        private string _name;
+        private MetadataObject _target;
+        public void ParseByName(in ConfigFileReader reader, Guid type, in string name, out MetadataObject target)
+        {
+            _converter = new ConfigFileConverter();
+            _converter[2] += ConfigureMetadataDictionary;
+
+            // filters
+            _name = name;
+            _metadata = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
+
+            // execute parser
+            _parser.Parse(in reader, in _converter);
+
+            target = _target; // result
+
+            // TODO: Dispose()
+            _name = null;
+            _target = null;
+            _converter = null;
+            _metadata.Clear();
+            _metadata = null;
+        }
+        public void ParseByUuid(in ConfigFileReader reader, Guid type, Guid uuid, out MetadataObject target)
+        {
+            _converter = new ConfigFileConverter();
+            _converter[2] += ConfigureMetadataDictionary;
+
+            // filters
+            _uuid = uuid;
+            _metadata = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
+
+            // execute parser
+            _parser.Parse(in reader, in _converter);
+
+            target = _target; // result
+
+            // TODO: Dispose()
+            _uuid = Guid.Empty;
+            _target = null;
+            _converter = null;
+            _metadata.Clear();
+            _metadata = null;
+        }
+
         private bool ParseApplicationObjectByName(in ConfigFileReader source, Guid type, Guid uuid)
         {
             if (_name == null)
@@ -263,7 +330,7 @@ namespace DaJet.Metadata.Parsers
                 return false;
             }
 
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, uuid))
+            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTables.Config, uuid))
             {
                 parser.Parse(in reader, in _name, out _target);
             }
@@ -282,100 +349,12 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTableNames.Config, _uuid))
+            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTables.Config, _uuid))
             {
                 parser.Parse(in reader, out _target);
             }
         }
 
         #endregion
-
-        #region "Поиск и загрузка объекта метаданных по его имени или уникальному идентификатору"
-        
-        private Guid _uuid;
-        private string _name;
-        private MetadataObject _target;
-        public void ParseByName(in ConfigFileReader reader, Guid type, in string name, out MetadataObject target)
-        {
-            _converter = new ConfigFileConverter();
-            _converter[2] += ConfigureMetadataCollections;
-
-            // filters
-            _name = name;
-            _collections = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
-
-            // execute parser
-            _parser.Parse(in reader, in _converter);
-
-            target = _target; // result
-
-            // TODO: Dispose()
-            _name = null;
-            _target = null;
-            _converter = null;
-            _collections.Clear();
-            _collections = null;
-        }
-        public void ParseByUuid(in ConfigFileReader reader, Guid type, Guid uuid, out MetadataObject target)
-        {
-            _converter = new ConfigFileConverter();
-            _converter[2] += ConfigureMetadataCollections;
-
-            // filters
-            _uuid = uuid;
-            _collections = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
-
-            // execute parser
-            _parser.Parse(in reader, in _converter);
-
-            target = _target; // result
-
-            // TODO: Dispose()
-            _uuid = Guid.Empty;
-            _target = null;
-            _converter = null;
-            _collections.Clear();
-            _collections = null;
-        }
-
-        #endregion
-
-        private void ConfigureCompoundTypes(in ConfigObject config, in InfoBase infoBase)
-        {
-            //// количество объектов в коллекции
-            //int count = config.GetInt32(1);
-            //if (count == 0) return;
-
-            //// 3.1.23.N - идентификаторы файлов определяемых типов
-            //int offset = 2;
-            //NamedDataTypeSet compound;
-            //for (int i = 0; i < count; i++)
-            //{
-            //    compound = new NamedDataTypeSet()
-            //    {
-            //        FileName = config.GetUuid(i + offset)
-            //    };
-            //    ConfigureCompoundType(in compound, in infoBase);
-            //    infoBase.CompoundTypes.Add(compound.Uuid, compound);
-            //}
-        }
-        private void ConfigureCompoundType(in NamedDataTypeSet compound, in InfoBase infoBase)
-        {
-            //ConfigObject config = ConfigFileParser.Parse(ConfigTableNames.Config, compound.FileName.ToString());
-
-            //compound.Uuid = config[1].GetUuid(1);
-            //compound.Name = config[1][3].GetString(2);
-            //ConfigObject alias = config[1][3][3];
-            //if (alias.Count == 3)
-            //{
-            //    compound.Alias = config[1][3][3].GetString(2);
-            //}
-            //// 1.3.4 - комментарий
-            //// TODO: add Comment property to MetadataObject ?
-
-            //// 1.4 - описание типов значений определяемого типа
-            //ConfigObject types = config[1][4];
-            //// TODO: compound.TypeInfo = (DataTypeInfo)TypeInfoConverter.Convert(types);
-        }
     }
 }

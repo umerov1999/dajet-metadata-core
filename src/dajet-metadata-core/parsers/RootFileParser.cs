@@ -31,6 +31,8 @@ namespace DaJet.Metadata.Parsers
         private void Uuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             _target = source.GetUuid();
+
+            args.Cancel = true;
         }
     }
 }
