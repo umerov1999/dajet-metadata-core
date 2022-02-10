@@ -43,28 +43,28 @@ namespace DaJet.Metadata.Test
                 parser.Parse(in reader, out infoBase, out metadata);
             }
         }
-        private void GetMetadataByUuid(DatabaseProvider provider, string connectionString, Guid guid, out MetadataObject target)
-        {
-            Guid root = GetRootFileUuid(provider, connectionString);
+        //private void GetMetadataByUuid(DatabaseProvider provider, string connectionString, Guid guid, out MetadataObject target)
+        //{
+        //    Guid root = GetRootFileUuid(provider, connectionString);
 
-            InfoBaseParser parser = GetInfoBaseParser();
+        //    InfoBaseParser parser = GetInfoBaseParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
-            {
-                parser.ParseByUuid(in reader, MetadataTypes.NamedDataTypeSet, guid, out target);
-            }
-        }
-        private void GetMetadataByName(DatabaseProvider provider, string connectionString, in string name, out MetadataObject target)
-        {
-            Guid root = GetRootFileUuid(provider, connectionString);
+        //    using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
+        //    {
+        //        parser.ParseByUuid(in reader, MetadataTypes.NamedDataTypeSet, guid, out target);
+        //    }
+        //}
+        //private void GetMetadataByName(DatabaseProvider provider, string connectionString, in string name, out MetadataObject target)
+        //{
+        //    Guid root = GetRootFileUuid(provider, connectionString);
 
-            InfoBaseParser parser = GetInfoBaseParser();
+        //    InfoBaseParser parser = GetInfoBaseParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
-            {
-                parser.ParseByName(in reader, MetadataTypes.NamedDataTypeSet, in name, out target);
-            }
-        }
+        //    using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, root))
+        //    {
+        //        parser.ParseByName(in reader, MetadataTypes.NamedDataTypeSet, in name, out target);
+        //    }
+        //}
 
         #region "SHOW TEST RESULTS"
 
@@ -208,22 +208,22 @@ namespace DaJet.Metadata.Test
                 }
             }
         }
-        private void ParseByUuid(DatabaseProvider provider, string connectionString, Guid guid)
-        {
-            GetMetadataByUuid(provider, connectionString, guid, out MetadataObject item);
+        //private void ParseByUuid(DatabaseProvider provider, string connectionString, Guid guid)
+        //{
+        //    GetMetadataByUuid(provider, connectionString, guid, out MetadataObject item);
 
-            NamedDataTypeSet metaObject = item as NamedDataTypeSet;
+        //    NamedDataTypeSet metaObject = item as NamedDataTypeSet;
 
-            ShowMetadataObject(in metaObject);
-        }
-        private void ParseByName(DatabaseProvider provider, string connectionString, string name)
-        {
-            GetMetadataByName(provider, connectionString, in name, out MetadataObject item);
+        //    ShowMetadataObject(in metaObject);
+        //}
+        //private void ParseByName(DatabaseProvider provider, string connectionString, string name)
+        //{
+        //    GetMetadataByName(provider, connectionString, in name, out MetadataObject item);
 
-            NamedDataTypeSet metaObject = item as NamedDataTypeSet;
+        //    NamedDataTypeSet metaObject = item as NamedDataTypeSet;
 
-            ShowMetadataObject(in metaObject);
-        }
+        //    ShowMetadataObject(in metaObject);
+        //}
         
         [TestMethod] public void MS_ParseAll()
         {
@@ -231,11 +231,11 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void MS_ParseByUuid()
         {
-            ParseByUuid(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, new Guid("deb69010-80b0-4e28-acc7-8c50e8e6f873"));
+            //ParseByUuid(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, new Guid("deb69010-80b0-4e28-acc7-8c50e8e6f873"));
         }
         [TestMethod] public void MS_ParseByName()
         {
-            ParseByName(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, "ТипыОбъектовМДЛП");
+            //ParseByName(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, "ТипыОбъектовМДЛП");
         }
         
         [TestMethod] public void PG_ParseAll()
@@ -244,11 +244,11 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void PG_ParseByUuid()
         {
-            ParseByUuid(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, new Guid("deb69010-80b0-4e28-acc7-8c50e8e6f873"));
+            //ParseByUuid(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, new Guid("deb69010-80b0-4e28-acc7-8c50e8e6f873"));
         }
         [TestMethod] public void PG_ParseByName()
         {
-            ParseByName(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, "ТипыОбъектовМДЛП");
+            //ParseByName(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, "ТипыОбъектовМДЛП");
         }
     }
 }

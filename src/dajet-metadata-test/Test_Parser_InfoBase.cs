@@ -156,54 +156,41 @@ namespace DaJet.Metadata.Test
             ShowCollections(in collections);
         }
 
-        [TestMethod] public void MS_ParseByName()
+        [TestMethod] public void MS_InfoBase_And_Names()
         {
-            string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            Guid rootFile;
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
-                rootFile = _parser.Parse(in reader).GetString(1);
+                rootFile = new RootFileParser().Parse(in reader);
             }
 
-            MetadataObject target;
-            string name = "ÂõîäÿùàÿÎ÷åðåäüRabbitMQ";
+            InfoBase infoBase;
+            Dictionary<Guid, List<Guid>> collections;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(
+                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
-                InfoBaseParser.ParseByName(in reader, MetadataTypes.InformationRegister, in name , out target);
-            }
-
-            if (target == null)
-            {
-                Console.WriteLine($"{name} is not found");
-            }
-            else
-            {
-                Console.WriteLine($"{name} {{{target.Uuid}}} is found successfully");
-            }
-        }
-        [TestMethod] public void MS_ParseByUuid()
-        {
-            string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
-            {
-                rootFile = _parser.Parse(in reader).GetString(1);
+                InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
 
-            MetadataObject target;
-            Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7");
+            MetaInfo info;
+            MetaInfoParser parser = new MetaInfoParser();
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            foreach (var item in collections)
             {
-                InfoBaseParser.ParseByUuid(in reader, MetadataTypes.InformationRegister, uuid, out target);
-            }
+                Console.WriteLine($"{item.Key}");
 
-            if (target == null)
-            {
-                Console.WriteLine($"{uuid} is not found");
-            }
-            else
-            {
-                Console.WriteLine($"{target.Name} {{{target.Uuid}}} is found successfully");
+                foreach (Guid uuid in item.Value)
+                {
+                    using (ConfigFileReader reader = new ConfigFileReader(
+                        DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
+                    {
+                        info = parser.Parse(in reader, item.Key);
+                    }
+                    
+                    Console.WriteLine($"{{{info.Uuid}}} {info.Name}");
+                }
             }
         }
     }

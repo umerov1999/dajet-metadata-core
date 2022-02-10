@@ -14,10 +14,8 @@ namespace DaJet.Metadata.Parsers
 
         InfoBase _infoBase;
         private Dictionary<Guid, List<Guid>> _metadata;
-        private void ConfigureConfigFileConverter(bool includeMetadata)
+        private void ConfigureInfoBaseConverter()
         {
-            _converter = new ConfigFileConverter();
-
             // DONE: take file name from reader
             //_converter[1][0] += FileName; // Значение поля FileName в таблице Config
 
@@ -32,17 +30,16 @@ namespace DaJet.Metadata.Parsers
             _converter[3][1][1][17] += DataLockingMode; // Режим управления блокировкой данных в транзакции по умолчанию
             _converter[3][1][1][19] += AutoNumberingMode; // Режим автонумерации объектов
             _converter[3][1][1][38] += UICompatibilityMode; // Режим совместимости интерфейса
-
-            if (includeMetadata)
-            {
-                // Коллекция объектов метаданных
-                _converter[2] += ConfigureMetadataDictionary;
-            }
-            else
-            {
-                // Прервать чтение файла после прочтения свойств конфигурации
-                _converter[3][1][1] += Cancel;
-            }
+        }
+        private void ConfigureMetadataConverter()
+        {
+            // Коллекция объектов метаданных
+            _converter[2] += ConfigureMetadataDictionary;
+        }
+        private void ConfigureCancellation()
+        {
+            // Прервать чтение файла после прочтения свойств конфигурации
+            _converter[3][1][1] += Cancel;
         }
         private void InitializeMetadataDictionary()
         {
@@ -64,7 +61,10 @@ namespace DaJet.Metadata.Parsers
 
         public void Parse(in ConfigFileReader reader, out InfoBase infoBase)
         {
-            ConfigureConfigFileConverter(false);
+            _converter = new ConfigFileConverter();
+
+            ConfigureInfoBaseConverter();
+            ConfigureCancellation();
 
             _infoBase = new InfoBase()
             {
@@ -82,9 +82,29 @@ namespace DaJet.Metadata.Parsers
             _infoBase = null;
             _converter = null;
         }
+        public void Parse(in ConfigFileReader reader, out Dictionary<Guid, List<Guid>> metadata)
+        {
+            _converter = new ConfigFileConverter();
+
+            ConfigureMetadataConverter();
+
+            InitializeMetadataDictionary();
+
+            _parser.Parse(in reader, in _converter);
+
+            // Parsing results
+            metadata = _metadata;
+
+            // Dispose private variables
+            _metadata = null;
+            _converter = null;
+        }
         public void Parse(in ConfigFileReader reader, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata)
         {
-            ConfigureConfigFileConverter(true);
+            _converter = new ConfigFileConverter();
+
+            ConfigureInfoBaseConverter();
+            ConfigureMetadataConverter();
 
             _infoBase = new InfoBase()
             {
@@ -106,14 +126,7 @@ namespace DaJet.Metadata.Parsers
             _metadata = null;
             _converter = null;
         }
-        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            if (source.Token == TokenType.EndObject)
-            {
-                args.Cancel = true;
-            }
-        }
-
+        
         #region "Свойства конфигурации"
 
         private void FileName(in ConfigFileReader source, in CancelEventArgs args)
@@ -268,93 +281,12 @@ namespace DaJet.Metadata.Parsers
 
         #endregion
 
-        // TODO: move filtering code below to another class
-
-        #region "Поиск и загрузка объекта метаданных по его имени или уникальному идентификатору"
-
-        private Guid _uuid;
-        private string _name;
-        private MetadataObject _target;
-        public void ParseByName(in ConfigFileReader reader, Guid type, in string name, out MetadataObject target)
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _converter = new ConfigFileConverter();
-            _converter[2] += ConfigureMetadataDictionary;
-
-            // filters
-            _name = name;
-            _metadata = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
-
-            // execute parser
-            _parser.Parse(in reader, in _converter);
-
-            target = _target; // result
-
-            // TODO: Dispose()
-            _name = null;
-            _target = null;
-            _converter = null;
-            _metadata.Clear();
-            _metadata = null;
-        }
-        public void ParseByUuid(in ConfigFileReader reader, Guid type, Guid uuid, out MetadataObject target)
-        {
-            _converter = new ConfigFileConverter();
-            _converter[2] += ConfigureMetadataDictionary;
-
-            // filters
-            _uuid = uuid;
-            _metadata = new Dictionary<Guid, List<Guid>>() { { type, new List<Guid>() } };
-
-            // execute parser
-            _parser.Parse(in reader, in _converter);
-
-            target = _target; // result
-
-            // TODO: Dispose()
-            _uuid = Guid.Empty;
-            _target = null;
-            _converter = null;
-            _metadata.Clear();
-            _metadata = null;
-        }
-
-        private bool ParseApplicationObjectByName(in ConfigFileReader source, Guid type, Guid uuid)
-        {
-            if (_name == null)
+            if (source.Token == TokenType.EndObject)
             {
-                return false;
-            }
-
-            if (!MetadataParserFactory.TryGetParser(type, out IMetadataObjectParser parser))
-            {
-                return false;
-            }
-
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTables.Config, uuid))
-            {
-                parser.Parse(in reader, in _name, out _target);
-            }
-
-            return (_target != null);
-        }
-        private void ParseApplicationObject(in ConfigFileReader source, Guid type)
-        {
-            if (_uuid == Guid.Empty)
-            {
-                return;
-            }
-
-            if (!MetadataParserFactory.TryGetParser(type, out IMetadataObjectParser parser))
-            {
-                return;
-            }
-
-            using (ConfigFileReader reader = new ConfigFileReader(source.DatabaseProvider, source.ConnectionString, ConfigTables.Config, _uuid))
-            {
-                parser.Parse(in reader, out _target);
+                args.Cancel = true;
             }
         }
-
-        #endregion
     }
 }

@@ -3,10 +3,10 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class DbName
+    public sealed class DbName // TODO: make struct !?
     {
         public int Code { get; set; } // Unique code
-        public Guid Uuid { get; set; } // File name (not unique because of duplicates in service items)
+        public Guid Uuid { get; set; } // Metadata object uuid (not unique because of duplicates in service items)
         public string Name { get; set; } // Prefix of the database object name
         public List<DbName> ServiceItems { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
         public override string ToString()
@@ -14,7 +14,7 @@ namespace DaJet.Metadata.Model
             return $"{Name} {{{Code}:{Uuid}}}";
         }
     }
-    public sealed class DbNames
+    public sealed class DbNames // DbNameCache
     {
         private readonly HashSet<string> _main = new HashSet<string>()
         {
