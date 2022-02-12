@@ -54,14 +54,7 @@ namespace DaJet.Metadata.Core
                 return uuid;
             }
 
-            uuid = ResolveNameEn(in name);
-
-            if (uuid != Guid.Empty)
-            {
-                return uuid;
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(name));
+            return ResolveNameEn(in name);
         }
         public static Guid ResolveNameRu(in string name)
         {
@@ -105,14 +98,7 @@ namespace DaJet.Metadata.Core
                 return name;
             }
 
-            name = ResolveNameEn(uuid);
-
-            if (name != string.Empty)
-            {
-                return name;
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(uuid));
+            return ResolveNameEn(uuid);
         }
         public static string ResolveNameRu(Guid uuid)
         {

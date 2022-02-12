@@ -5,32 +5,30 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Parsers
 {
+    ///<summary>Парсер для чтения объекта "ОписаниеТипов".</summary>
     public sealed class DataTypeSetParser
     {
-        private readonly HashSet<Guid> ReferenceBaseTypes = new HashSet<Guid>()
+        ///<summary>
+        ///Объект чтения файла метаданных <see cref="ConfigFileReader"/> перед вызовом этого метода
+        ///<br>
+        ///должен быть позиционирован на корневом узле объекта описания типа данных:
+        ///</br>
+        ///<br>
+        ///<c><![CDATA[source.Char == '{' && source.Token == TokenType.StartObject]]></c>
+        ///</br>
+        ///</summary>
+        ///<param name="source">объект чтения файла метаданных.</param>
+        ///<param name="target">объект описания типа данных.</param>
+        ///<param name="references">список ссылок на специальные и ссылочные типы данных для преобразования.</param>
+        public void Parse(in ConfigFileReader source, out DataTypeSet target, out List<Guid> references)
         {
-            ReferenceTypes.AnyReference,
-            ReferenceTypes.Account,
-            ReferenceTypes.Catalog,
-            ReferenceTypes.Document,
-            ReferenceTypes.Enumeration,
-            ReferenceTypes.Publication,
-            ReferenceTypes.Characteristic
-        };
-
-        public void Parse(in ConfigFileReader source, out DataTypeSet target)
-        {
-            // Параметр source должен быть позиционирован в данный момент на корневом узле
-            // объекта описания типа данных свойства объекта метаданных (токен = '{')
-            // source.Char == '{' && source.Token == TokenType.StartObject
-
             target = new DataTypeSet();
-            List<Guid> references = new List<Guid>();
+            references = new List<Guid>();
 
             _ = source.Read(); // 0 index
             if (source.Value != "Pattern")
             {
-                return; // это не объект описания типов
+                return; // Это не объект "ОписаниеТипов" !
             }
             
             while (source.Read())
@@ -74,8 +72,6 @@ namespace DaJet.Metadata.Parsers
                     }
                 }
             }
-
-            target.References = references;
         }
 
         private int _pointer;
@@ -128,7 +124,7 @@ namespace DaJet.Metadata.Parsers
 
             if (_pointer == -1)
             {
-                target.StringLength = -1; // Неограниченная длина - nvarchar(max)
+                target.StringLength = 0; // Неограниченная длина - nvarchar(max)
                 target.StringKind = StringKind.Variable;
             }
             else if (_pointer == 1)
@@ -156,15 +152,15 @@ namespace DaJet.Metadata.Parsers
 
             if (_pointer != 0) { return; }
 
-            Guid typeUuid = new Guid(_qualifiers[_pointer]);
+            Guid type = new(_qualifiers[_pointer]);
 
-            if (typeUuid == SingleTypes.ValueStorage) // ХранилищеЗначения - varbinary(max)
+            if (type == SingleTypes.ValueStorage) // ХранилищеЗначения - varbinary(max)
             {
                 target.IsValueStorage = true; // Не может быть составным типом !
                 return;
             }
             
-            if (typeUuid == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
+            if (type == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
             {
                 target.IsUuid = true; // Не может быть составным типом !
                 return;
@@ -172,14 +168,7 @@ namespace DaJet.Metadata.Parsers
 
             target.CanBeReference = true;
 
-            if (ReferenceBaseTypes.Contains(typeUuid))
-            {
-                ApplyReferenceTypeQualifier(in target, typeUuid);
-            }
-            else
-            {
-                references.Add(typeUuid);
-            }
+            references.Add(type);
 
             // TODO:
             //else if (context.CompoundTypes.TryGetValue(typeUuid, out NamedDataTypeSet compound))
@@ -191,37 +180,6 @@ namespace DaJet.Metadata.Parsers
             //{
             //    ApplyCharacteristic(in characteristic, in target, in references);
             //}
-        }
-        private void ApplyReferenceTypeQualifier(in DataTypeSet target, Guid typeUuid)
-        {
-            if (typeUuid == ReferenceTypes.AnyReference)
-            {
-                target.IsAnyReference = true;
-            }
-            else if (typeUuid == ReferenceTypes.Account)
-            {
-                target.IsAnyAccount = true;
-            }
-            else if (typeUuid == ReferenceTypes.Catalog)
-            {
-                target.IsAnyCatalog = true;
-            }
-            else if (typeUuid == ReferenceTypes.Document)
-            {
-                target.IsAnyDocument = true;
-            }
-            else if (typeUuid == ReferenceTypes.Enumeration)
-            {
-                target.IsAnyEnumeration = true;
-            }
-            else if (typeUuid == ReferenceTypes.Publication)
-            {
-                target.IsAnyPublication = true;
-            }
-            else if (typeUuid == ReferenceTypes.Characteristic)
-            {
-                target.IsAnyCharacteristic = true;
-            }
         }
         
         //private void ApplyCharacteristic(in Characteristic source, in DataTypeSet target, in List<Guid> references)

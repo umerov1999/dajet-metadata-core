@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -46,11 +47,15 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            //_converter[1][1] += Uuid;
+            _converter[1][1] += Reference;
             _converter[1][3][2] += Name;
             _converter[1][3][3][2] += Alias;
             _converter[1][3][4] += Comment;
             _converter[1][4] += DataTypeSet;
+        }
+        private void Reference(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Reference = source.GetUuid();
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -78,9 +83,9 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type);
+                _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
 
-                _target.DataTypeSet = type;
+                _target.DataTypeSet = type; // FIXME: выполнить преобразование references !!!
             }
         }
     }

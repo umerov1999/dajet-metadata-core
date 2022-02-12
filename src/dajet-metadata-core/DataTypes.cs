@@ -7,11 +7,11 @@
     {
         ///<summary>[0x01] Неопределено</summary>
         NULL = 1,
-        ///<summary>[0x02] Булево (L|B)</summary>
+        ///<summary>[0x02] Булево (L - database или B - metadata)</summary>
         Boolean = 2,
         ///<summary>[0x03] Число (N)</summary>
         Numeric = 3,
-        ///<summary>[0x04] Дата (T|D)</summary>
+        ///<summary>[0x04] Дата (T - database или D - metadata)</summary>
         DateTime = 4,
         ///<summary>[0x05] Строка (S)</summary>
         String = 5,

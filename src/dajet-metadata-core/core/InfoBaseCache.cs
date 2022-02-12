@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,20 +9,21 @@ namespace DaJet.Metadata.Core
 {
     internal sealed class InfoBaseCache
     {
-        private readonly DatabaseProvider _provider;
         private readonly string _connectionString;
+        private readonly DatabaseProvider _provider;
+
+        private readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new()
+        {
+            { MetadataTypes.InformationRegister, new InformationRegisterParser() }
+        };
 
         private Guid _root = Guid.Empty;
-
-        private Dictionary<Guid, List<Guid>> metadata = new Dictionary<Guid, List<Guid>>();
-        // ??? private Dictionary<Guid, Dictionary<Guid, MetaInfo>> metadata = new Dictionary<Guid, Dictionary<Guid, MetaInfo>>();
-        private Dictionary<Guid, Dictionary<string, Guid>> _metadata = new Dictionary<Guid, Dictionary<string, Guid>>();
-
-        private Dictionary<Guid, Guid> _references = new Dictionary<Guid, Guid>();
-        private Dictionary<Guid, MetadataObject> _cache;
-
-        private DbNames _dataNames;
-        private Dictionary<int, Guid> _codes;
+        private ConcurrentDictionary<Guid, Guid> _references;
+        private ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names;
+        private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
+        
+        //private DbNames _data;
+        //private Dictionary<int, Guid> _codes;
 
         internal InfoBaseCache(DatabaseProvider provider, in string connectionString)
         {
@@ -31,138 +33,166 @@ namespace DaJet.Metadata.Core
 
         internal void Initialize(out InfoBase infoBase)
         {
-            InitRootFile();
-
-            InitInfoBase(out infoBase, out metadata);
-
-            SetupMetadataCache();
+            InitializeRootFile();
+            InitializeMetadataCache(out infoBase);
+            InitializeReferenceCache();
         }
-        private void InitRootFile()
+        private void InitializeRootFile()
         {
             using (ConfigFileReader reader = new ConfigFileReader(_provider, in _connectionString, ConfigTables.Config, ConfigFiles.Root))
             {
                 _root = new RootFileParser().Parse(in reader);
             }
         }
-        private void InitInfoBase(out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata)
+        private void InitializeMetadataCache(out InfoBase infoBase)
         {
             using (ConfigFileReader reader = new ConfigFileReader(_provider, in _connectionString, ConfigTables.Config, _root))
             {
-                new InfoBaseParser().Parse(in reader, out infoBase, out metadata);
+                new InfoBaseParser().Parse(in reader, out infoBase, out _cache);
             }
         }
-        private void SetupMetadataCache()
+        private void InitializeReferenceCache()
         {
-            //TODO: add NamedDataTypeSet - to fill _references !?
+            _names = new ConcurrentDictionary<Guid, Dictionary<string, Guid>>();
+            _references = new ConcurrentDictionary<Guid, Guid>();
 
             ParallelOptions options = new ParallelOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
-            Parallel.ForEach(metadata, options, SetupMetadataTypeCache);
-
-            //SetupMetadataTypeCache(MetadataTypes.Catalog, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.Document, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.Enumeration, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.Publication, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.Characteristic, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.InformationRegister, in metadata);
-            //SetupMetadataTypeCache(MetadataTypes.AccumulationRegister, in metadata);
+            Parallel.ForEach(_cache, options, InitializeReferenceTypeCache);
         }
-        private void SetupMetadataTypeCache(Guid type, in Dictionary<Guid, List<Guid>> metadata)
+        private void InitializeReferenceTypeCache(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
         {
-            if (!(metadata.TryGetValue(type, out List<Guid> list)))
+            Guid type = cache.Key;
+
+            if (type == MetadataTypes.Constant ||
+                type == MetadataTypes.SharedProperty)
             {
                 return;
             }
 
-            MetaInfoParser parser = new MetaInfoParser();
-
-            foreach (Guid uuid in list)
-            {
-                if (uuid == Guid.Empty)
-                {
-                    continue;
-                }
-
-                using (ConfigFileReader reader = new ConfigFileReader(_provider, in _connectionString, ConfigTables.Config, uuid))
-                {
-                    MetaInfo info = parser.Parse(in reader, type);
-
-                    if (info.Name == string.Empty)
-                    {
-                        continue; // accidentally: unsupported metadata object type
-                    }
-
-                    if (info.Uuid != Guid.Empty)
-                    {
-                        _references.Add(info.Uuid, uuid); // reference type uuid to metadata object uuid mapping
-                    }
-
-                    // metadata object name to uuid mapping
-                    if (_metadata.TryGetValue(type, out Dictionary<string, Guid> names))
-                    {
-                        names.Add(info.Name, uuid);
-                    }
-                    else
-                    {
-                        _metadata.Add(type, new Dictionary<string, Guid>() { { info.Name, uuid } });
-                    }
-                }
-            }
-        }
-        private void SetupMetadataTypeCache(KeyValuePair<Guid, List<Guid>> metadata)
-        {
-            Guid type = metadata.Key;
-
-            //TODO: add NamedDataTypeSet - to fill _references !?
-
-            if (!(metadata.Key == MetadataTypes.Catalog ||
-                metadata.Key == MetadataTypes.Document ||
-                metadata.Key == MetadataTypes.Enumeration ||
-                metadata.Key == MetadataTypes.Publication ||
-                metadata.Key == MetadataTypes.Characteristic ||
-                metadata.Key == MetadataTypes.InformationRegister ||
-                metadata.Key == MetadataTypes.AccumulationRegister))
+            if (!(type == MetadataTypes.Catalog ||
+                type == MetadataTypes.Document ||
+                type == MetadataTypes.Enumeration ||
+                type == MetadataTypes.Publication ||
+                type == MetadataTypes.Characteristic ||
+                type == MetadataTypes.NamedDataTypeSet ||
+                type == MetadataTypes.InformationRegister ||
+                type == MetadataTypes.AccumulationRegister))
             {
                 return;
             }
 
-            MetaInfoParser parser = new MetaInfoParser();
+            ReferenceParser parser = new();
 
-            foreach (Guid uuid in metadata.Value)
+            foreach (var entry in cache.Value)
             {
-                if (uuid == Guid.Empty)
+                if (entry.Key == Guid.Empty)
                 {
                     continue;
                 }
 
-                using (ConfigFileReader reader = new ConfigFileReader(_provider, in _connectionString, ConfigTables.Config, uuid))
+                using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
                 {
-                    MetaInfo info = parser.Parse(in reader, type);
+                    ReferenceInfo reference = parser.Parse(in reader, type);
 
-                    if (info.Name == string.Empty)
+                    if (reference.Name == string.Empty)
                     {
                         continue; // accidentally: unsupported metadata object type
                     }
 
-                    if (info.Uuid != Guid.Empty)
+                    if (reference.Uuid != Guid.Empty)
                     {
-                        _references.Add(info.Uuid, uuid); // reference type uuid to metadata object uuid mapping
+                        // reference type uuid to metadata object uuid mapping
+                        if (type == MetadataTypes.Characteristic)
+                        {
+                            _ = _references.TryAdd(reference.CharacteristicUuid, entry.Key);
+                        }
+                        _ = _references.TryAdd(reference.Uuid, entry.Key);
                     }
 
                     // metadata object name to uuid mapping
-                    if (_metadata.TryGetValue(type, out Dictionary<string, Guid> names))
+                    if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
                     {
-                        names.Add(info.Name, uuid);
+                        names.Add(reference.Name, entry.Key);
                     }
                     else
                     {
-                        _metadata.Add(type, new Dictionary<string, Guid>() { { info.Name, uuid } });
+                        _ = _names.TryAdd(type, new Dictionary<string, Guid>() { { reference.Name, entry.Key } });
                     }
                 }
             }
+        }
+
+        internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+            {
+                parser.Parse(in reader, out metadata);
+            }
+        }
+        internal MetadataObject GetMetadataObjectCached(Guid type, Guid uuid)
+        {
+            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
+            {
+                return null;
+            }
+
+            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
+            {
+                return null;
+            }
+
+            if (!reference.TryGetTarget(out MetadataObject metadata))
+            {
+                UpdateMetadataObjectCache(type, uuid, out metadata);
+            }
+
+            return metadata;
+        }
+        internal MetadataObject GetMetadataObjectCached(in string typeName, in string objectName)
+        {
+            Guid type = MetadataTypes.ResolveName(typeName);
+
+            if (type == Guid.Empty)
+            {
+                return null;
+            }
+
+            if (!_names.TryGetValue(type, out Dictionary<string, Guid> names))
+            {
+                return null;
+            }
+
+            if (!names.TryGetValue(objectName, out Guid uuid))
+            {
+                return null;
+            }
+
+            return GetMetadataObjectCached(type, uuid);
+        }
+        private void UpdateMetadataObjectCache(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            if (!entry.TryGetValue(uuid, out WeakReference<MetadataObject> reference))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            GetMetadataObject(type, uuid, out metadata);
+
+            reference.SetTarget(metadata);
         }
     }
 }

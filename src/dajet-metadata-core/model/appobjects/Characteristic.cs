@@ -9,7 +9,7 @@ namespace DaJet.Metadata.Model
         ///Идентификатор характеристики, описания типов значений.
         ///Используется как тип значения "Характеристика" в реквизитах других объектов метаданных.
         ///</summary>
-        public Guid TypeUuid { get; set; } = Guid.Empty;
+        public Guid Reference { get; set; } = Guid.Empty; // Use "Characteristic" name ?
         public DataTypeSet TypeInfo { get; set; }
         public int CodeLength { get; set; } = 9;
         public CodeType CodeType { get; set; } = CodeType.String;

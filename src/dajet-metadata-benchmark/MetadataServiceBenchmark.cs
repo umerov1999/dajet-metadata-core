@@ -37,7 +37,7 @@ namespace DaJet.Metadata.Benchmark
         {
             MetadataService metadataService = new MetadataService();
 
-            metadataService.TryOpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out infoBase);
+            metadataService.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out infoBase);
         }
 
         [Benchmark(Description = "PG TryOpenInfoBase")]
@@ -52,7 +52,7 @@ namespace DaJet.Metadata.Benchmark
         {
             MetadataService metadataService = new MetadataService();
 
-            metadataService.TryOpenInfoBase(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, out infoBase);
+            metadataService.OpenInfoBase(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, out infoBase);
         }
     }
 }

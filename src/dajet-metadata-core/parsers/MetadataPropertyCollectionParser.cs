@@ -13,8 +13,8 @@ namespace DaJet.Metadata.Parsers
 
         private Guid _type; // тип коллекции свойств
         private int _count; // количество свойств
-        private MetadataProperty _item;
         private PropertyPurpose _purpose;
+        private MetadataProperty _property;
         private List<MetadataProperty> _target;
         private ConfigFileConverter _converter;
         public void Parse(in ConfigFileReader source, out List<MetadataProperty> target)
@@ -33,6 +33,7 @@ namespace DaJet.Metadata.Parsers
             // dispose private variables
             _target = null;
             _parser = null;
+            _property = null;
             _converter = null;
             _typeParser = null;
         }
@@ -113,14 +114,14 @@ namespace DaJet.Metadata.Parsers
                 // корневой узел объекта свойства
                 _converter = _converter.Path(source.Level - 1, source.Path);
 
-                _item = new MetadataProperty()
+                _property = new MetadataProperty()
                 {
                     Purpose = _purpose
                 };
 
+                // TODO: _converter[0][3] += PropertyUsage; !!!
                 // Если это иерархический тип объекта метаданных (Справочник или ПланВидовХарактеристик),
                 // тогда читаем настройку использования свойства для групп или элементов
-                // TODO: _converter[0][3] += PropertyUsage;
 
                 _converter[0][1][1][1][1][2] += PropertyUuid;
                 _converter[0][1][1][1][2] += PropertyName;
@@ -131,22 +132,20 @@ namespace DaJet.Metadata.Parsers
             // завершение чтения объекта свойства
             if (source.Token == TokenType.EndObject)
             {
-                MetadataProperty property = _item;
-                _target.Add(property);
-                _item = null;
+                _target.Add(_property);
             }
         }
         private void PropertyUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _item.Uuid = source.GetUuid();
+            _property.Uuid = source.GetUuid();
         }
         private void PropertyName(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _item.Name = source.Value;
+            _property.Name = source.Value;
         }
         private void PropertyAlias(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _item.Alias = source.Value;
+            _property.Alias = source.Value;
         }
         private void PropertyType(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -154,9 +153,9 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type);
+                _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
 
-                _item.PropertyType = type;
+                _property.PropertyType = type; // FIXME: выполнить преобразование references !!!
             }
         }
 

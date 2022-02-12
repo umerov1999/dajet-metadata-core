@@ -3,7 +3,8 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    [Flags] internal enum SimpleType : byte
+    ///<summary>Смотри также <see cref="DaJet.Metadata.Model.DataTypes"/></summary>
+    [Flags] internal enum DataTypeFlags : byte
     {
         None = 0x00,
         Binary = 0x01,
@@ -15,81 +16,73 @@ namespace DaJet.Metadata.Model
         ValueStorage = 0x40,
         UniqueIdentifier = 0x80
     }
-    [Flags] internal enum ReferenceType : uint
-    {
-        Any = 0xFFFFFFFFu,
-        None = 0x00000000u,
-        Account = 0x00000001u,
-        Catalog = 0x00000002u,
-        Document = 0x00000004u,
-        Publication = 0x00000008u,
-        Enumeration = 0x00000010u,
-        Characteristic = 0x00000020u,
-        Сalculation = 0x00000040u,
-        BusinessTask = 0x00000080u,
-        BusinessProcess = 0x00000100u,
-        BusinessRoutePoint = 0x00000200u,
-        ExternalDataSource = 0x00000400u
-    }
+
+    ///<summary>
+    ///Описание типов: определяет допустимые типы данных для значений свойств прикладных объектов метаданных.
+    ///<br>
+    ///Составной тип данных может допускать использование нескольких типов данных для одного и того же свойства.
+    ///</br>
+    ///<br>
+    ///Внимание! Следующие типы данных не допускают использование составного типа данных:
+    ///</br>
+    ///<br>
+    ///"УникальныйИдентификатор", "ХранилищеЗначения", "ОпределяемыйТип" и "Характеристика".
+    ///</br>
+    ///</summary>
     public sealed class DataTypeSet
     {
-        private Guid _uuid = Guid.Empty;
-        private SimpleType _simple = SimpleType.None;
-        private ReferenceType _reference = ReferenceType.None;
+        private DataTypeFlags _flags = DataTypeFlags.None;
 
-        #region "Simple types"
+        #region "DATA TYPE FLAGS"
 
         ///<summary>Тип значения свойства "УникальныйИдентификатор", binary(16). Не поддерживает составной тип данных.</summary>
         public bool IsUuid
         {
-            get { return (_simple & SimpleType.UniqueIdentifier) == SimpleType.UniqueIdentifier; }
+            get { return (_flags & DataTypeFlags.UniqueIdentifier) == DataTypeFlags.UniqueIdentifier; }
             set
             {
                 if (value)
                 {
-                    _simple = SimpleType.UniqueIdentifier;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference = ReferenceType.None;
+                    _flags = DataTypeFlags.UniqueIdentifier;
+                    Reference = Guid.Empty;
                 }
                 else if (IsUuid)
                 {
-                    _simple = SimpleType.None;
+                    _flags = DataTypeFlags.None;
                 }
             }
         }
         ///<summary>Типом значения свойства является byte[8] - версия данных, timestamp, rowversion. Не поддерживает составной тип данных.</summary>
         public bool IsBinary
         {
-            get { return (_simple & SimpleType.Binary) == SimpleType.Binary; }
+            get { return (_flags & DataTypeFlags.Binary) == DataTypeFlags.Binary; }
             set
             {
                 if (value)
                 {
-                    _simple = SimpleType.Binary;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference = ReferenceType.None;
+                    _flags = DataTypeFlags.Binary;
+                    Reference = Guid.Empty;
                 }
                 else if (IsBinary)
                 {
-                    _simple = SimpleType.None;
+                    _flags = DataTypeFlags.None;
                 }
             }
         }
         ///<summary>Тип значения свойства "ХранилищеЗначения", varbinary(max). Не поддерживает составной тип данных.</summary>
         public bool IsValueStorage
         {
-            get { return (_simple & SimpleType.ValueStorage) == SimpleType.ValueStorage; }
+            get { return (_flags & DataTypeFlags.ValueStorage) == DataTypeFlags.ValueStorage; }
             set
             {
                 if (value)
                 {
-                    _simple = SimpleType.ValueStorage;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference = ReferenceType.None;
+                    _flags = DataTypeFlags.ValueStorage;
+                    Reference = Guid.Empty;
                 }
                 else if (IsValueStorage)
                 {
-                    _simple = SimpleType.None;
+                    _flags = DataTypeFlags.None;
                 }
             }
         }
@@ -97,20 +90,20 @@ namespace DaJet.Metadata.Model
         ///<summary>Типом значения свойства может быть "Булево" (поддерживает составной тип данных)</summary>
         public bool CanBeBoolean
         {
-            get { return (_simple & SimpleType.Boolean) == SimpleType.Boolean; }
+            get { return (_flags & DataTypeFlags.Boolean) == DataTypeFlags.Boolean; }
             set
             {
-                if (IsUuid || IsBinary || IsValueStorage)
+                if (IsUuid || IsValueStorage || IsBinary)
                 {
-                    if (value) { _simple = SimpleType.Boolean; } // false is ignored
+                    if (value) { _flags = DataTypeFlags.Boolean; } // false is ignored
                 }
                 else if (value)
                 {
-                    _simple |= SimpleType.Boolean;
+                    _flags |= DataTypeFlags.Boolean;
                 }
                 else if (CanBeBoolean)
                 {
-                    _simple ^= SimpleType.Boolean;
+                    _flags ^= DataTypeFlags.Boolean;
                 }
             }
         }
@@ -118,313 +111,122 @@ namespace DaJet.Metadata.Model
         ///<summary>Типом значения свойства может быть "Строка" (поддерживает составной тип данных)</summary>
         public bool CanBeString
         {
-            get { return (_simple & SimpleType.String) == SimpleType.String; }
+            get { return (_flags & DataTypeFlags.String) == DataTypeFlags.String; }
             set
             {
-                if (IsUuid || IsBinary || IsValueStorage)
+                if (IsUuid || IsValueStorage || IsBinary)
                 {
-                    if (value) { _simple = SimpleType.String; } // false is ignored
+                    if (value) { _flags = DataTypeFlags.String; } // false is ignored
                 }
                 else if (value)
                 {
-                    _simple |= SimpleType.String;
+                    _flags |= DataTypeFlags.String;
                 }
                 else if (CanBeString)
                 {
-                    _simple ^= SimpleType.String;
+                    _flags ^= DataTypeFlags.String;
                 }
             }
         }
+        ///<summary>Квалификатор: длина строки в символах. Неограниченная длина равна 0.</summary>
         public int StringLength { get; set; } = 10;
+        ///<summary>
+        ///Квалификатор: фиксированная (дополняется пробелами) или переменная длина строки.
+        ///<br>
+        ///Строка неограниченной длины (длина равна 0) всегда является переменной строкой.
+        ///</br>
+        ///</summary>
         public StringKind StringKind { get; set; } = StringKind.Variable;
 
         ///<summary>Типом значения свойства может быть "Число" (поддерживает составной тип данных)</summary>
         public bool CanBeNumeric
         {
-            get { return (_simple & SimpleType.Numeric) == SimpleType.Numeric; }
+            get { return (_flags & DataTypeFlags.Numeric) == DataTypeFlags.Numeric; }
             set
             {
-                if (IsUuid || IsBinary || IsValueStorage)
+                if (IsUuid || IsValueStorage || IsBinary)
                 {
-                    if (value) { _simple = SimpleType.Numeric; } // false is ignored
+                    if (value) { _flags = DataTypeFlags.Numeric; } // false is ignored
                 }
                 else if (value)
                 {
-                    _simple |= SimpleType.Numeric;
+                    _flags |= DataTypeFlags.Numeric;
                 }
                 else if (CanBeNumeric)
                 {
-                    _simple ^= SimpleType.Numeric;
+                    _flags ^= DataTypeFlags.Numeric;
                 }
             }
         }
+        ///<summary>Квалификатор: определяет допустимое количество знаков после запятой.</summary>
         public int NumericScale { get; set; } = 0;
+        ///<summary>Квалификатор: определяет разрядность числа (сумма знаков до и после запятой).</summary>
         public int NumericPrecision { get; set; } = 10;
+        ///<summary>Квалификатор: определяет возможность использования отрицательных значений.</summary>
         public NumericKind NumericKind { get; set; } = NumericKind.CanBeNegative;
 
         ///<summary>Типом значения свойства может быть "Дата" (поддерживает составной тип данных)</summary>
         public bool CanBeDateTime
         {
-            get { return (_simple & SimpleType.DateTime) == SimpleType.DateTime; }
+            get { return (_flags & DataTypeFlags.DateTime) == DataTypeFlags.DateTime; }
             set
             {
-                if (IsUuid || IsBinary || IsValueStorage)
+                if (IsUuid || IsValueStorage || IsBinary)
                 {
-                    if (value) { _simple = SimpleType.DateTime; } // false is ignored
+                    if (value) { _flags = DataTypeFlags.DateTime; } // false is ignored
                 }
                 else if (value)
                 {
-                    _simple |= SimpleType.DateTime;
+                    _flags |= DataTypeFlags.DateTime;
                 }
                 else if (CanBeDateTime)
                 {
-                    _simple ^= SimpleType.DateTime;
+                    _flags ^= DataTypeFlags.DateTime;
                 }
             }
         }
+        ///<summary>Квалификатор: определяет используемые части даты.</summary>
         public DateTimePart DateTimePart { get; set; } = DateTimePart.Date;
 
         #endregion
-
-        #region "Reference types"
-
-        public bool IsAnyReference
-        {
-            get { return _reference == ReferenceType.Any; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                }
-                _reference = value ? ReferenceType.Any : ReferenceType.None;
-            }
-        }
-        public bool IsAnyAccount
-        {
-            get { return (_reference & ReferenceType.Account) == ReferenceType.Account; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Account;
-                }
-                else if (IsAnyAccount)
-                {
-                    _reference ^= ReferenceType.Account;
-                }
-            }
-        }
-        public bool IsAnyCatalog
-        {
-            get { return (_reference & ReferenceType.Catalog) == ReferenceType.Catalog; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Catalog;
-                }
-                else if (IsAnyCatalog)
-                {
-                    _reference ^= ReferenceType.Catalog;
-                }
-            }
-        }
-        public bool IsAnyDocument
-        {
-            get { return (_reference & ReferenceType.Document) == ReferenceType.Document; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Document;
-                }
-                else if (IsAnyDocument)
-                {
-                    _reference ^= ReferenceType.Document;
-                }
-            }
-        }
-        public bool IsAnyPublication
-        {
-            get { return (_reference & ReferenceType.Publication) == ReferenceType.Publication; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Publication;
-                }
-                else if (IsAnyPublication)
-                {
-                    _reference ^= ReferenceType.Publication;
-                }
-            }
-        }
-        public bool IsAnyEnumeration
-        {
-            get { return (_reference & ReferenceType.Enumeration) == ReferenceType.Enumeration; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Enumeration;
-                }
-                else if (IsAnyEnumeration)
-                {
-                    _reference ^= ReferenceType.Enumeration;
-                }
-            }
-        }
-        public bool IsAnyCharacteristic
-        {
-            get { return (_reference & ReferenceType.Characteristic) == ReferenceType.Characteristic; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Characteristic;
-                }
-                else if (IsAnyCharacteristic)
-                {
-                    _reference ^= ReferenceType.Characteristic;
-                }
-            }
-        }
-        public bool IsAnyСalculation
-        {
-            get { return (_reference & ReferenceType.Сalculation) == ReferenceType.Сalculation; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.Сalculation;
-                }
-                else if (IsAnyСalculation)
-                {
-                    _reference ^= ReferenceType.Сalculation;
-                }
-            }
-        }
-        public bool IsAnyBusinessTask
-        {
-            get { return (_reference & ReferenceType.BusinessTask) == ReferenceType.BusinessTask; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.BusinessTask;
-                }
-                else if (IsAnyBusinessTask)
-                {
-                    _reference ^= ReferenceType.BusinessTask;
-                }
-            }
-        }
-        public bool IsAnyBusinessProcess
-        {
-            get { return (_reference & ReferenceType.BusinessProcess) == ReferenceType.BusinessProcess; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.BusinessProcess;
-                }
-                else if (IsAnyBusinessProcess)
-                {
-                    _reference ^= ReferenceType.BusinessProcess;
-                }
-            }
-        }
-        public bool IsAnyBusinessRoutePoint
-        {
-            get { return (_reference & ReferenceType.BusinessRoutePoint) == ReferenceType.BusinessRoutePoint; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.BusinessRoutePoint;
-                }
-                else if (IsAnyBusinessRoutePoint)
-                {
-                    _reference ^= ReferenceType.BusinessRoutePoint;
-                }
-            }
-        }
-        public bool IsAnyExternalDataSource
-        {
-            get { return (_reference & ReferenceType.ExternalDataSource) == ReferenceType.ExternalDataSource; }
-            set
-            {
-                if (value)
-                {
-                    CanBeReference = true;
-                    ReferenceTypeUuid = Guid.Empty;
-                    _reference |= ReferenceType.ExternalDataSource;
-                }
-                else if (IsAnyExternalDataSource)
-                {
-                    _reference ^= ReferenceType.ExternalDataSource;
-                }
-            }
-        }
-
-        #endregion
-
+        
         ///<summary>Типом значения свойства может быть "Ссылка" (поддерживает составной тип данных)</summary>
         public bool CanBeReference
         {
-            get { return (_simple & SimpleType.Reference) == SimpleType.Reference; }
+            get { return (_flags & DataTypeFlags.Reference) == DataTypeFlags.Reference; }
             set
             {
-                if (IsUuid || IsBinary || IsValueStorage)
+                if (IsUuid || IsValueStorage || IsBinary)
                 {
-                    if (value) { _simple = SimpleType.Reference; } // false is ignored
+                    if (value) { _flags = DataTypeFlags.Reference; } // false is ignored
                 }
                 else if (value)
                 {
-                    _simple |= SimpleType.Reference;
+                    _flags |= DataTypeFlags.Reference;
                 }
                 else if (CanBeReference)
                 {
-                    _simple ^= SimpleType.Reference;
+                    _flags ^= DataTypeFlags.Reference;
                 }
             }
         }
-        public Guid ReferenceTypeUuid
-        {
-            get { return _uuid; }
-            set
-            {
-                _uuid = value;
-
-                if (_uuid != Guid.Empty)
-                {
-                    _reference = ReferenceType.None;
-                }
-            }
-        }
-        public List<Guid> References { get; set; }
+        ///<summary>
+        ///Значение (по умолчанию) <see cref="Guid.Empty"/> допускает множественный ссылочный тип данных (TRef + RRef).
+        ///<br>
+        ///Конкретное значение <see cref="Guid"/> допускает использование единственного ссылочного типа данных (RRef).
+        ///</br>
+        ///<br>
+        ///Выполняет роль квалификатора ссылочного типа данных.
+        ///</br>
+        ///</summary>
+        public Guid Reference { get; set; } = Guid.Empty;
+        ///<summary>
+        ///Служебная коллекция идентификаторов типов данных. Заполняется при чтении метаданных из СУБД.
+        ///<br>
+        ///После выполнения процедуры перобразования в конкретные значения должна быть обнулена.
+        ///</br>
+        ///</summary>
+        public List<Guid> References { get; set; } /// FIXME: remove this property ???
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType
@@ -441,7 +243,7 @@ namespace DaJet.Metadata.Model
                 if (CanBeReference) count++;
                 if (count > 1) return true;
 
-                if (CanBeReference && ReferenceTypeUuid == Guid.Empty) return true;
+                if (CanBeReference && Reference == Guid.Empty) return true;
 
                 return false;
             }

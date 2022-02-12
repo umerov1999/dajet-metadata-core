@@ -94,8 +94,11 @@ namespace DaJet.Metadata.Parsers
             if (source.Token == TokenType.StartObject)
             {
                 _propertyCollectionParser.Parse(in source, out List<MetadataProperty> properties);
-                
-                _target.Properties.AddRange(properties);
+
+                if (properties != null && properties.Count > 0)
+                {
+                    _target.Properties.AddRange(properties);
+                }
             }
         }
     }

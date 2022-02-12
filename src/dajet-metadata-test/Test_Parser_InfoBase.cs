@@ -174,8 +174,8 @@ namespace DaJet.Metadata.Test
                 InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
 
-            MetaInfo info;
-            MetaInfoParser parser = new MetaInfoParser();
+            ReferenceInfo reference;
+            ReferenceParser parser = new();
 
             foreach (var item in collections)
             {
@@ -186,10 +186,10 @@ namespace DaJet.Metadata.Test
                     using (ConfigFileReader reader = new ConfigFileReader(
                         DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
                     {
-                        info = parser.Parse(in reader, item.Key);
+                        reference = parser.Parse(in reader, item.Key);
                     }
                     
-                    Console.WriteLine($"{{{info.Uuid}}} {info.Name}");
+                    Console.WriteLine($"{{{reference.Uuid}}} {reference.Name}");
                 }
             }
         }

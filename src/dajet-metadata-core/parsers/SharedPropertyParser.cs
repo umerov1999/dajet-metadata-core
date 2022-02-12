@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -88,8 +89,10 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            new DataTypeSetParser().Parse(in source, out DataTypeSet target);
-            bool test = target.IsMultipleType;
+            new DataTypeSetParser().Parse(in source, out DataTypeSet target, out List<Guid> references);
+            
+            bool test = target.IsMultipleType; // FIXME: выполнить преобразование references !!!
+
             // TODO: add property DataTypeSet to MetadataProperty class ???
             // TODO: Configurator.ConfigureDatabaseFields(property); !!!
         }

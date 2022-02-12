@@ -11,6 +11,6 @@ namespace DaJet.Metadata.Model
         ///Используется для определения типов данных свойств объектов.
         ///</br>
         ///</summary>
-        public Guid RefUuid { get; set; } = Guid.Empty;
+        public Guid Reference { get; set; } = Guid.Empty;
     }
 }
