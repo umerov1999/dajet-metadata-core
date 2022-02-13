@@ -186,10 +186,10 @@ namespace DaJet.Metadata.Test
                     using (ConfigFileReader reader = new ConfigFileReader(
                         DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
                     {
-                        reference = parser.Parse(in reader, item.Key);
+                        reference = parser.Parse(in reader, item.Key, out string name);
+
+                        Console.WriteLine($"{{{reference.ReferenceUuid}}} {name}");
                     }
-                    
-                    Console.WriteLine($"{{{reference.Uuid}}} {reference.Name}");
                 }
             }
         }

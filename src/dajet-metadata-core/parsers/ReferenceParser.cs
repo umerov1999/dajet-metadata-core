@@ -6,24 +6,29 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class ReferenceParser
     {
-        private readonly ConfigFileParser _parser = new ConfigFileParser();
+        private readonly ConfigFileParser _parser = new();
 
-        private Guid _uuid = Guid.Empty;
+        
         private string _name = string.Empty;
-        private Guid _chrcUuid = Guid.Empty;
+        private Guid _reference = Guid.Empty;
+        private Guid _characteristic = Guid.Empty;
         private ConfigFileConverter _converter;
-        public ReferenceInfo Parse(in ConfigFileReader reader, Guid type)
+        public ReferenceInfo Parse(in ConfigFileReader reader, Guid type, out string name)
         {
             ConfigureConfigFileConverter(type);
 
+            Guid metadata = new Guid(reader.FileName);
+
             _parser.Parse(in reader, in _converter);
 
-            ReferenceInfo result = new(_uuid, _name, _chrcUuid);
+            ReferenceInfo result = new(type, metadata, _reference, _characteristic);
+
+            name = _name;
 
             _converter = null;
-            _uuid = Guid.Empty;
             _name = string.Empty;
-            _chrcUuid = Guid.Empty;
+            _reference = Guid.Empty;
+            _characteristic = Guid.Empty;
 
             return result;
         }
@@ -68,7 +73,7 @@ namespace DaJet.Metadata.Parsers
         }
         private void Uuid(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _uuid = source.GetUuid();
+            _reference = source.GetUuid();
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -78,7 +83,7 @@ namespace DaJet.Metadata.Parsers
         }
         private void CharacteristicUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _chrcUuid = source.GetUuid();
+            _characteristic = source.GetUuid();
         }
     }
 }

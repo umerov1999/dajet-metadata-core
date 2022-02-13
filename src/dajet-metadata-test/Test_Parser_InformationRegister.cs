@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Metadata.Parsers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
@@ -8,61 +7,47 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Test_Parser_InformationRegister
     {
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True";
-        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
-        private InformationRegisterParser Parser { get; }
-        public Test_Parser_InformationRegister()
+        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True";
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
+        [TestMethod] public void MS_TEST()
         {
-            if (!MetadataParserFactory.TryGetParser(MetadataTypes.InformationRegister, out IMetadataObjectParser parser))
-            {
-                throw new Exception("InformationRegister parser is not found");
-            }
+            MetadataService service = new();
+            
+            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out InfoBase infoBase);
 
-            Parser = parser as InformationRegisterParser;
+            string metadataName = "РегистрСведений.ТестовыйРегистрСведений";
 
-            if (Parser == null)
-            {
-                throw new Exception("Failed to get InformationRegister parser");
-            }
-        }
-        [TestMethod] public void MS_ParseByUuid()
-        {
-            MetadataObject target;
-            Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7"); // Идентификатор объекта метаданных
+            MetadataObject @object = service.GetMetadataObject(in infoBase, metadataName);
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
+            if (@object == null)
             {
-                Parser.Parse(in reader, out target);
-            }
-
-            if (target == null)
-            {
-                Console.WriteLine($"{uuid} is not found");
+                Console.WriteLine($"Metadata object \"{metadataName}\" is not found.");
             }
             else
             {
-                ShowInformationRegister((InformationRegister)target);
+                ShowInformationRegister((InformationRegister)@object);
             }
         }
-        [TestMethod] public void PG_ParseByUuid()
+        [TestMethod] public void PG_TEST()
         {
-            MetadataObject target;
-            Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7"); // Идентификатор объекта метаданных
+            //MetadataObject target;
+            //Guid uuid = new Guid("f6d7a041-3a57-457c-b303-ff888c9e98b7"); // Идентификатор объекта метаданных
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, uuid))
-            {
-                Parser.Parse(in reader, out target);
-            }
+            //using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, uuid))
+            //{
+            //    Parser.Parse(in reader, out target, out Dictionary<MetadataProperty, List<Guid>> references);
+            //}
 
-            if (target == null)
-            {
-                Console.WriteLine($"{uuid} is not found");
-            }
-            else
-            {
-                ShowInformationRegister((InformationRegister)target);
-            }
+            //if (target == null)
+            //{
+            //    Console.WriteLine($"{uuid} is not found");
+            //}
+            //else
+            //{
+            //    ShowInformationRegister((InformationRegister)target);
+            //}
         }
+        
         private void ShowInformationRegister(InformationRegister register)
         {
             Console.WriteLine($"Uuid: {register.Uuid}");
@@ -90,7 +75,12 @@ namespace DaJet.Metadata.Test
 
             if (type.IsMultipleType)
             {
-                Console.WriteLine("  * MULTIPLE");
+                Console.WriteLine($"  * MULTIPLE");
+                if (type.CanBeString) Console.WriteLine($"    - String ({type.StringLength}) {type.StringKind}");
+                if (type.CanBeBoolean) Console.WriteLine("    - Boolean");
+                if (type.CanBeNumeric) Console.WriteLine($"    - Numeric ({type.NumericPrecision},{type.NumericScale}) {type.NumericKind}");
+                if (type.CanBeDateTime) Console.WriteLine($"    - DateTime ({type.DateTimePart})");
+                if (type.CanBeReference) Console.WriteLine($"    - Reference ({(type.Reference == Guid.Empty ? "multiple" : "single")})");
                 return;
             }
 
@@ -125,21 +115,6 @@ namespace DaJet.Metadata.Test
                     Console.WriteLine($"  * DateTime ({type.DateTimePart})");
                 }
                 else if (type.CanBeReference)
-                {
-                    if (type.References != null && type.References.Count > 0)
-                    {
-                        Console.WriteLine("  * Reference");
-                        foreach (Guid uuid in type.References)
-                        {
-                            Console.WriteLine($"    # {uuid}");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"  * Reference (null)");
-                    }
-                }
-                else
                 {
                     Console.WriteLine($"  * {type}");
                 }

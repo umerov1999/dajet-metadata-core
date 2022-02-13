@@ -51,7 +51,7 @@ namespace DaJet.Metadata.Parsers
                     {
                         if (source.Value == MetadataTokens.B) // {"B"}
                         {
-                            ReadBoolean(in target);
+                            ReadBoolean(in source, in target);
                         }
                         else if (source.Value == MetadataTokens.D) // {"D"} | {"D","D"} | {"D","T"}
                         {
@@ -93,9 +93,11 @@ namespace DaJet.Metadata.Parsers
                 }
             }
         }
-        private void ReadBoolean(in DataTypeSet target)
+        private void ReadBoolean(in ConfigFileReader reader, in DataTypeSet target)
         {
             target.CanBeBoolean = true;
+
+            ReadQualifiers(in reader);
         }
         private void ReadDateTime(in ConfigFileReader reader, in DataTypeSet target)
         {
@@ -166,57 +168,17 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            target.CanBeReference = true;
+            // Если ссылочный тип является определяемым типом или характеристикой,
+            // то вполне возможно, что такой тип не допускает использование ссылок.
+            // Окончательное конфигурирование ссылочных типов данных выполняется
+            // классом InfoBaseCache в его методе ConfigureDataTypeSet, где происходит
+            // обработка List<Guid> references с использованием кэша ссылок.
+            // Внимание! Если логика обработки ссылочных типов поменяется,
+            // то следующую строчку кода вероятно нужно будет раскомментировать.
+
+            //target.CanBeReference = true;
 
             references.Add(type);
-
-            // TODO:
-            //else if (context.CompoundTypes.TryGetValue(typeUuid, out NamedDataTypeSet compound))
-            //{
-            //    // since 8.3.3
-            //    ApplyNamedDataTypeSet(in compound, in target, in references);
-            //}
-            //else if (context.CharacteristicTypes.TryGetValue(typeUuid, out Characteristic characteristic))
-            //{
-            //    ApplyCharacteristic(in characteristic, in target, in references);
-            //}
         }
-        
-        //private void ApplyCharacteristic(in Characteristic source, in DataTypeSet target, in List<Guid> references)
-        //{
-        //    // TODO: use internal flags fields of the DataTypeSet class to perform bitwise operations
-
-        //    if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
-        //    if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
-        //    if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
-        //    if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
-        //    if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
-        //    if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
-        //    if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
-        //    if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
-
-        //    if (source.TypeInfo.CanBeReference)
-        //    {
-        //        references.Add(source.TypeInfo.ReferenceTypeUuid);
-        //    }
-        //}
-        //private void ApplyNamedDataTypeSet(in NamedDataTypeSet source, in DataTypeSet target, in List<Guid> references)
-        //{
-        //    // TODO: add internal flags field to the DataTypeInfo class so as to use bitwise operations
-
-        //    if (!target.CanBeString && source.TypeInfo.CanBeString) target.CanBeString = true;
-        //    if (!target.CanBeBoolean && source.TypeInfo.CanBeBoolean) target.CanBeBoolean = true;
-        //    if (!target.CanBeNumeric && source.TypeInfo.CanBeNumeric) target.CanBeNumeric = true;
-        //    if (!target.CanBeDateTime && source.TypeInfo.CanBeDateTime) target.CanBeDateTime = true;
-        //    if (!target.CanBeReference && source.TypeInfo.CanBeReference) target.CanBeReference = true;
-        //    if (!target.IsUuid && source.TypeInfo.IsUuid) target.IsUuid = true;
-        //    if (!target.IsBinary && source.TypeInfo.IsBinary) target.IsBinary = true;
-        //    if (!target.IsValueStorage && source.TypeInfo.IsValueStorage) target.IsValueStorage = true;
-
-        //    if (source.TypeInfo.CanBeReference)
-        //    {
-        //        references.Add(source.TypeInfo.ReferenceTypeUuid);
-        //    }
-        //}
     }
 }

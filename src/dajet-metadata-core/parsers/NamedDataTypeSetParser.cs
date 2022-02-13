@@ -6,41 +6,37 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class NamedDataTypeSetParser : IMetadataObjectParser
+    public sealed class NamedDataTypeSetParser
     {
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
 
-        private string _name;
+        private List<Guid> _references;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
-        public void Parse(in ConfigFileReader source, out MetadataObject target)
-        {
-            Parse(in source, null, out target);
-        }
-        public void Parse(in ConfigFileReader source, in string name, out MetadataObject target)
+        public void Parse(in ConfigFileReader source, out NamedDataTypeSet target, out List<Guid> references)
         {
             _target = new NamedDataTypeSet()
             {
                 Uuid = new Guid(source.FileName)
             };
-
+            
             ConfigureConverter(in source);
 
             _typeParser = new DataTypeSetParser();
 
-            _name = name; // filter
-
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
 
-            target = _target; // result
+            // result
+            target = _target;
+            references = _references;
 
             // dispose private variables
-            _name = null;
             _target = null;
             _parser = null;
             _converter = null;
+            _references = null;
             _typeParser = null;
         }
         private void ConfigureConverter(in ConfigFileReader source)
@@ -59,14 +55,6 @@ namespace DaJet.Metadata.Parsers
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
-            // apply filter by name
-            if (_name != null && _name != source.Value)
-            {
-                _target = null;
-                args.Cancel = true;
-                return;
-            }
-
             _target.Name = source.Value;
         }
         private void Alias(in ConfigFileReader source, in CancelEventArgs args)
@@ -83,9 +71,9 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
+                _typeParser.Parse(in source, out DataTypeSet type, out _references);
 
-                _target.DataTypeSet = type; // FIXME: выполнить преобразование references !!!
+                _target.DataTypeSet = type;
             }
         }
     }

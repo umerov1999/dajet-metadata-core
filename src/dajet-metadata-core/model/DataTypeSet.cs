@@ -33,7 +33,7 @@ namespace DaJet.Metadata.Model
     {
         private DataTypeFlags _flags = DataTypeFlags.None;
 
-        #region "DATA TYPE FLAGS"
+        #region "SIMPLE DATA TYPES"
 
         ///<summary>Тип значения свойства "УникальныйИдентификатор", binary(16). Не поддерживает составной тип данных.</summary>
         public bool IsUuid
@@ -189,7 +189,9 @@ namespace DaJet.Metadata.Model
         public DateTimePart DateTimePart { get; set; } = DateTimePart.Date;
 
         #endregion
-        
+
+        #region "REFERENCE DATA TYPE"
+
         ///<summary>Типом значения свойства может быть "Ссылка" (поддерживает составной тип данных)</summary>
         public bool CanBeReference
         {
@@ -220,13 +222,24 @@ namespace DaJet.Metadata.Model
         ///</br>
         ///</summary>
         public Guid Reference { get; set; } = Guid.Empty;
-        ///<summary>
-        ///Служебная коллекция идентификаторов типов данных. Заполняется при чтении метаданных из СУБД.
-        ///<br>
-        ///После выполнения процедуры перобразования в конкретные значения должна быть обнулена.
-        ///</br>
-        ///</summary>
-        public List<Guid> References { get; set; } /// FIXME: remove this property ???
+
+        #endregion
+
+        internal void Apply(in DataTypeSet source)
+        {
+            _flags = source._flags;
+
+            StringKind = source.StringKind;
+            StringLength = source.StringLength;
+
+            NumericKind = source.NumericKind;
+            NumericScale = source.NumericScale;
+            NumericPrecision = source.NumericPrecision;
+
+            DateTimePart = source.DateTimePart;
+            
+            Reference = source.Reference;
+        }
 
         ///<summary>Проверяет является ли свойство составным типом данных</summary>
         public bool IsMultipleType

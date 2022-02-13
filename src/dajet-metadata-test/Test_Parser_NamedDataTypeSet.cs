@@ -17,11 +17,7 @@ namespace DaJet.Metadata.Test
         }
         private NamedDataTypeSetParser GetNamedDataTypeSetParser()
         {
-            if (!MetadataParserFactory.TryGetParser(MetadataTypes.NamedDataTypeSet, out IMetadataObjectParser parser))
-            {
-                throw new Exception("NamedDataTypeSet parser is not found");
-            }
-            return parser as NamedDataTypeSetParser;
+            return new NamedDataTypeSetParser();
         }
         private Guid GetRootFileUuid(DatabaseProvider provider, string connectionString)
         {
@@ -122,21 +118,6 @@ namespace DaJet.Metadata.Test
             }
             else if (type.CanBeReference)
             {
-                if (type.References != null && type.References.Count > 0)
-                {
-                    Console.WriteLine("- Reference");
-                    foreach (Guid uuid in type.References)
-                    {
-                        Console.WriteLine($"   # {uuid}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"- Reference (null)");
-                }
-            }
-            else
-            {
                 Console.WriteLine($"- {type}");
             }
         }
@@ -159,22 +140,6 @@ namespace DaJet.Metadata.Test
                 Console.WriteLine($"- DateTime ({type.DateTimePart})");
             }
             else if (type.CanBeReference)
-            {
-                if (type.References != null && type.References.Count > 0)
-                {
-                    Console.WriteLine("- Reference");
-
-                    foreach (Guid uuid in type.References)
-                    {
-                        Console.WriteLine($"   # {uuid}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"- Reference (null)");
-                }
-            }
-            else
             {
                 Console.WriteLine($"- {type}");
             }
@@ -200,9 +165,7 @@ namespace DaJet.Metadata.Test
             {
                 using (ConfigFileReader reader = new ConfigFileReader(provider, connectionString, ConfigTables.Config, guid))
                 {
-                    parser.Parse(in reader, out MetadataObject item);
-
-                    NamedDataTypeSet metaObject = item as NamedDataTypeSet;
+                    parser.Parse(in reader, out NamedDataTypeSet metaObject, out List<Guid> references);
 
                     ShowMetadataObject(in metaObject);
                 }

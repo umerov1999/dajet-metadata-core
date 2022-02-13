@@ -13,31 +13,12 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TryOpenInfoBase()
         {
-            MetadataService service = new MetadataService();
+            MetadataService service = new();
             service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out InfoBase infoBase);
 
             string metadataName = "РегистрСведений.ВходящаяОчередьRabbitMQ";
 
-            Stopwatch watch = new();
-            watch.Start();
             MetadataObject @object = service.GetMetadataObject(in infoBase, metadataName);
-            watch.Stop();
-            Console.WriteLine($"1 = {watch.ElapsedMilliseconds} ms");
-
-            watch.Restart();
-            @object = service.GetMetadataObject(in infoBase, metadataName);
-            watch.Stop();
-            Console.WriteLine($"2 = {watch.ElapsedMilliseconds} ms");
-
-            watch.Restart();
-            @object = service.GetMetadataObject(in infoBase, MetadataTypes.InformationRegister, @object.Uuid);
-            watch.Stop();
-            Console.WriteLine($"3 = {watch.ElapsedMilliseconds} ms");
-
-            watch.Restart();
-            service.GetMetadataObject(in infoBase, MetadataTypes.InformationRegister, @object.Uuid, out @object);
-            watch.Stop();
-            Console.WriteLine($"4 = {watch.ElapsedMilliseconds} ms");
 
             if (@object == null)
             {
@@ -47,15 +28,6 @@ namespace DaJet.Metadata.Test
             {
                 Console.WriteLine($"Metadata object \"{@object.Name}\" is found successfully.");
             }
-
-            service.UpdateInfoBaseCache(out infoBase);
-
-            watch.Restart();
-            @object = service.GetMetadataObject(in infoBase, MetadataTypes.InformationRegister, @object.Uuid);
-            watch.Stop();
-            Console.WriteLine($"5 = {watch.ElapsedMilliseconds} ms");
-
-            Console.WriteLine($"Metadata object \"{@object.Name}\" is found successfully.");
         }
         [TestMethod] public void PG_TryOpenInfoBase()
         {

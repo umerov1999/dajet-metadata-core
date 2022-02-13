@@ -16,25 +16,30 @@ namespace DaJet.Metadata.Parsers
         private PropertyPurpose _purpose;
         private MetadataProperty _property;
         private List<MetadataProperty> _target;
+        private Dictionary<MetadataProperty, List<Guid>> _references;
         private ConfigFileConverter _converter;
-        public void Parse(in ConfigFileReader source, out List<MetadataProperty> target)
+        public void Parse(in ConfigFileReader source, out List<MetadataProperty> target, out Dictionary<MetadataProperty, List<Guid>> references)
         {
             ConfigureCollectionConverter(in source);
 
             _target = new List<MetadataProperty>();
+            _references = new Dictionary<MetadataProperty, List<Guid>>();
 
             _typeParser = new DataTypeSetParser();
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
 
-            target = _target; // result
+            // result
+            target = _target;
+            references = _references;
 
             // dispose private variables
             _target = null;
             _parser = null;
             _property = null;
             _converter = null;
+            _references = null;
             _typeParser = null;
         }
         
@@ -119,7 +124,7 @@ namespace DaJet.Metadata.Parsers
                     Purpose = _purpose
                 };
 
-                // TODO: _converter[0][3] += PropertyUsage; !!!
+                // TODO: _converter[0][3] += PropertyUsage; !!! see _type field
                 // Если это иерархический тип объекта метаданных (Справочник или ПланВидовХарактеристик),
                 // тогда читаем настройку использования свойства для групп или элементов
 
@@ -155,7 +160,12 @@ namespace DaJet.Metadata.Parsers
             {
                 _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
 
-                _property.PropertyType = type; // FIXME: выполнить преобразование references !!!
+                _property.PropertyType = type;
+
+                if (references != null && references.Count > 0)
+                {
+                    _references.Add(_property, references);
+                }
             }
         }
 

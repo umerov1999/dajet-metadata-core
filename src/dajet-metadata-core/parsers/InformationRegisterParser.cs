@@ -8,17 +8,13 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InformationRegisterParser : IMetadataObjectParser
     {
-        private ConfigFileParser _parser = new ConfigFileParser();
+        private ConfigFileParser _parser = new();
         private MetadataPropertyCollectionParser _propertyCollectionParser;
 
-        private string _name;
         private InformationRegister _target;
         private ConfigFileConverter _converter;
-        public void Parse(in ConfigFileReader reader, out MetadataObject target)
-        {
-            Parse(in reader, null, out target);
-        }
-        public void Parse(in ConfigFileReader reader, in string name, out MetadataObject target)
+        private Dictionary<MetadataProperty, List<Guid>> _references;
+        public void Parse(in ConfigFileReader reader, out MetadataObject target, out Dictionary<MetadataProperty, List<Guid>> references)
         {
             ConfigureConfigFileConverter();
 
@@ -29,21 +25,19 @@ namespace DaJet.Metadata.Parsers
             {
                 Uuid = new Guid(reader.FileName)
             };
-            
-            _name = name; // filter
+            _references = new Dictionary<MetadataProperty, List<Guid>>();
 
             _parser.Parse(in reader, in _converter);
 
-            // Состав системных свойств регистра сведений зависит от прочитанных метаданных
-            Configurator.ConfigureInformationRegister(in _target, reader.DatabaseProvider);
-
-            target = _target; // result
+            // result
+            target = _target;
+            references = _references;
 
             // dispose private variables
-            _name = null;
             _target = null;
             _parser = null;
             _converter = null;
+            _references = null;
             _propertyCollectionParser = null;
         }
         private void ConfigureConfigFileConverter()
@@ -59,14 +53,6 @@ namespace DaJet.Metadata.Parsers
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
-            // apply filter by name
-            if (_name != null && _name != source.Value)
-            {
-                _target = null;
-                args.Cancel = true;
-                return;
-            }
-
             _target.Name = source.Value;
         }
         private void Alias(in ConfigFileReader source, in CancelEventArgs args)
@@ -93,53 +79,24 @@ namespace DaJet.Metadata.Parsers
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyCollectionParser.Parse(in source, out List<MetadataProperty> properties);
+                _propertyCollectionParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
 
                 if (properties != null && properties.Count > 0)
                 {
                     _target.Properties.AddRange(properties);
                 }
+
+                if (references != null && references.Count > 0)
+                {
+                    foreach (KeyValuePair<MetadataProperty, List<Guid>> reference in references)
+                    {
+                        if (reference.Value != null && reference.Value.Count > 0)
+                        {
+                            _references.Add(reference.Key, reference.Value);
+                        }
+                    }
+                }
             }
         }
     }
 }
-
-//if (register.Periodicity != RegisterPeriodicity.None)
-//{
-//    Configurator.ConfigurePropertyПериод(register);
-//}
-//if (register.UseRecorder)
-//{
-//    // Свойство "Регистратор" конфигурируется при загрузке документов
-//    Configurator.ConfigurePropertyНомерЗаписи(register);
-//    Configurator.ConfigurePropertyАктивность(register);
-//}
-
-//// 4 - коллекция измерений регистра сведений
-//ConfigObject properties = configObject.GetObject(new int[] { 4 });
-//// 4.0 = 13134203-f60b-11d5-a3c7-0050bae0a776 - идентификатор коллекции измерений
-//Guid propertiesUuid = configObject.GetUuid(new int[] { 4, 0 });
-//if (propertiesUuid == new Guid("13134203-f60b-11d5-a3c7-0050bae0a776"))
-//{
-//    Configurator.ConfigureProperties(register, properties, PropertyPurpose.Dimension);
-//}
-
-//// 3 - коллекция ресурсов регистра сведений
-//properties = configObject.GetObject(new int[] { 3 });
-//// 3.0 = 13134202-f60b-11d5-a3c7-0050bae0a776 - идентификатор коллекции ресурсов
-//propertiesUuid = configObject.GetUuid(new int[] { 3, 0 });
-//if (propertiesUuid == new Guid("13134202-f60b-11d5-a3c7-0050bae0a776"))
-//{
-//    Configurator.ConfigureProperties(register, properties, PropertyPurpose.Measure);
-//}
-
-//// 7 - коллекция реквизитов регистра сведений
-//properties = configObject.GetObject(new int[] { 7 });
-//// 7.0 = a2207540-1400-11d6-a3c7-0050bae0a776 - идентификатор коллекции реквизитов
-//propertiesUuid = configObject.GetUuid(new int[] { 7, 0 });
-//if (propertiesUuid == new Guid("a2207540-1400-11d6-a3c7-0050bae0a776"))
-//{
-//    Configurator.ConfigureProperties(register, properties, PropertyPurpose.Property);
-//}
-
-//Configurator.ConfigureSharedProperties(register);

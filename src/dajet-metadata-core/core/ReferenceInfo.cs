@@ -4,20 +4,23 @@ namespace DaJet.Metadata.Core
 {
     public readonly struct ReferenceInfo
     {
-        internal ReferenceInfo(Guid uuid, string name)
+        internal ReferenceInfo(Guid type, Guid metadata, Guid reference)
         {
-            Uuid = uuid;
-            Name = name;
+            MetadataType = type;
+            MetadataUuid = metadata;
+            ReferenceUuid = reference;
             CharacteristicUuid = Guid.Empty;
         }
-        internal ReferenceInfo(Guid uuid, string name, Guid chrcUuid)
+        internal ReferenceInfo(Guid type, Guid metadata, Guid reference, Guid characteristic)
         {
-            Uuid = uuid;
-            Name = name;
-            CharacteristicUuid = chrcUuid;
+            MetadataType = type;
+            MetadataUuid = metadata;
+            ReferenceUuid = reference;
+            CharacteristicUuid = characteristic;
         }
-        public readonly Guid Uuid { get; }
-        public readonly string Name { get; }
+        public readonly Guid MetadataType { get; }
+        public readonly Guid MetadataUuid { get; }
+        public readonly Guid ReferenceUuid { get; }
         public readonly Guid CharacteristicUuid { get; }
     }
 }

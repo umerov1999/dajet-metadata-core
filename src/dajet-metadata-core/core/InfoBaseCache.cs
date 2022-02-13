@@ -16,9 +16,10 @@ namespace DaJet.Metadata.Core
         {
             { MetadataTypes.InformationRegister, new InformationRegisterParser() }
         };
+        private readonly NamedDataTypeSetParser _namedDataTypeSetParser = new();
 
         private Guid _root = Guid.Empty;
-        private ConcurrentDictionary<Guid, Guid> _references;
+        private ConcurrentDictionary<Guid, ReferenceInfo> _references;
         private ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names;
         private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
         
@@ -54,7 +55,7 @@ namespace DaJet.Metadata.Core
         private void InitializeReferenceCache()
         {
             _names = new ConcurrentDictionary<Guid, Dictionary<string, Guid>>();
-            _references = new ConcurrentDictionary<Guid, Guid>();
+            _references = new ConcurrentDictionary<Guid, ReferenceInfo>();
 
             ParallelOptions options = new ParallelOptions()
             {
@@ -96,48 +97,36 @@ namespace DaJet.Metadata.Core
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
                 {
-                    ReferenceInfo reference = parser.Parse(in reader, type);
+                    ReferenceInfo reference = parser.Parse(in reader, type, out string name);
 
-                    if (reference.Name == string.Empty)
+                    if (string.IsNullOrEmpty(name))
                     {
                         continue; // accidentally: unsupported metadata object type
-                    }
-
-                    if (reference.Uuid != Guid.Empty)
-                    {
-                        // reference type uuid to metadata object uuid mapping
-                        if (type == MetadataTypes.Characteristic)
-                        {
-                            _ = _references.TryAdd(reference.CharacteristicUuid, entry.Key);
-                        }
-                        _ = _references.TryAdd(reference.Uuid, entry.Key);
                     }
 
                     // metadata object name to uuid mapping
                     if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
                     {
-                        names.Add(reference.Name, entry.Key);
+                        names.Add(name, entry.Key);
                     }
                     else
                     {
-                        _ = _names.TryAdd(type, new Dictionary<string, Guid>() { { reference.Name, entry.Key } });
+                        _ = _names.TryAdd(type, new Dictionary<string, Guid>() { { name, entry.Key } });
+                    }
+
+                    // reference type uuid to metadata object mapping
+                    if (reference.ReferenceUuid != Guid.Empty)
+                    {
+                        if (reference.MetadataType == MetadataTypes.Characteristic)
+                        {
+                            _ = _references.TryAdd(reference.CharacteristicUuid, reference);
+                        }
+                        _ = _references.TryAdd(reference.ReferenceUuid, reference);
                     }
                 }
             }
         }
 
-        internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
-        {
-            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
-            {
-                throw new InvalidOperationException(); // this should not happen
-            }
-
-            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
-            {
-                parser.Parse(in reader, out metadata);
-            }
-        }
         internal MetadataObject GetMetadataObjectCached(Guid type, Guid uuid)
         {
             if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
@@ -156,7 +145,7 @@ namespace DaJet.Metadata.Core
             }
 
             return metadata;
-        }
+        }        
         internal MetadataObject GetMetadataObjectCached(in string typeName, in string objectName)
         {
             Guid type = MetadataTypes.ResolveName(typeName);
@@ -193,6 +182,126 @@ namespace DaJet.Metadata.Core
             GetMetadataObject(type, uuid, out metadata);
 
             reference.SetTarget(metadata);
+        }
+
+        internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (type == MetadataTypes.NamedDataTypeSet)
+            {
+                // since 1C:Enterprise 8.3.3 version
+                GetNamedDataTypeSet(uuid, out metadata);
+            }
+            else
+            {
+                GetApplicationObject(type, uuid, out metadata);
+            }
+        }
+        private void GetNamedDataTypeSet(Guid uuid, out MetadataObject metadata)
+        {
+            List<Guid> references;
+            NamedDataTypeSet namedDataTypeSet;
+
+            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+            {
+                _namedDataTypeSetParser.Parse(in reader, out namedDataTypeSet, out references);
+            }
+
+            ConfigureDataTypeSet(namedDataTypeSet.DataTypeSet, in references);
+
+            metadata = namedDataTypeSet;
+        }
+        private void GetApplicationObject(Guid type, Guid uuid, out MetadataObject metadata)
+        {
+            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
+            {
+                throw new InvalidOperationException(); // this should not happen
+            }
+
+            Dictionary<MetadataProperty, List<Guid>> references;
+
+            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+            {
+                parser.Parse(in reader, out metadata, out references);
+            }
+
+            if (references != null && references.Count > 0)
+            {
+                ConfigureMetadataProperties(in metadata, in references);
+            }
+
+            // TODO:
+            // Состав системных свойств регистра сведений зависит от прочитанных метаданных
+            // Configurator.ConfigureInformationRegister(in _target, reader.DatabaseProvider);
+
+            // TODO:
+            // Configurator.ConfigureSharedProperties(register);
+        }
+        private void ConfigureMetadataProperties(in MetadataObject metadata, in Dictionary<MetadataProperty, List<Guid>> references)
+        {
+            if (metadata is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (references.TryGetValue(property, out List<Guid> referenceTypes))
+                {
+                    ConfigureDataTypeSet(property.PropertyType, in referenceTypes);
+                }
+            }
+        }
+        private void ConfigureDataTypeSet(in DataTypeSet target, in List<Guid> references)
+        {
+            if (references == null || references.Count == 0)
+            {
+                return;
+            }
+
+            if (references.Count > 1)
+            {
+                target.CanBeReference = true;
+                return;
+            }
+
+            // TODO: loop through the list of references
+            Guid reference = references[0];
+
+            if (reference == Guid.Empty)
+            {
+                return;
+            }
+
+            if (reference == ReferenceTypes.AnyReference)
+            {
+                // TODO !!!
+                return;
+            }
+
+            if (!_references.TryGetValue(reference, out ReferenceInfo info))
+            {
+                return; // this should not happen
+            }
+
+            if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
+                (info.MetadataType == MetadataTypes.Characteristic && reference == info.CharacteristicUuid))
+            {
+                MetadataObject metadata = GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
+
+                if (metadata is NamedDataTypeSet source)
+                {
+                    target.Apply(source.DataTypeSet);
+                }
+                else if (metadata is Characteristic characteristic)
+                {
+                    target.Apply(characteristic.TypeInfo);
+                }
+            }
+            else
+            {
+                target.CanBeReference = true;
+                target.Reference = reference; // single reference type
+            }
         }
     }
 }
