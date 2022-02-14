@@ -3,76 +3,45 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class DbName // TODO: make struct !?
+    public readonly struct DbName
     {
-        public int Code { get; set; } // Unique code
-        public Guid Uuid { get; set; } // Metadata object uuid (not unique because of duplicates in service items)
-        public string Name { get; set; } // Prefix of the database object name
-        public List<DbName> ServiceItems { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
+        internal DbName(Guid uuid, int code, string name)
+        {
+            Uuid = uuid;
+            Code = code;
+            Name = name;
+        }
+        public readonly int Code { get; } // Unique code
+        public readonly Guid Uuid { get; } // Metadata object uuid (not unique because of duplicates in child entries)
+        public readonly string Name { get; } // Prefix of the database object name
+        public readonly List<DbName> Children { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
         public override string ToString()
         {
             return $"{Name} {{{Code}:{Uuid}}}";
         }
     }
-    public sealed class DbNames // DbNameCache
+    public sealed class DbNameCache
     {
-        private readonly HashSet<string> _main = new HashSet<string>()
+        private readonly Dictionary<Guid, DbName> _cache = new();
+        public IEnumerable<DbName> DbNames
         {
-            MetadataTokens.VT,
-            MetadataTokens.Acc,
-            MetadataTokens.Chrc,
-            MetadataTokens.Enum,
-            MetadataTokens.Node,
-            MetadataTokens.Const,
-            MetadataTokens.AccRg,
-            MetadataTokens.InfoRg,
-            MetadataTokens.AccumRg,
-            MetadataTokens.Document,
-            MetadataTokens.Reference
-        };
-
-        private readonly Dictionary<Guid, DbName> _lookup = new Dictionary<Guid, DbName>();
-        public Dictionary<Guid, DbName> Lookup { get { return _lookup; } }
-
-        public void Add(int code, Guid uuid, string name)
+            get { return _cache.Values; }
+        }
+        public bool TryGet(Guid uuid, out DbName entry)
         {
-            if (_lookup.TryGetValue(uuid, out DbName entry))
+            return _cache.TryGetValue(uuid, out entry);
+        }
+        public void Add(Guid uuid, int code, string name)
+        {
+            // NOTE: the case when child and parent items are in the wrong order is not assumed
+
+            if (_cache.TryGetValue(uuid, out DbName entry))
             {
-                if (_main.Contains(name))
-                {
-                    entry.Code = code;
-                    entry.Name = name;
-                }
-                else
-                {
-                    entry.ServiceItems.Add(new DbName()
-                    {
-                        Uuid = uuid,
-                        Code = code,
-                        Name = name
-                    });
-                }
+                entry.Children.Add(new DbName(uuid, code, name));
             }
             else
             {
-                DbName item = new DbName()
-                {
-                    Uuid = uuid,
-                    Code = code,
-                    Name = name
-                };
-
-                if (!_main.Contains(name))
-                {
-                    item.ServiceItems.Add(new DbName()
-                    {
-                        Uuid = uuid,
-                        Code = code,
-                        Name = name
-                    });
-                }
-
-                _lookup.Add(uuid, item);
+                _cache.Add(uuid, new DbName(uuid, code, name));
             }
         }
     }

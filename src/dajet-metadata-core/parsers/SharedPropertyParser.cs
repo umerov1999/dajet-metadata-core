@@ -8,26 +8,40 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class SharedPropertyParser
     {
-        private readonly ConfigFileParser _parser = new ConfigFileParser();
-        private ConfigFileReader Reader { get; }
-        public SharedPropertyParser(ConfigFileReader reader)
-        {
-            Reader = reader;
-            ConfigureConfigFileConverter();
-        }
-        public void Parse(in InfoBase context, in SharedProperty target)
-        {
-            _infoBase = context;
-            _property = target;
-            ConfigureDbName();
-            _parser.Parse(Reader, _converter);
-        }
+        private ConfigFileParser _parser;
+        private DataTypeSetParser _typeParser;
 
         int _count = 0;
-        InfoBase _infoBase;
-        SharedProperty _property;
-        ConfigFileConverter _converter;
-        private void ConfigureConfigFileConverter()
+        private List<Guid> _references;
+        private SharedProperty _target;
+        private ConfigFileConverter _converter;
+        public void Parse(in ConfigFileReader source, out SharedProperty target, out List<Guid> references)
+        {
+            _target = new SharedProperty()
+            {
+                Uuid = new Guid(source.FileName)
+            };
+
+            ConfigureConverter();
+
+            _typeParser = new DataTypeSetParser();
+
+            _parser = new ConfigFileParser();
+            _parser.Parse(in source, in _converter);
+
+            // result
+            target = _target;
+            references = _references;
+
+            // dispose private variables
+            _count = 0;
+            _target = null;
+            _parser = null;
+            _converter = null;
+            _references = null;
+            _typeParser = null;
+        }
+        private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 
@@ -37,24 +51,17 @@ namespace DaJet.Metadata.Parsers
             _converter[1][2][1] += UsageSettings; // количество объектов метаданных, у которых значение использования общего реквизита не равно "Автоматически"
             _converter[1][1][1][2] += PropertyType; // описание допустимых типов данных (объект)
         }
-        private void ConfigureDbName()
-        {
-            //if (_infoBase.DbNames.Lookup.TryGetValue(_property.FileName, out DbName info))
-            //{
-            //    _property.DbName = DbNamesFactory.CreateDbName(Reader.DatabaseProvider, info.DbName, info.Code);
-            //}
-        }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _property.Name = source.Value;
+            _target.Name = source.Value;
         }
         private void Alias(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _property.Alias = source.Value;
+            _target.Alias = source.Value;
         }
         private void AutomaticUsage(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _property.AutomaticUsage = (AutomaticUsage)source.GetInt32();
+            _target.AutomaticUsage = (AutomaticUsage)source.GetInt32();
         }
         private void UsageSettings(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -77,7 +84,7 @@ namespace DaJet.Metadata.Parsers
                 _ = source.Read(); // [3] (1.2.3.2) 00000000-0000-0000-0000-000000000000
                 _ = source.Read(); // [2] (1.2.3) } Конец объекта настройки
 
-                _property.UsageSettings.Add(uuid, (SharedPropertyUsage)usage);
+                _target.UsageSettings.Add(uuid, (SharedPropertyUsage)usage);
 
                 _count--; // Конец чтения настройки для объекта метаданных
             }
@@ -89,12 +96,9 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            new DataTypeSetParser().Parse(in source, out DataTypeSet target, out List<Guid> references);
-            
-            bool test = target.IsMultipleType; // FIXME: выполнить преобразование references !!!
+            _typeParser.Parse(in source, out DataTypeSet type, out _references);
 
-            // TODO: add property DataTypeSet to MetadataProperty class ???
-            // TODO: Configurator.ConfigureDatabaseFields(property); !!!
+            _target.PropertyType = type;
         }
     }
 }

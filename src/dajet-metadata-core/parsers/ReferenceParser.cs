@@ -15,9 +15,9 @@ namespace DaJet.Metadata.Parsers
         private ConfigFileConverter _converter;
         public ReferenceInfo Parse(in ConfigFileReader reader, Guid type, out string name)
         {
-            ConfigureConfigFileConverter(type);
+            ConfigureConverter(type);
 
-            Guid metadata = new Guid(reader.FileName);
+            Guid metadata = new(reader.FileName);
 
             _parser.Parse(in reader, in _converter);
 
@@ -32,7 +32,7 @@ namespace DaJet.Metadata.Parsers
 
             return result;
         }
-        private void ConfigureConfigFileConverter(Guid type)
+        private void ConfigureConverter(Guid type)
         {
             _converter = new ConfigFileConverter();
 

@@ -13,7 +13,7 @@ namespace DaJet.Metadata.Parsers
         {
             _parser = new ConfigFileParser();
 
-            ConfigureConfigFileConverter();
+            ConfigureConverter();
 
             _parser.Parse(in reader, in _converter);
 
@@ -22,7 +22,7 @@ namespace DaJet.Metadata.Parsers
 
             return _target;
         }
-        private void ConfigureConfigFileConverter()
+        private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 

@@ -8,7 +8,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InformationRegisterParser : IMetadataObjectParser
     {
-        private ConfigFileParser _parser = new();
+        private ConfigFileParser _parser;
         private MetadataPropertyCollectionParser _propertyCollectionParser;
 
         private InformationRegister _target;
@@ -16,7 +16,7 @@ namespace DaJet.Metadata.Parsers
         private Dictionary<MetadataProperty, List<Guid>> _references;
         public void Parse(in ConfigFileReader reader, out MetadataObject target, out Dictionary<MetadataProperty, List<Guid>> references)
         {
-            ConfigureConfigFileConverter();
+            ConfigureConverter();
 
             _parser = new ConfigFileParser();
             _propertyCollectionParser = new MetadataPropertyCollectionParser();
@@ -40,7 +40,7 @@ namespace DaJet.Metadata.Parsers
             _references = null;
             _propertyCollectionParser = null;
         }
-        private void ConfigureConfigFileConverter()
+        private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 

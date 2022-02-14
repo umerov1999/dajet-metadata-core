@@ -11,9 +11,9 @@ namespace DaJet.Metadata.Core
         {
             _cache = new InfoBaseCache(provider, in connectionString);
 
-            UpdateInfoBaseCache(out infoBase);
+            UpdateInfoBase(out infoBase);
         }
-        public void UpdateInfoBaseCache(out InfoBase infoBase)
+        public void UpdateInfoBase(out InfoBase infoBase)
         {
             _cache.Initialize(out infoBase);
         }
@@ -55,6 +55,20 @@ namespace DaJet.Metadata.Core
             }
 
             return _cache.GetMetadataObjectCached(type, uuid);
+        }
+        public MetadataObject GetMetadataObjectByReference(in InfoBase infoBase, Guid reference)
+        {
+            if (infoBase == null)
+            {
+                throw new ArgumentNullException(nameof(infoBase));
+            }
+
+            if (!_cache.TryGetReferenceInfo(reference, out ReferenceInfo info))
+            {
+                return null;
+            }
+
+            return _cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
         }
         public void GetMetadataObject(in InfoBase infoBase, Guid type, Guid uuid, out MetadataObject metadata)
         {

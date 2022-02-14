@@ -7,28 +7,32 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class DbNamesParser
     {
-        private readonly ConfigFileParser _parser = new ConfigFileParser();
-        private ConfigFileReader Reader { get; }
-        public DbNamesParser(ConfigFileReader reader)
-        {
-            Reader = reader;
-            ConfigureConfigFileConverter();
-        }
-        public void Parse(in DbNames target)
-        {
-            _lookup = target;
-            _parser.Parse(Reader, _converter);
-        }
-
         int _count = 0;
-        DbNames _lookup;
-        ConfigFileConverter _converter;
-        private void ConfigureConfigFileConverter()
+        private DbNameCache _target;
+        private ConfigFileParser _parser;
+        private ConfigFileConverter _converter;
+        public void Parse(in ConfigFileReader reader, out DbNameCache cache)
+        {
+            ConfigureConverter();
+
+            _target = new DbNameCache();
+            _parser = new ConfigFileParser();
+            _parser.Parse(in reader, in _converter);
+
+            cache = _target;
+
+            _count = 0;
+            _target = null;
+            _parser = null;
+            _converter = null;
+        }
+        private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
-            _converter[1][0] += ReadDbNameItems; // Количество элементов файла DbNames
+
+            _converter[1][0] += Count; // Количество элементов файла DbNames
         }
-        private void ReadDbNameItems(in ConfigFileReader source, in CancelEventArgs args)
+        private void Count(in ConfigFileReader source, in CancelEventArgs args)
         {
             _count = source.GetInt32();
 
@@ -42,13 +46,13 @@ namespace DaJet.Metadata.Parsers
 
                 if (source.Token == TokenType.StartObject)
                 {
-                    uuid = ReadUuid(in source); // 1.x.0 - uuid
-                    name = ReadName(in source); // 1.x.1 - name
-                    code = ReadCode(in source); // 1.x.2 - code
+                    uuid = Uuid(in source); // 1.x.0 - уникальный идентификатор объекта метаданных
+                    name = Name(in source); // 1.x.1 - имя объекта СУБД (как правило префикс)
+                    code = Code(in source); // 1.x.2 - уникальный целочисленный код объекта метаданных
 
                     if (code > 0 && uuid != Guid.Empty && name != null)
                     {
-                        _lookup.Add(code, uuid, name);
+                        _target.Add(uuid, code, name);
                     }
                 }
                 else if (source.Token == TokenType.EndObject)
@@ -57,7 +61,7 @@ namespace DaJet.Metadata.Parsers
                 }
             }
         }
-        private Guid ReadUuid(in ConfigFileReader source)
+        private Guid Uuid(in ConfigFileReader source)
         {
             if (source.Read()) 
             {
@@ -65,7 +69,7 @@ namespace DaJet.Metadata.Parsers
             }
             return Guid.Empty;
         }
-        private string ReadName(in ConfigFileReader source)
+        private string Name(in ConfigFileReader source)
         {
             if (source.Read())
             {
@@ -73,7 +77,7 @@ namespace DaJet.Metadata.Parsers
             }
             return null;
         }
-        private int ReadCode(in ConfigFileReader source)
+        private int Code(in ConfigFileReader source)
         {
             if (source.Read())
             {

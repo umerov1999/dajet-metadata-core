@@ -21,7 +21,7 @@ namespace DaJet.Metadata.Parsers
                 Uuid = new Guid(source.FileName)
             };
             
-            ConfigureConverter(in source);
+            ConfigureConverter();
 
             _typeParser = new DataTypeSetParser();
 
@@ -39,7 +39,7 @@ namespace DaJet.Metadata.Parsers
             _references = null;
             _typeParser = null;
         }
-        private void ConfigureConverter(in ConfigFileReader source)
+        private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 
