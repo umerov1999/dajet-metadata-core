@@ -6,7 +6,7 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class NamedDataTypeSetParser
+    public sealed class NamedDataTypeSetParser : IMetadataObjectParser
     {
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
@@ -14,7 +14,7 @@ namespace DaJet.Metadata.Parsers
         private List<Guid> _references;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
-        public void Parse(in ConfigFileReader source, out NamedDataTypeSet target, out List<Guid> references)
+        public void Parse(in ConfigFileReader source, out MetadataObject target, out List<Guid> references)
         {
             _target = new NamedDataTypeSet()
             {
@@ -38,6 +38,10 @@ namespace DaJet.Metadata.Parsers
             _converter = null;
             _references = null;
             _typeParser = null;
+        }
+        public void Parse(in ConfigFileReader source, out MetadataObject target, out Dictionary<MetadataProperty, List<Guid>> references)
+        {
+            throw new NotImplementedException();
         }
         private void ConfigureConverter()
         {

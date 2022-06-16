@@ -15,6 +15,8 @@ namespace DaJet.Metadata.Core
         private const string RU_CHARACTERISTIC = "ПланВидовХарактеристик";
         private const string RU_INFORMATION_REGISTER = "РегистрСведений";
         private const string RU_ACCUMULATION_REGISTER = "РегистрНакопления";
+        private const string RU_SHARED_PROPERTY = "ОбщийРеквизит";
+        private const string RU_NAMED_DATA_TYPE_SET = "ОпределяемыйТип";
 
         #endregion
 
@@ -29,6 +31,8 @@ namespace DaJet.Metadata.Core
         private const string EN_CHARACTERISTIC = "ChartOfCharacteristicTypes";
         private const string EN_INFORMATION_REGISTER = "InformationRegister";
         private const string EN_ACCUMULATION_REGISTER = "AccumulationRegister";
+        private const string EN_SHARED_PROPERTY = "SharedProperty";
+        private const string EN_NAMED_DATA_TYPE_SET = "NamedDataTypeSet";
 
         #endregion
 
@@ -70,6 +74,9 @@ namespace DaJet.Metadata.Core
             if (name == RU_CONSTANT) return Constant;
             if (name == RU_SUBSYSTEM) return Subsystem;
 
+            if (name == RU_SHARED_PROPERTY) return SharedProperty;
+            if (name == RU_NAMED_DATA_TYPE_SET) return NamedDataTypeSet;
+
             return Guid.Empty;
         }
         public static Guid ResolveNameEn(in string name)
@@ -85,6 +92,9 @@ namespace DaJet.Metadata.Core
 
             if (name == EN_CONSTANT) return Constant;
             if (name == EN_SUBSYSTEM) return Subsystem;
+
+            if (name == EN_SHARED_PROPERTY) return SharedProperty;
+            if (name == EN_NAMED_DATA_TYPE_SET) return NamedDataTypeSet;
 
             return Guid.Empty;
         }
@@ -114,6 +124,9 @@ namespace DaJet.Metadata.Core
             if (uuid == Constant) return RU_CONSTANT;
             if (uuid == Subsystem) return RU_SUBSYSTEM;
 
+            if (uuid == SharedProperty) return RU_SHARED_PROPERTY;
+            if (uuid == NamedDataTypeSet) return RU_NAMED_DATA_TYPE_SET;
+
             return string.Empty;
         }
         public static string ResolveNameEn(Guid uuid)
@@ -129,6 +142,9 @@ namespace DaJet.Metadata.Core
 
             if (uuid == Constant) return EN_CONSTANT;
             if (uuid == Subsystem) return EN_SUBSYSTEM;
+
+            if (uuid == SharedProperty) return EN_SHARED_PROPERTY;
+            if (uuid == NamedDataTypeSet) return EN_NAMED_DATA_TYPE_SET;
 
             return string.Empty;
         }

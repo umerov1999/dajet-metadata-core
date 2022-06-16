@@ -14,18 +14,33 @@ namespace DaJet.Metadata.Core
 
         private readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new()
         {
+            { MetadataTypes.SharedProperty, new SharedPropertyParser() },
+            { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser() }, // since 1C:Enterprise 8.3.3 version
             { MetadataTypes.InformationRegister, new InformationRegisterParser() }
         };
-        private readonly SharedPropertyParser _sharedPropertyParser = new();
-        private readonly NamedDataTypeSetParser _namedDataTypeSetParser = new();
 
+        // Корневой файл конфигурации
         private Guid _root = Guid.Empty;
-        private ConcurrentDictionary<Guid, ReferenceInfo> _references;
-        private ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names;
-        private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
         
-        private DbNameCache _data;
+        // Общий тип метаданных + тип объекта метаданных + подробное описание объекта метаданных
+        // Например, Справочник.Номенклатура
+        private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
+
+        // UUID типа данных "Ссылка", например, "СправочникСсылка.Номенклатура" + структура дополнительной информации
+        private ConcurrentDictionary<Guid, ReferenceInfo> _references;
+
+        // Общий тип метаданных + имя объекта метаданных + тип объекта метаданных
+        // Коллекция используется для поиска объекта метаданных по его полному имени
+        // Например, Справочник.Номенклатура = UUID объекта метаданных
+        // Далее выполняется поиск подробного описания объекта метаданных в коллекции _cache
+        private ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names;
+
+        // Код типа объекта метаданных + тип объекта метаданных, например, "Справочник.Номенклатура"
         private Dictionary<int, Guid> _codes;
+
+        // Идентификаторы объектов СУБД для объектов метаданных,
+        // в том числе их реквизитов и вспомогательных таблиц СУБД
+        private DbNameCache _data;
 
         internal InfoBaseCache(DatabaseProvider provider, in string connectionString)
         {
@@ -245,55 +260,52 @@ namespace DaJet.Metadata.Core
 
         internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
         {
+            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
+            {
+                throw new InvalidOperationException($"Unsupported metadata type {{{type}}}:{{{uuid}}}");
+            }
+
             if (type == MetadataTypes.SharedProperty)
             {
-                GetSharedProperty(uuid, out metadata);
+                GetSharedProperty(uuid, in parser, out metadata);
             }
             else if (type == MetadataTypes.NamedDataTypeSet)
             {
-                // since 1C:Enterprise 8.3.3 version
-                GetNamedDataTypeSet(uuid, out metadata);
+                GetNamedDataTypeSet(uuid, in parser, out metadata);
             }
             else
             {
-                GetApplicationObject(type, uuid, out metadata);
+                GetApplicationObject(uuid, in parser, out metadata);
             }
         }
-        private void GetSharedProperty(Guid uuid, out MetadataObject metadata)
+        private void GetSharedProperty(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
             List<Guid> references;
-            SharedProperty target;
-
+            
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
             {
-                _sharedPropertyParser.Parse(in reader, out target, out references);
+                parser.Parse(in reader, out metadata, out references);
             }
+
+            SharedProperty target = metadata as SharedProperty;
 
             Configurator.ConfigureReferenceTypes(this, target.PropertyType, in references);
-
-            metadata = target;
         }
-        private void GetNamedDataTypeSet(Guid uuid, out MetadataObject metadata)
+        private void GetNamedDataTypeSet(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
             List<Guid> references;
-            NamedDataTypeSet target;
-
+            
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
             {
-                _namedDataTypeSetParser.Parse(in reader, out target, out references);
+                parser.Parse(in reader, out metadata, out references);
             }
+
+            NamedDataTypeSet target = metadata as NamedDataTypeSet;
 
             Configurator.ConfigureReferenceTypes(this, target.DataTypeSet, in references);
-
-            metadata = target;
         }
-        private void GetApplicationObject(Guid type, Guid uuid, out MetadataObject metadata)
+        private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
-            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
-            {
-                throw new InvalidOperationException(); // this should not happen
-            }
-
             Dictionary<MetadataProperty, List<Guid>> references;
 
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))

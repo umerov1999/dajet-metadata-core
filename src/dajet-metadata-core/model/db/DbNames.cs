@@ -3,6 +3,13 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
+    ///<summary>
+    ///Идентификатор объекта СУБД:
+    ///<br>Uuid - UUID объекта метаданных, в том числе реквизита или вспомогательной таблицы СУБД</br>
+    ///<br>Code - Уникальный числовой код объекта СУБД</br>
+    ///<br>Name - Буквенный идентификатор объекта СУБД, чаще всего это префикс его имени</br>
+    ///<br>Children - идентификаторы <see cref="DbName"/> дочерних объектов СУБД, например, VT + LineNo или Reference + ReferenceChngR</br>
+    ///</summary>
     public readonly struct DbName
     {
         internal DbName(Guid uuid, int code, string name)
@@ -20,6 +27,9 @@ namespace DaJet.Metadata.Model
             return $"{Name} {{{Code}:{Uuid}}}";
         }
     }
+    /// <summary>
+    /// Коллекция идентификаторов <see cref="DbName"/> объектов СУБД для объектов метаданных
+    /// </summary>
     public sealed class DbNameCache
     {
         private readonly Dictionary<Guid, DbName> _cache = new();

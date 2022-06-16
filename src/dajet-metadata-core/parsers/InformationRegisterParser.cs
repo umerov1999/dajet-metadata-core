@@ -14,6 +14,10 @@ namespace DaJet.Metadata.Parsers
         private InformationRegister _target;
         private ConfigFileConverter _converter;
         private Dictionary<MetadataProperty, List<Guid>> _references;
+        public void Parse(in ConfigFileReader source, out MetadataObject target, out List<Guid> references)
+        {
+            throw new NotImplementedException();
+        }
         public void Parse(in ConfigFileReader reader, out MetadataObject target, out Dictionary<MetadataProperty, List<Guid>> references)
         {
             ConfigureConverter();
@@ -74,7 +78,6 @@ namespace DaJet.Metadata.Parsers
             _converter[4] += PropertyCollection; // измерения
             _converter[7] += PropertyCollection; // реквизиты
         }
-        
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (source.Token == TokenType.StartObject)
