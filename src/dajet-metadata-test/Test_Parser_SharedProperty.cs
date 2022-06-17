@@ -26,7 +26,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "ОбщийРеквизит.ОбщийРеквизит1";
+            string metadataName = "ОбщийРеквизит.ОбщийРеквизит2";
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 

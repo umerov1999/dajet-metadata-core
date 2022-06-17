@@ -70,6 +70,10 @@ namespace DaJet.Metadata.Parsers
                 _converter[1][1] += Uuid; // Идентификатор ссылочного типа данных
                 _converter[1][3][2] += Name; // Имя объекта конфигурации
             }
+            else if (type == MetadataTypes.SharedProperty)
+            {
+                _converter[1][1][1][1][2] += Name; // Имя объекта конфигурации
+            }
         }
         private void Uuid(in ConfigFileReader source, in CancelEventArgs args)
         {

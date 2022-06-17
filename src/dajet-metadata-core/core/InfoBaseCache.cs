@@ -88,7 +88,7 @@ namespace DaJet.Metadata.Core
         {
             Guid type = cache.Key;
 
-            if (type == MetadataTypes.Constant || type == MetadataTypes.SharedProperty)
+            if (type == MetadataTypes.Constant)
             {
                 return;
             }
@@ -98,6 +98,7 @@ namespace DaJet.Metadata.Core
                 type == MetadataTypes.Enumeration ||
                 type == MetadataTypes.Publication ||
                 type == MetadataTypes.Characteristic ||
+                type == MetadataTypes.SharedProperty ||
                 type == MetadataTypes.NamedDataTypeSet ||
                 type == MetadataTypes.InformationRegister ||
                 type == MetadataTypes.AccumulationRegister))
