@@ -14,9 +14,15 @@ namespace DaJet.Metadata.Core
 
         private readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new()
         {
+            { MetadataTypes.Catalog, null },
+            { MetadataTypes.Document, null },
+            { MetadataTypes.Enumeration, null },
+            { MetadataTypes.Publication, null },
+            { MetadataTypes.Characteristic, null },
+            { MetadataTypes.InformationRegister, new InformationRegisterParser() },
+            { MetadataTypes.AccumulationRegister, null },
             { MetadataTypes.SharedProperty, new SharedPropertyParser() },
-            { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser() }, // since 1C:Enterprise 8.3.3 version
-            { MetadataTypes.InformationRegister, new InformationRegisterParser() }
+            { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser() } // since 1C:Enterprise 8.3.3 version
         };
 
         // Корневой файл конфигурации
@@ -263,7 +269,12 @@ namespace DaJet.Metadata.Core
         {
             if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
             {
-                throw new InvalidOperationException($"Unsupported metadata type {{{type}}}:{{{uuid}}}");
+                throw new InvalidOperationException($"Unsupported metadata type {{{type}}}");
+            }
+            else if (parser == null)
+            {
+                string metadataType = MetadataTypes.ResolveName(type);
+                throw new InvalidOperationException($"Metadata type parser is under development \"{metadataType}\"");
             }
 
             if (type == MetadataTypes.SharedProperty)

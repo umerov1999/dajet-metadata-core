@@ -5,7 +5,7 @@ using System;
 
 namespace DaJet.Metadata.Test
 {
-    [TestClass] public class Test_Parser_InformationRegister
+    [TestClass] public class Test_Parser_Catalog
     {
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
@@ -26,7 +26,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "РегистрСведений.ТестовыйРегистрСведений";
+            string metadataName = "Справочник.ПростойСправочник";
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 
@@ -36,16 +36,14 @@ namespace DaJet.Metadata.Test
             }
             else
             {
-                ShowInformationRegister((InformationRegister)@object);
+                ShowInformationRegister((Catalog)@object);
             }
         }
-        private void ShowInformationRegister(InformationRegister register)
+        private void ShowInformationRegister(Catalog register)
         {
             Console.WriteLine($"Uuid: {register.Uuid}");
             Console.WriteLine($"Name: {register.Name}");
             Console.WriteLine($"Alias: {register.Alias}");
-            Console.WriteLine($"Periodicity: {register.Periodicity}");
-            Console.WriteLine($"UseRecorder: {register.UseRecorder}");
             
             Console.WriteLine("Properties:");
 
