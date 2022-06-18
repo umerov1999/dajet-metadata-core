@@ -1,15 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class Catalog : ApplicationObject, IReferenceCode, IDescription, IReferenceHierarchy, IPredefinedValues
+    public sealed class Catalog : ApplicationObject,
+        IReferenceCode, IDescription, IReferenceHierarchy, IPredefinedValues, IAggregate
     {
-        public int Owners { get; set; }
         public int CodeLength { get; set; } = 9;
         public CodeType CodeType { get; set; } = CodeType.String;
         public int DescriptionLength { get; set; } = 25;
         public bool IsHierarchical { get; set; } = false;
         public HierarchyType HierarchyType { get; set; } = HierarchyType.Groups;
+        public List<Guid> Owners { get; set; } = new List<Guid>();
+        public List<TablePart> TableParts { get; set; } = new List<TablePart>();
         public List<PredefinedValue> PredefinedValues { get; set; } = new List<PredefinedValue>();
     }
     

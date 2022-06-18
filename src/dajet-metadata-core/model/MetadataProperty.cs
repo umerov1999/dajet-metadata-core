@@ -12,7 +12,7 @@ namespace DaJet.Metadata.Model
         public List<DatabaseField> Fields { get; set; } = new List<DatabaseField>();
         ///<summary>Логический смысл свойства. Подробнее смотри перечисление <see cref="PropertyPurpose"/>.</summary>
         public PropertyPurpose Purpose { get; set; } = PropertyPurpose.Property;
-        ///<summary>Описание типов данных <see cref="DataTypeInfo"/>, которые могут использоваться для значений свойства.</summary>
+        ///<summary>Описание типов данных <see cref="DataTypeSet"/>, которые могут использоваться для значений свойства.</summary>
         public DataTypeSet PropertyType { get; set; } = new DataTypeSet();
         /// <summary>Вариант использования реквизита для групп и элементов</summary>
         public PropertyUsage PropertyUsage { get; set; } = PropertyUsage.Item;

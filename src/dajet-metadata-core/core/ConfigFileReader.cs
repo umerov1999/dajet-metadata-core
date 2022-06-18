@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Model;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Npgsql;
 using System;
 using System.Buffers;
@@ -62,6 +61,7 @@ namespace DaJet.Metadata.Core
         #endregion
 
         public string FileName { get { return _fileName; } }
+        public StreamReader Stream { get { return _stream; } }
         public string ConnectionString { get { return _connectionString; } }
         public DatabaseProvider DatabaseProvider { get { return _provider; } }
 
@@ -388,11 +388,6 @@ namespace DaJet.Metadata.Core
 
         public bool Read()
         {
-            //if (_char == char.MinValue)
-            //{
-            //    return false;
-            //}
-
             if (_stream.EndOfStream)
             {
                 return false;
@@ -509,7 +504,8 @@ namespace DaJet.Metadata.Core
                 if (next == '}')
                 {
                     _path[_level]++;
-                    return; // ReadEndFileOrObject()
+                    _token = TokenType.Value;
+                    return;
                 }
 
                 if (next == ',')

@@ -14,16 +14,18 @@ namespace DaJet.Metadata.Core
 
         private readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new()
         {
-            { MetadataTypes.Catalog, null },
+            { MetadataTypes.Catalog, new CatalogParser() },
             { MetadataTypes.Document, null },
             { MetadataTypes.Enumeration, null },
             { MetadataTypes.Publication, null },
-            { MetadataTypes.Characteristic, null },
+            { MetadataTypes.Characteristic, new CharacteristicParser() },
             { MetadataTypes.InformationRegister, new InformationRegisterParser() },
             { MetadataTypes.AccumulationRegister, null },
             { MetadataTypes.SharedProperty, new SharedPropertyParser() },
             { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser() } // since 1C:Enterprise 8.3.3 version
         };
+
+        #region "PRIVATE CACHE VALUES"
 
         // Корневой файл конфигурации
         private Guid _root = Guid.Empty;
@@ -47,6 +49,8 @@ namespace DaJet.Metadata.Core
         // Идентификаторы объектов СУБД для объектов метаданных,
         // в том числе их реквизитов и вспомогательных таблиц СУБД
         private DbNameCache _data;
+
+        #endregion
 
         internal InfoBaseCache(DatabaseProvider provider, in string connectionString)
         {
@@ -325,13 +329,19 @@ namespace DaJet.Metadata.Core
                 parser.Parse(in reader, out metadata, out references);
             }
 
+            Configurator.ConfigureSystemProperties(this, in metadata);
+
             if (references != null && references.Count > 0)
             {
                 Configurator.ConfigureMetadataProperties(this, in metadata, in references);
             }
 
-            Configurator.ConfigureSystemProperties(this, in metadata);
             Configurator.ConfigureSharedProperties(this, in metadata);
+
+            if (metadata is IPredefinedValues)
+            {
+                Configurator.ConfigurePredefinedValues(this, in metadata);
+            }
         }
     }
 }

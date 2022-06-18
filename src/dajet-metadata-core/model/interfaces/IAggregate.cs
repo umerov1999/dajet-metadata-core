@@ -2,9 +2,8 @@
 
 namespace DaJet.Metadata.Model
 {
-    public interface IAggregate // only reference types can be aggregates
+    public interface IAggregate
     {
-        ApplicationObject Owner { get; set; }
-        List<ApplicationObject> Elements { get; set; }
+        List<TablePart> TableParts { get; set; }
     }
 }

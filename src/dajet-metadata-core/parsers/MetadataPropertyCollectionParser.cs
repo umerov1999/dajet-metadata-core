@@ -10,14 +10,19 @@ namespace DaJet.Metadata.Parsers
     {
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
+        private readonly MetadataObject _owner;
 
-        private Guid _type; // тип коллекции свойств
         private int _count; // количество свойств
         private PropertyPurpose _purpose;
         private MetadataProperty _property;
         private List<MetadataProperty> _target;
         private Dictionary<MetadataProperty, List<Guid>> _references;
         private ConfigFileConverter _converter;
+        public MetadataPropertyCollectionParser() { }
+        public MetadataPropertyCollectionParser(MetadataObject owner)
+        {
+            _owner = owner;
+        }
         public void Parse(in ConfigFileReader source, out List<MetadataProperty> target, out Dictionary<MetadataProperty, List<Guid>> references)
         {
             ConfigureCollectionConverter(in source);
@@ -53,12 +58,12 @@ namespace DaJet.Metadata.Parsers
             _converter = _converter.Path(source.Level - 1, source.Path);
 
             // Необходимо прекратить чтение коллекции,
-            // чтобы позволить другим парсерам выполнить свою работу,
+            // чтобы позволить другим парсерам выполнить свою работу
             // по чтению потока байт source (данный парсер является вложенным)
             _converter += Cancel;
 
             // Свойства типизированной коллекции
-            _converter[0] += Uuid; // идентификатор (параметр типа коллекции - тип данных элементов коллекции)
+            _converter[0] += Uuid; // идентификатор типа коллекции
             _converter[1] += Count; // количество элементов в коллекции
 
             // Объекты элементов коллекции, в зависимости от значения _converter[1],
@@ -73,22 +78,20 @@ namespace DaJet.Metadata.Parsers
         }
         private void Uuid(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _type = source.GetUuid();
-            ConfigurePropertyPurpose();
-        }
-        private void ConfigurePropertyPurpose()
-        {
-            if (_type == PropertyTypes.InformationRegister_Measure)
+            // тип коллекции свойств
+            Guid type = source.GetUuid();
+
+            if (type == SystemUuid.InformationRegister_Measure)
             {
                 _purpose = PropertyPurpose.Measure;
             }
-            else if (_type == PropertyTypes.InformationRegister_Property)
-            {
-                _purpose = PropertyPurpose.Property;
-            }
-            else if (_type == PropertyTypes.InformationRegister_Dimension)
+            else if (type == SystemUuid.InformationRegister_Dimension)
             {
                 _purpose = PropertyPurpose.Dimension;
+            }
+            else
+            {
+                _purpose = PropertyPurpose.Property;
             }
         }
         private void Count(in ConfigFileReader source, in CancelEventArgs args)
@@ -124,14 +127,15 @@ namespace DaJet.Metadata.Parsers
                     Purpose = _purpose
                 };
 
-                // TODO: _converter[0][3] += PropertyUsage; !!! see _type field
-                // Если это иерархический тип объекта метаданных (Справочник или ПланВидовХарактеристик),
-                // тогда читаем настройку использования свойства для групп или элементов
-
                 _converter[0][1][1][1][1][2] += PropertyUuid;
                 _converter[0][1][1][1][2] += PropertyName;
                 _converter[0][1][1][1][3][2] += PropertyAlias;
                 _converter[0][1][1][2] += PropertyType;
+
+                if (_owner is not null && (_owner is Catalog || _owner is Characteristic))
+                {
+                    _converter[0][3] += PropertyUsage;
+                }
             }
 
             // завершение чтения объекта свойства
@@ -164,44 +168,13 @@ namespace DaJet.Metadata.Parsers
 
                 if (references != null && references.Count > 0)
                 {
-                    _references.Add(_property, references);
+                    _references.Add(_property, references); //TODO: store in PropertyType !?
                 }
             }
         }
-
-        //        int propertiesCount = properties.GetInt32(new int[] { 1 }); // количество реквизитов
-        //        if (propertiesCount == 0) return;
-
-        //        int propertyOffset = 2;
-        //        for (int p = 0; p < propertiesCount; p++)
-        //        {
-        //            // P.0.1.1.1.1.2 - property uuid
-        //            Guid propertyUuid = properties.GetUuid(new int[] { p + propertyOffset, 0, 1, 1, 1, 1, 2 });
-        //            // P.0.1.1.1.2 - property name
-        //            string propertyName = properties.GetString(new int[] { p + propertyOffset, 0, 1, 1, 1, 2 });
-        //            // P.0.1.1.1.3 - property alias descriptor
-        //            string propertyAlias = string.Empty;
-        //            ConfigObject aliasDescriptor = properties.GetObject(new int[] { p + propertyOffset, 0, 1, 1, 1, 3 });
-        //            if (aliasDescriptor.Values.Count == 3)
-        //            {
-        //                // P.0.1.1.1.3.2 - property alias
-        //                propertyAlias = properties.GetString(new int[] { p + propertyOffset, 0, 1, 1, 1, 3, 2 });
-        //            }
-        //            // P.0.1.1.2 - property types
-        //            ConfigObject propertyTypes = properties.GetObject(new int[] { p + propertyOffset, 0, 1, 1, 2 });
-        //            // P.0.1.1.2.0 = "Pattern"
-
-        //            // TODO !!! DataTypeSet typeInfo = (DataTypeInfo)GetConverter<DataTypeInfo>().Convert(propertyTypes);
-        //            DataTypeSet typeInfo = new DataTypeSet();
-
-        //            // P.0.3 - property usage for catalogs and characteristics
-        //            int propertyUsage = -1;
-        //            if (metaObject is Catalog || metaObject is Characteristic)
-        //            {
-        //                propertyUsage = properties.GetInt32(new int[] { p + propertyOffset, 0, 3 });
-        //            }
-
-        //            ConfigureProperty(metaObject, purpose, propertyUuid, propertyName, propertyAlias, typeInfo, propertyUsage);
-        //        }
+        private void PropertyUsage(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _property.PropertyUsage = (PropertyUsage)source.GetInt32();
+        }
     }
 }
