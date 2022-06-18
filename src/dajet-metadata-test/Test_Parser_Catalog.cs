@@ -26,7 +26,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "Справочник.СправочникПредопределённые"; // ТестовыйСправочник
+            string metadataName = "Справочник.ПростойСправочник"; //"СправочникПредопределённые"; // ТестовыйСправочник
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 
@@ -38,6 +38,9 @@ namespace DaJet.Metadata.Test
             {
                 ShowMetadataObject((Catalog)@object);
             }
+
+            DbName entry = service.GetChangeTableName(@object);
+            Console.WriteLine($"_{entry.Name}{entry.Code}");
         }
         private void ShowMetadataObject(Catalog @object)
         {

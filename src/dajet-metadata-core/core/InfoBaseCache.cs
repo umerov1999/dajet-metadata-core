@@ -322,7 +322,12 @@ namespace DaJet.Metadata.Core
         }
         private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
+            //TODO: store reference types in DataTypeSet !?
             Dictionary<MetadataProperty, List<Guid>> references;
+
+            //TODO: create metadata instance here and initialize system properties first ?
+            // otherwise system properties are added to the end - not convinient from the JDTO serialization point of view ...
+            // another way: inserting system properties into collection is not good for performance ...
 
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
             {
@@ -338,10 +343,71 @@ namespace DaJet.Metadata.Core
 
             Configurator.ConfigureSharedProperties(this, in metadata);
 
-            if (metadata is IPredefinedValues)
+            if (metadata is ApplicationObject owner && metadata is IAggregate)
             {
-                Configurator.ConfigurePredefinedValues(this, in metadata);
+                Configurator.ConfigureTableParts(this, in owner);
             }
+
+            //TODO: configure database field names - lookup DbNameCache (_data)
+
+            if (metadata is IPredefinedValues) //TODO: option to load predefined values
+            {
+                try
+                {
+                    Configurator.ConfigurePredefinedValues(this, in metadata);
+                }
+                catch (Exception error)
+                {
+                    if (error.Message == "Zero length file")
+                    {
+                        // Metadata object has no predefined values file in Config table
+                    }
+                }
+            }
+        }
+
+        internal DbName GetDbName(Guid uuid)
+        {
+            if (!_data.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            return entry;
+        }
+        internal DbName GetLineNo(Guid uuid)
+        {
+            if (!_data.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.LineNo)
+                {
+                    return child;
+                }
+            }
+
+            throw new InvalidOperationException(nameof(GetLineNo));
+        }
+        internal DbName GetChngR(Guid uuid)
+        {
+            if (!_data.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name.EndsWith(MetadataTokens.ChngR))
+                {
+                    return child;
+                }
+            }
+
+            throw new InvalidOperationException(nameof(GetChngR));
         }
     }
 }

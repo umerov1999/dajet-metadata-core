@@ -79,5 +79,10 @@ namespace DaJet.Metadata.Core
 
             _cache.GetMetadataObject(type, uuid, out metadata);
         }
+
+        public DbName GetChangeTableName(MetadataObject metadata)
+        {
+            return _cache.GetChngR(metadata.Uuid);
+        }
     }
 }

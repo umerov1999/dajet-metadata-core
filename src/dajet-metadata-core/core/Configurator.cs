@@ -8,9 +8,33 @@ namespace DaJet.Metadata.Core
     {
         internal static void ConfigureSystemProperties(in InfoBaseCache cache, in MetadataObject metadata)
         {
-            if (metadata is InformationRegister register)
+            if (metadata is Catalog catalog)
             {
-                ConfigureInformationRegister(in register, cache.DatabaseProvider);
+                ConfigureCatalog(in catalog);
+            }
+            else if (metadata is Document document)
+            {
+                ConfigureDocument(in document);
+            }
+            else if (metadata is Enumeration enumeration)
+            {
+                ConfigureEnumeration(in enumeration);
+            }
+            else if (metadata is Publication publication)
+            {
+                ConfigurePublication(in publication);
+            }
+            else if (metadata is Characteristic characteristic)
+            {
+                ConfigureCharacteristic(in characteristic);
+            }
+            else if (metadata is InformationRegister register1)
+            {
+                ConfigureInformationRegister(in register1);
+            }
+            else if (metadata is AccumulationRegister register2)
+            {
+                ConfigureAccumulationRegister(in register2);
             }
         }
         internal static void ConfigureSharedProperties(in InfoBaseCache cache, in MetadataObject metadata)
@@ -49,7 +73,8 @@ namespace DaJet.Metadata.Core
             {
                 if (references.TryGetValue(property, out List<Guid> referenceTypes))
                 {
-                    Configurator.ConfigureReferenceTypes(in cache, property.PropertyType, in referenceTypes);
+                    //TODO: store reference types in DataTypeSet !?
+                    ConfigureReferenceTypes(in cache, property.PropertyType, in referenceTypes);
                 }
             }
         }
@@ -156,15 +181,497 @@ namespace DaJet.Metadata.Core
 
             return count;
         }
-        
+
+        #region "TABLE PARTS"
+
+        internal static void ConfigureTableParts(in InfoBaseCache cache, in ApplicationObject owner)
+        {
+            if (owner is not IAggregate aggregate)
+            {
+                throw new InvalidOperationException($"Metadata object \"{owner.Name}\" does not implement IAggregate interface.");
+            }
+
+            foreach (TablePart tablePart in aggregate.TableParts)
+            {
+                tablePart.Owner = owner;
+                ConfigurePropertyСсылка(in owner, in tablePart);
+                ConfigurePropertyКлючСтроки(in tablePart);
+                ConfigurePropertyНомерСтроки(in cache, in tablePart);
+            }
+        }
+        private static void ConfigurePropertyСсылка(in ApplicationObject owner, in TablePart tablePart)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Ссылка",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = owner.TableName + "_IDRRef"
+            };
+            property.PropertyType.IsUuid = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary",
+                KeyOrdinal = 1,
+                IsPrimaryKey = true
+            });
+
+            tablePart.Properties.Add(property);
+        }
+        private static void ConfigurePropertyКлючСтроки(in TablePart tablePart)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "КлючСтроки",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_KeyField"
+            };
+            property.PropertyType.IsBinary = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 4,
+                TypeName = "binary",
+                KeyOrdinal = 2,
+                IsPrimaryKey = true
+            });
+
+            tablePart.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомерСтроки(in InfoBaseCache cache, in TablePart tablePart)
+        {
+            DbName entry = cache.GetLineNo(tablePart.Uuid);
+
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "НомерСтроки",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = CreateDbName(entry.Name, entry.Code)
+            };
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 5;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 5,
+                TypeName = "numeric"
+            });
+
+            tablePart.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "ENUMERATION"
+
+        private static void ConfigureEnumeration(in Enumeration enumeration)
+        {
+
+        }
+
+        #endregion
+
+        #region "CATALOG"
+
+        // Последовательность сериализации системных свойств в формат 1С JDTO
+        // 1. ЭтоГруппа        = IsFolder           - bool (invert)
+        // 2. Ссылка           = Ref                - uuid 
+        // 3. ПометкаУдаления  = DeletionMark       - bool
+        // 4. Владелец         = Owner              - { #type + #value }
+        // 5. Родитель         = Parent             - uuid
+        // 6. Код              = Code               - string | number
+        // 7. Наименование     = Description        - string
+        // 8. Предопределённый = PredefinedDataName - string
+
+        private static void ConfigureCatalog(in Catalog catalog)
+        {
+            if (catalog.IsHierarchical)
+            {
+                if (catalog.HierarchyType == HierarchyType.Groups)
+                {
+                    ConfigurePropertyЭтоГруппа(catalog);
+                }
+            }
+
+            ConfigurePropertyСсылка(catalog);
+            ConfigurePropertyПометкаУдаления(catalog);
+
+            if (catalog.Owners.Count > 0)
+            {
+                ConfigurePropertyВладелец(catalog);
+            }
+
+            if (catalog.IsHierarchical)
+            {
+                ConfigurePropertyРодитель(catalog);
+            }
+
+            if (catalog.CodeLength > 0)
+            {
+                ConfigurePropertyКод(catalog);
+            }
+
+            if (catalog.DescriptionLength > 0)
+            {
+                ConfigurePropertyНаименование(catalog);
+            }
+
+            ConfigurePropertyПредопределённый(catalog);
+
+            ConfigurePropertyВерсияДанных(catalog);
+        }
+        private static void ConfigurePropertyСсылка(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Ссылка",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_IDRRef"
+            };
+            property.PropertyType.IsUuid = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary",
+                KeyOrdinal = 1,
+                IsPrimaryKey = true
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyВерсияДанных(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "ВерсияДанных",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Version"
+            };
+            property.PropertyType.IsBinary = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 8,
+                TypeName = "timestamp"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyПометкаУдаления(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "ПометкаУдаления",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Marked"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyПредопределённый(in ApplicationObject metadata)
+        {
+            //FIXME: version 8.2 (?) used _IsMetadata property of boolean type instead of this one !!!
+            // Свойство "ИмяПредопределенныхДанных" доступно, начиная с версии 8.3.3
+
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Предопределённый",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_PredefinedID"
+            };
+            property.PropertyType.IsUuid = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyКод(in ApplicationObject metadata)
+        {
+            if (metadata is not IReferenceCode code)
+            {
+                throw new InvalidOperationException($"Metadata object \"{metadata.Name}\" does not implement IReferenceCode interface.");
+            }
+
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Код",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Code"
+            };
+
+            if (code.CodeType == CodeType.String)
+            {
+                property.PropertyType.CanBeString = true;
+                property.PropertyType.StringLength = code.CodeLength;
+
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = property.DbName,
+                    Length = code.CodeLength,
+                    TypeName = "nvarchar"
+                });
+            }
+            else
+            {
+                property.PropertyType.CanBeNumeric = true;
+                property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                property.PropertyType.NumericPrecision = code.CodeLength;
+
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = property.DbName,
+                    Precision = code.CodeLength,
+                    TypeName = "numeric"
+                });
+            }
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНаименование(in ApplicationObject metadata)
+        {
+            if (metadata is not IDescription description)
+            {
+                throw new InvalidOperationException($"Metadata object \"{metadata.Name}\" does not implement IDescription interface.");
+            }
+
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Наименование",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Description"
+            };
+            property.PropertyType.CanBeString = true;
+            property.PropertyType.StringLength = description.DescriptionLength;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = description.DescriptionLength,
+                TypeName = "nvarchar"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyРодитель(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Родитель",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_ParentIDRRef"
+            };
+            property.PropertyType.CanBeReference = true;
+            property.PropertyType.Reference = metadata.Uuid; // single reference type
+            
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 16,
+                TypeName = "binary"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyЭтоГруппа(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "ЭтоГруппа",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Folder"
+            };
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyВладелец(in Catalog catalog)
+        {
+            MetadataProperty property = new MetadataProperty
+            {
+                Name = "Владелец",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_OwnerID"
+            };
+            property.PropertyType.CanBeReference = true;
+
+            if (catalog.Owners.Count == 1) // Single type value
+            {
+                property.PropertyType.Reference = catalog.Owners[0]; // owner is always metadata object uuid
+                
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = "_OwnerIDRRef",
+                    Length = 16,
+                    TypeName = "binary"
+                });
+            }
+            else // Multiple type value
+            {
+                property.PropertyType.Reference = Guid.Empty;
+
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = "_OwnerID_TYPE",
+                    Length = 1,
+                    TypeName = "binary",
+                    Purpose = FieldPurpose.Discriminator
+                });
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = "_OwnerID_RTRef",
+                    Length = 4,
+                    TypeName = "binary",
+                    Purpose = FieldPurpose.TypeCode
+                });
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = "_OwnerID_RRRef",
+                    Length = 16,
+                    TypeName = "binary",
+                    Purpose = FieldPurpose.Object
+                });
+            }
+
+            catalog.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "CHARACTERISTIC"
+
+        private static void ConfigureCharacteristic(in Characteristic characteristic)
+        {
+            if (characteristic.IsHierarchical)
+            {
+                if (characteristic.HierarchyType == HierarchyType.Groups)
+                {
+                    ConfigurePropertyЭтоГруппа(characteristic);
+                }
+            }
+
+            ConfigurePropertyСсылка(characteristic);
+            ConfigurePropertyПометкаУдаления(characteristic);
+
+            if (characteristic.IsHierarchical)
+            {
+                ConfigurePropertyРодитель(characteristic);
+            }
+
+            if (characteristic.CodeLength > 0)
+            {
+                ConfigurePropertyКод(characteristic);
+            }
+
+            if (characteristic.DescriptionLength > 0)
+            {
+                ConfigurePropertyНаименование(characteristic);
+            }
+
+            ConfigurePropertyПредопределённый(characteristic);
+
+            ConfigurePropertyТипЗначения(in characteristic);
+
+            ConfigurePropertyВерсияДанных(characteristic);
+        }
+        private static void ConfigurePropertyТипЗначения(in Characteristic characteristic)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "ТипЗначения",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Type"
+            };
+            property.PropertyType.IsBinary = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = -1,
+                IsNullable = true,
+                TypeName = "varbinary"
+            });
+
+            characteristic.Properties.Add(property);
+        }
+
+        #endregion
+
+        #region "PUBLICATION"
+
+        private static void ConfigurePublication(in Publication publication)
+        {
+
+        }
+
+        #endregion
+
+        #region "DOCUMENT"
+
+        // Последовательность сериализации системных свойств в формат 1С JDTO
+        // 1. Ссылка          = Ref          - uuid
+        // 2. ПометкаУдаления = DeletionMark - bool
+        // 3. Дата            = Date         - DateTime
+        // 4. Номер           = Number       - string | number
+        // 5. Проведён        = Posted       - bool
+
+        private static void ConfigureDocument(in Document document)
+        {
+
+        }
+
+        #endregion
+
         #region "INFORMATION REGISTER"
 
-        // Последовательность сериализации системных свойств регистра в формат 1С JDTO
-        // 1. "Регистратор" = Recorder   - uuid
+        // Последовательность сериализации системных свойств в формат 1С JDTO
+        // 1. "Регистратор" = Recorder   - uuid { #type + #value }
         // 2. "Период"      = Period     - DateTime
         // 3. "ВидДвижения" = RecordType - string { "Receipt", "Expense" }
         // 4. "Активность"  = Active     - bool
-        private static void ConfigureInformationRegister(in InformationRegister register, DatabaseProvider provider)
+
+        private static void ConfigureInformationRegister(in InformationRegister register)
         {
             if (register == null)
             {
@@ -175,28 +682,28 @@ namespace DaJet.Metadata.Core
             {
                 // Описание типов свойства "Регистратор" конфигурируется после чтения метаданных документов:
                 // именно объект метаданных "Документ" содержит ссылки на свои регистры движения.
-                ConfigurePropertyРегистратор(register, provider);
+                ConfigurePropertyРегистратор(register);
             }
 
             if (register.Periodicity != RegisterPeriodicity.None)
             {
-                ConfigurePropertyПериод(register, provider);
+                ConfigurePropertyПериод(register);
             }
 
             if (register.UseRecorder)
             {
-                ConfigurePropertyАктивность(register, provider);
-                ConfigurePropertyНомерЗаписи(register, provider);
+                ConfigurePropertyАктивность(register);
+                ConfigurePropertyНомерЗаписи(register);
             }
         }
-        private static void ConfigurePropertyПериод(in ApplicationObject register, DatabaseProvider provider)
+        private static void ConfigurePropertyПериод(in ApplicationObject register)
         {
             MetadataProperty property = new()
             {
                 Name = "Период",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = (provider == DatabaseProvider.SQLServer ? "_Period" : "_period")
+                DbName = "_Period"
             };
             property.PropertyType.CanBeDateTime = true;
 
@@ -210,14 +717,14 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
-        private static void ConfigurePropertyНомерЗаписи(in ApplicationObject register, DatabaseProvider provider)
+        private static void ConfigurePropertyНомерЗаписи(in ApplicationObject register)
         {
             MetadataProperty property = new()
             {
                 Name = "НомерСтроки",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = (provider == DatabaseProvider.SQLServer ? "_LineNo" : "_lineno")
+                DbName = "_LineNo"
             };
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericPrecision = 9;
@@ -235,16 +742,15 @@ namespace DaJet.Metadata.Core
             
             register.Properties.Add(property);
         }
-        private static void ConfigurePropertyАктивность(in ApplicationObject register, DatabaseProvider provider)
+        private static void ConfigurePropertyАктивность(in ApplicationObject register)
         {
             MetadataProperty property = new MetadataProperty()
             {
                 Name = "Активность",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = (provider == DatabaseProvider.SQLServer ? "_Active" : "_active")
+                DbName = "_Active"
             };
-
             property.PropertyType.CanBeBoolean = true;
 
             property.Fields.Add(new DatabaseField()
@@ -256,21 +762,20 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
-        private static void ConfigurePropertyРегистратор(in ApplicationObject register, DatabaseProvider provider)
+        private static void ConfigurePropertyРегистратор(in ApplicationObject register)
         {
             MetadataProperty property = new MetadataProperty()
             {
                 Uuid = Guid.Empty,
                 Name = "Регистратор",
                 Purpose = PropertyPurpose.System,
-                DbName = (provider == DatabaseProvider.SQLServer ? "_Recorder" : "_recorder")
+                DbName = "_Recorder"
             };
-
             property.PropertyType.CanBeReference = true;
 
             property.Fields.Add(new DatabaseField()
             {
-                Name = (provider == DatabaseProvider.SQLServer ? "_RecorderRRef" : "_recorderrref"),
+                Name = "_RecorderRRef",
                 Length = 16,
                 TypeName = "binary",
                 IsPrimaryKey = true,
@@ -280,7 +785,6 @@ namespace DaJet.Metadata.Core
             register.Properties.Add(property); // TODO: register.Properties.Insert(0, property); ???
 
             //MetadataProperty property = register.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
-
             //if (property == null)
             //{
             //    // добавляем новое свойство
@@ -309,20 +813,16 @@ namespace DaJet.Metadata.Core
             //    register.Properties.Add(property);
             //    return;
             //}
-
             //// На всякий случай проверям повторное обращение одного и того же документа
             //if (property.PropertyType.ReferenceTypeUuid == document.Uuid) return;
-
             //// Проверям необходимость добавления поля для хранения кода типа документа
             //if (property.PropertyType.ReferenceTypeUuid == Guid.Empty) return;
-
             //// Изменяем назначение поля для хранения ссылки на документ, предварительно убеждаясь в его наличии
             //DatabaseField field = property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recorderrref").FirstOrDefault();
             //if (field != null)
             //{
             //    field.Purpose = FieldPurpose.Object;
             //}
-
             //// Добавляем поле для хранения кода типа документа, предварительно убеждаясь в его отсутствии
             //if (property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recordertref").FirstOrDefault() == null)
             //{
@@ -339,7 +839,6 @@ namespace DaJet.Metadata.Core
             //        Purpose = FieldPurpose.TypeCode
             //    });
             //}
-
             //// Устанавливаем признак множественного типа значения (составного типа данных)
             ////property.PropertyType.ReferenceTypeCode = 0; // multiple type value
             //property.PropertyType.ReferenceTypeUuid = Guid.Empty; // multiple type value
@@ -347,11 +846,20 @@ namespace DaJet.Metadata.Core
 
         #endregion
 
+        #region "ACCUMULATION REGISTER"
+
+        private static void ConfigureAccumulationRegister(in AccumulationRegister register)
+        {
+
+        }
+
+        #endregion
+
         #region "Predefined values (catalogs and characteristics)"
 
-        public static void ConfigurePredefinedValues(in InfoBaseCache cache, in MetadataObject metaObject)
+        public static void ConfigurePredefinedValues(in InfoBaseCache cache, in MetadataObject metadata)
         {
-            if (metaObject is not IPredefinedValues owner) return;
+            if (metadata is not IPredefinedValues owner) return;
 
             int predefinedValueUuid = 3;
             int predefinedIsFolder = 4;
@@ -359,16 +867,16 @@ namespace DaJet.Metadata.Core
             int predefinedValueCode = 7;
             int predefinedDescription = 8;
 
-            string fileName = metaObject.Uuid.ToString() + ".1c"; // файл с описанием предопределённых элементов
-            if (metaObject is Characteristic)
+            string fileName = metadata.Uuid.ToString() + ".1c"; // файл с описанием предопределённых элементов
+            if (metadata is Characteristic)
             {
-                fileName = metaObject.Uuid.ToString() + ".7";
+                fileName = metadata.Uuid.ToString() + ".7";
                 predefinedValueName = 5;
                 predefinedValueCode = 6;
                 predefinedDescription = 7;
             }
 
-            IReferenceCode codeInfo = (metaObject as IReferenceCode);
+            IReferenceCode codeInfo = (metadata as IReferenceCode);
 
             ConfigObject configObject;
 
@@ -421,7 +929,7 @@ namespace DaJet.Metadata.Core
                 {
                     ConfigObject children = predefinedValue.GetObject(new int[] { 10 }); // коллекция описаний дочерних предопределённых элементов
 
-                    ConfigurePredefinedValue(children, pv, metaObject);
+                    ConfigurePredefinedValue(children, pv, metadata);
                 }
             }
         }
@@ -472,6 +980,161 @@ namespace DaJet.Metadata.Core
 
                     ConfigurePredefinedValue(children, pv, owner);
                 }
+            }
+        }
+
+        #endregion
+
+        #region "DATABASE FIELD NAMES"
+
+        private static string CreateDbName(string token, int code)
+        {
+            return $"_{token}{code}";
+
+            //if (_provider == DatabaseProvider.SQLServer)
+            //{
+            //    return $"_{token}{code}";
+            //}
+            //
+            //return $"_{token}{code}".ToLowerInvariant();
+        }
+        public static void ConfigureDatabaseFields(in MetadataProperty property)
+        {
+            if (property.PropertyType.IsMultipleType)
+            {
+                ConfigureDatabaseFieldsForMultipleType(in property);
+            }
+            else
+            {
+                ConfigureDatabaseFieldsForSingleType(in property);
+            }
+        }
+        private static void ConfigureDatabaseFieldsForSingleType(in MetadataProperty property)
+        {
+            if (property.PropertyType.IsUuid)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName, "binary", 16)); // bytea
+            }
+            else if (property.PropertyType.IsBinary)
+            {
+                // is used only for system properties of system types
+                // TODO: log if it happens eventually
+            }
+            else if (property.PropertyType.IsValueStorage)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName, "varbinary", -1)); // bytea
+            }
+            else if (property.PropertyType.CanBeString)
+            {
+                if (property.PropertyType.StringKind == StringKind.Fixed)
+                {
+                    property.Fields.Add(new DatabaseField(property.DbName, "nchar", property.PropertyType.StringLength)); // mchar
+                }
+                else
+                {
+                    property.Fields.Add(new DatabaseField(property.DbName, "nvarchar", property.PropertyType.StringLength)); // mvarchar
+                }
+            }
+            else if (property.PropertyType.CanBeNumeric)
+            {
+                // length can be updated from database
+                property.Fields.Add(new DatabaseField(
+                    property.DbName,
+                    "numeric", 9,
+                    property.PropertyType.NumericPrecision,
+                    property.PropertyType.NumericScale));
+            }
+            else if (property.PropertyType.CanBeBoolean)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName, "binary", 1)); // boolean
+            }
+            else if (property.PropertyType.CanBeDateTime)
+            {
+                // length, precision and scale can be updated from database
+                property.Fields.Add(new DatabaseField(property.DbName, "datetime2", 6, 19, 0)); // "timestamp without time zone"
+            }
+            else if (property.PropertyType.CanBeReference)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName + MetadataTokens.RRef, "binary", 16)); // bytea
+            }
+        }
+        private static void ConfigureDatabaseFieldsForMultipleType(in MetadataProperty property)
+        {
+            property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.TYPE, "binary", 1)
+            {
+                Purpose = FieldPurpose.Discriminator
+            });
+
+            if (property.PropertyType.CanBeString)
+            {
+                if (property.PropertyType.StringKind == StringKind.Fixed)
+                {
+                    
+                    property.Fields.Add(new DatabaseField(
+                        property.DbName + "_" + MetadataTokens.S,
+                        "nchar",
+                        property.PropertyType.StringLength)
+                    {
+                        Purpose = FieldPurpose.String
+                    });
+                }
+                else
+                {
+                    
+                    property.Fields.Add(new DatabaseField(
+                        property.DbName + "_" + MetadataTokens.S,
+                        "nvarchar",
+                        property.PropertyType.StringLength)
+                    {
+                        Purpose = FieldPurpose.String
+                    });
+                }
+            }
+
+            if (property.PropertyType.CanBeNumeric)
+            {
+                // length can be updated from database
+                property.Fields.Add(new DatabaseField(
+                    property.DbName + "_" + MetadataTokens.N,
+                    "numeric", 9,
+                    property.PropertyType.NumericPrecision,
+                    property.PropertyType.NumericScale)
+                {
+                    Purpose = FieldPurpose.Numeric
+                });
+            }
+
+            if (property.PropertyType.CanBeBoolean)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.L, "binary", 1)
+                {
+                    Purpose = FieldPurpose.Boolean
+                });
+            }
+
+            if (property.PropertyType.CanBeDateTime)
+            {
+                // length, precision and scale can be updated from database
+                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.T, "datetime2", 6, 19, 0)
+                {
+                    Purpose = FieldPurpose.DateTime
+                });
+            }
+
+            if (property.PropertyType.CanBeReference)
+            {
+                if (property.PropertyType.Reference == Guid.Empty) // miltiple refrence type
+                {
+                    property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.RTRef, "binary", 4)
+                    {
+                        Purpose = FieldPurpose.TypeCode
+                    });
+                }
+                
+                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.RRRef, "binary", 16)
+                {
+                    Purpose = FieldPurpose.Object
+                });
             }
         }
 
