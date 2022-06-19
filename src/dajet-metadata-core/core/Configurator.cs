@@ -111,21 +111,29 @@ namespace DaJet.Metadata.Core
             }
             else
             {
-                target.CanBeReference = true; // multiple reference type
+                target.CanBeReference = true;
+                target.Reference = Guid.Empty;// multiple reference type
             }
         }
         private static int ResolveAndCountReferenceType(in InfoBaseCache cache, in DataTypeSet target, Guid reference)
         {
+            // DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
+            // Additional date types of references are not allowed in this case !
+
             if (cache.TryGetReferenceInfo(reference, out ReferenceInfo info))
             {
                 if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
                     (info.MetadataType == MetadataTypes.Characteristic && reference == info.CharacteristicUuid))
                 {
+                    // THINK: Pre-load NamedDataTypeSets and Characteristics !?
                     MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
 
-                    if (metadata is NamedDataTypeSet source)
+                    // DataTypeSet of NamedDataTypeSet or Characteristic are not allowed
+                    // to have references to another NamedDataTypeSets or Characteristics !
+
+                    if (metadata is NamedDataTypeSet namedSet)
                     {
-                        target.Apply(source.DataTypeSet);
+                        target.Apply(namedSet.DataTypeSet);
                     }
                     else if (metadata is Characteristic characteristic)
                     {
@@ -180,6 +188,11 @@ namespace DaJet.Metadata.Core
             }
 
             return count;
+        }
+
+        internal static void ConfigureDataTypeSetReferences(in InfoBaseCache cache, in DataTypeSet target)
+        {
+            //TODO: resolve references
         }
 
         #region "TABLE PARTS"
@@ -1000,6 +1013,8 @@ namespace DaJet.Metadata.Core
         }
         public static void ConfigureDatabaseFields(in MetadataProperty property)
         {
+            //TODO: find DbName in DbNameCache by property.Uuid (meta-uuid)
+
             if (property.PropertyType.IsMultipleType)
             {
                 ConfigureDatabaseFieldsForMultipleType(in property);

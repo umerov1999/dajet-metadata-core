@@ -14,12 +14,14 @@ namespace DaJet.Metadata.Test
         {
             // Предопределённые значения "Справочник.СправочникПредопределённые"
             //string fileName = "29f879f3-b889-4745-8dec-c3e18da8f84c.1c"; // dajet-metadata-ms
-            
-            string fileName = "21642324-2e5a-4fff-ad60-10249ec30090.1c"; // cerberus
+
+            //string fileName = "21642324-2e5a-4fff-ad60-10249ec30090.1c"; // cerberus Справочник.ВидыКонтрагентов
+
+            string fileName = "d0892bdd-6ff5-497d-9672-76c7ad049c73.2"; // cerberus РегистрНакопления.ЗаказыКлиентов
 
             using (ConfigFileReader reader = new(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
             {
-                using (StreamWriter stream = new StreamWriter("C:\\temp\\bbb_utf8.txt", false, Encoding.UTF8))
+                using (StreamWriter stream = new StreamWriter("C:\\temp\\РегистрНакопления.ЗаказыКлиентов.txt", false, Encoding.UTF8))
                 {
                     stream.Write(reader.Stream.ReadToEnd());
                 }
@@ -30,13 +32,15 @@ namespace DaJet.Metadata.Test
             // Предопределённые значения "Справочник.СправочникПредопределённые"
             //string fileName = "29f879f3-b889-4745-8dec-c3e18da8f84c.1c"; // dajet-metadata-ms
 
-            string fileName = "21642324-2e5a-4fff-ad60-10249ec30090.1c"; // cerberus
+            //string fileName = "21642324-2e5a-4fff-ad60-10249ec30090.1c"; // cerberus Справочник.ВидыКонтрагентов
+
+            string fileName = "d0892bdd-6ff5-497d-9672-76c7ad049c73.2"; // cerberus РегистрНакопления.ЗаказыКлиентов - модуль менеджера регистра
 
             using (ConfigFileReader reader = new(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
             {
                 ConfigObject configObject = new ConfigFileParser().Parse(reader);
 
-                new ConfigFileWriter().Write(configObject, "C:\\temp\\aaa.txt");
+                new ConfigFileWriter().Write(configObject, "C:\\temp\\РегистрНакопления.ЗаказыКлиентов.txt");
             }
         }
     }

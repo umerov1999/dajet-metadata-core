@@ -34,7 +34,8 @@ namespace DaJet.Metadata.Core
         // Например, Справочник.Номенклатура
         private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
 
-        // UUID типа данных "Ссылка", например, "СправочникСсылка.Номенклатура" + структура дополнительной информации
+        // UUID типа данных "Ссылка", например, "СправочникСсылка.Номенклатура",
+        // "Характеристика", "ОпределяемыйТип", "ЛюбаяСсылка" и т.п. + структура дополнительной информации
         private ConcurrentDictionary<Guid, ReferenceInfo> _references;
 
         // Общий тип метаданных + имя объекта метаданных + тип объекта метаданных
@@ -127,7 +128,7 @@ namespace DaJet.Metadata.Core
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
                 {
-                    ReferenceInfo reference = parser.Parse(in reader, type, out string name);
+                    ReferenceInfo info = parser.Parse(in reader, type, out string name);
 
                     if (string.IsNullOrEmpty(name))
                     {
@@ -145,13 +146,13 @@ namespace DaJet.Metadata.Core
                     }
 
                     // reference type uuid to metadata object mapping
-                    if (reference.ReferenceUuid != Guid.Empty)
+                    if (info.ReferenceUuid != Guid.Empty)
                     {
-                        if (reference.MetadataType == MetadataTypes.Characteristic)
+                        if (info.MetadataType == MetadataTypes.Characteristic)
                         {
-                            _ = _references.TryAdd(reference.CharacteristicUuid, reference);
+                            _ = _references.TryAdd(info.CharacteristicUuid, info);
                         }
-                        _ = _references.TryAdd(reference.ReferenceUuid, reference);
+                        _ = _references.TryAdd(info.ReferenceUuid, info);
                     }
                 }
             }
@@ -334,14 +335,17 @@ namespace DaJet.Metadata.Core
                 parser.Parse(in reader, out metadata, out references);
             }
 
+            // Shared properties are always in the bottom.
+            // They have default property purpose - Property.
+            Configurator.ConfigureSharedProperties(this, in metadata);
+
             Configurator.ConfigureSystemProperties(this, in metadata);
 
             if (references != null && references.Count > 0)
             {
+                // TODO: remove this call - store reference types in DataTypeSet !!!
                 Configurator.ConfigureMetadataProperties(this, in metadata, in references);
             }
-
-            Configurator.ConfigureSharedProperties(this, in metadata);
 
             if (metadata is ApplicationObject owner && metadata is IAggregate)
             {

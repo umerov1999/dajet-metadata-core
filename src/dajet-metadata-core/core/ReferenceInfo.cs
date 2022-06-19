@@ -9,7 +9,7 @@ namespace DaJet.Metadata.Core
     ///<br>ReferenceUuid - UUID типа данных "Ссылка", например, "СправочникСсылка.Номенклатура"</br>
     ///<br>CharacteristicUuid - UUID типа данных "Характеристика", например, "Характеристика.ВидыСубконтоХозрасчетные"</br>
     ///</summary>
-    public readonly struct ReferenceInfo
+    public readonly struct ReferenceInfo // TODO: rename to MetaInfo ? !!!
     {
         internal ReferenceInfo(Guid type, Guid metadata, Guid reference)
         {

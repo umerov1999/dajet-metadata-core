@@ -73,11 +73,17 @@ namespace DaJet.Metadata.Parsers
         }
         private void Owners(in ConfigFileReader source, in CancelEventArgs args)
         {
+            // 1.12.0 - UUID коллекции владельцев справочника ???
             // 1.12.1 - количество владельцев справочника
             // 1.12.N - описание владельцев
             // 1.12.N.2.1 - uuid'ы владельцев (file names)
 
-            int count = source.GetInt32();
+            int count = source.GetInt32(); // [1][12][1]
+
+            if (count == 0)
+            {
+                return; // THINK: добавить свойство "Владелец" ?
+            }
 
             int offset = 2; // начальный индекс N
 
@@ -88,6 +94,8 @@ namespace DaJet.Metadata.Parsers
         }
         private void OwnerUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
+            // TODO: find property Владелец и заполнить DataTypeSet ?
+            // Заранее, до вызова парсера, не известно есть ли свойство "Владелец"...
             _target.Owners.Add(source.GetUuid());
         }
         private void CodeType(in ConfigFileReader source, in CancelEventArgs args)

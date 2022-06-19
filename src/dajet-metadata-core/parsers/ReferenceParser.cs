@@ -4,11 +4,12 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
+    // TODO: rename to MetaInfoParser or MetaFileParser !!!
+    // THINK: move fast parsing to a new IMetadataObjectParser interface !?
     public sealed class ReferenceParser
     {
         private readonly ConfigFileParser _parser = new();
 
-        
         private string _name = string.Empty;
         private Guid _reference = Guid.Empty;
         private Guid _characteristic = Guid.Empty;
@@ -40,6 +41,9 @@ namespace DaJet.Metadata.Parsers
             {
                 _converter[1][3] += Uuid; // Идентификатор ссылочного типа данных
                 _converter[1][9][1][2] += Name; // Имя объекта конфигурации
+                // TODO: build lookup tables in the cache ???
+                // 1. Catalog - read owners [1][12] meta-uuid - do not forget to Cancel parsing =)
+                // 2. Document - read registers [1][24] meta-uuid  - do not forget to Cancel parsing =)
             }
             else if (type == MetadataTypes.InformationRegister)
             {
