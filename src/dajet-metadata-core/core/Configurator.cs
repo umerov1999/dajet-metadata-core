@@ -120,7 +120,7 @@ namespace DaJet.Metadata.Core
             // DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
             // Additional date types of references are not allowed in this case !
 
-            if (cache.TryGetReferenceInfo(reference, out ReferenceInfo info))
+            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
             {
                 if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
                     (info.MetadataType == MetadataTypes.Characteristic && reference == info.CharacteristicUuid))

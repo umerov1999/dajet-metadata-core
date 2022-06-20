@@ -7,36 +7,90 @@ using System.Threading.Tasks;
 
 namespace DaJet.Metadata.Core
 {
-    internal sealed class InfoBaseCache
+    public sealed class InfoBaseCache
     {
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
-
-        private readonly Dictionary<Guid, IMetadataObjectParser> _parsers = new()
-        {
-            { MetadataTypes.Catalog, new CatalogParser() },
-            { MetadataTypes.Document, null },
-            { MetadataTypes.Enumeration, null },
-            { MetadataTypes.Publication, null },
-            { MetadataTypes.Characteristic, new CharacteristicParser() },
-            { MetadataTypes.InformationRegister, new InformationRegisterParser() },
-            { MetadataTypes.AccumulationRegister, null },
-            { MetadataTypes.SharedProperty, new SharedPropertyParser() },
-            { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser() } // since 1C:Enterprise 8.3.3 version
-        };
+        private readonly Dictionary<Guid, IMetadataObjectParser> _parsers;
 
         #region "PRIVATE CACHE VALUES"
 
-        // Корневой файл конфигурации
+        ///<summary>Корневой файл конфигурации из файла "root" таблицы "Config"</summary>
         private Guid _root = Guid.Empty;
-        
-        // Общий тип метаданных + тип объекта метаданных + подробное описание объекта метаданных
-        // Например, Справочник.Номенклатура
-        private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
 
-        // UUID типа данных "Ссылка", например, "СправочникСсылка.Номенклатура",
-        // "Характеристика", "ОпределяемыйТип", "ЛюбаяСсылка" и т.п. + структура дополнительной информации
-        private ConcurrentDictionary<Guid, ReferenceInfo> _references;
+        ///<summary>
+        ///<b>Кэш объектов метаданных:</b>
+        ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
+        ///<br><b>Ключ 2:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///<br><b>Значение:</b> описание объекта метаданных и его кэшируемый экземпляр</br>
+        ///</summary>
+        private ConcurrentDictionary<Guid, Dictionary<Guid, MetadataEntry>> _cache;
+
+        ///<summary>
+        ///<br><b>Ключ:</b> UUID типа данных "Ссылка", например, "ОпределяемыйТип", "ЛюбаяСсылка",</br>
+        ///<br>"СправочникСсылка", "СправочникСсылка.Номенклатура"  и т.п. (общие и конкретные типы данных).</br>
+        ///<br></br>
+        ///<br><b>Значение:</b> UUID объекта метаданных. Для ссылок на общие типы данных - значение <see cref="MetadataTypes"/>.</br>
+        ///<br></br>
+        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, Guid> _references = new();
+
+        ///<summary>
+        ///<br><b>Ключ:</b> UUID типа данных "Характеристика" - исключительный случай для <see cref="_references"/>,</br>
+        ///<br>так как невозможно сопоставить одновременно общий тип, конкретный тип</br>
+        ///<br>и тип "Характеристика" (для последнего нет UUID).</br>
+        ///<br></br>
+        ///<br><b>Значение:</b> UUID объекта метаданных типа "ПланВидовХарактеристик".</br>
+        ///<br></br>
+        ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, Guid> _characteristics = new();
+
+        ///<summary>
+        ///<b>Коллекция подчинённых справочников и их владельцев:</b>
+        ///<br><b>Ключ:</b> UUID объекта метаданных <see cref="Catalog"/></br>
+        ///<br><b>Значение:</b> список UUID объектов метаданных <see cref="Catalog"/> - владельцев справочника</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, List<Guid>> _owners = new();
+
+        ///<summary>
+        ///<b>Коллекция документов и их регистров движения:</b>
+        ///<br><b>Ключ:</b> UUID объекта метаданных <see cref="Document"/> - регистратора</br>
+        ///<br><b>Значение:</b> список регистров движения <see cref="InformationRegister"/> или <see cref="AccumulationRegister"/></br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, List<Guid>> _registers = new();
+
+        public void AddReference(Guid reference, Guid metadata)
+        {
+            _ = _references.TryAdd(reference, metadata);
+        }
+        public void AddCharacteristic(Guid characteristic, Guid metadata)
+        {
+            _ = _characteristics.TryAdd(characteristic, metadata);
+        }
+        public void AddCatalogOwner(Guid catalog, Guid owner)
+        {
+            if (_owners.TryGetValue(catalog, out List<Guid> owners))
+            {
+                owners.Add(owner);
+            }
+            else
+            {
+                _owners.TryAdd(catalog, new List<Guid>() { owner });
+            }
+        }
+        public void AddDocumentRegister(Guid document, Guid register)
+        {
+            if (_registers.TryGetValue(document, out List<Guid> registers))
+            {
+                registers.Add(register);
+            }
+            else
+            {
+                _registers.TryAdd(document, new List<Guid>() { register });
+            }
+        }
 
         // Общий тип метаданных + имя объекта метаданных + тип объекта метаданных
         // Коллекция используется для поиска объекта метаданных по его полному имени
@@ -57,6 +111,19 @@ namespace DaJet.Metadata.Core
         {
             _provider = provider;
             _connectionString = connectionString;
+
+            _parsers = new()
+            {
+                { MetadataTypes.Catalog, new CatalogParser(this) },
+                { MetadataTypes.Document, new DocumentParser(this) },
+                { MetadataTypes.Enumeration, new EnumerationParser(this) },
+                { MetadataTypes.Publication, new PublicationParser(this) },
+                { MetadataTypes.Characteristic, new CharacteristicParser(this) },
+                { MetadataTypes.InformationRegister, new InformationRegisterParser(this) },
+                { MetadataTypes.AccumulationRegister, new AccumulationRegisterParser(this) },
+                { MetadataTypes.SharedProperty, new SharedPropertyParser(this) },
+                { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser(this) } // since 1C:Enterprise 8.3.3 version
+            };
         }
 
         internal string ConnectionString { get { return _connectionString; } }
@@ -86,7 +153,16 @@ namespace DaJet.Metadata.Core
         private void InitializeReferenceCache()
         {
             _names = new ConcurrentDictionary<Guid, Dictionary<string, Guid>>();
-            _references = new ConcurrentDictionary<Guid, ReferenceInfo>();
+            
+            _references.Clear();
+            _references.TryAdd(ReferenceTypes.AnyReference, Guid.Empty);
+            _references.TryAdd(ReferenceTypes.Catalog, MetadataTypes.Catalog);
+            _references.TryAdd(ReferenceTypes.Document, MetadataTypes.Document);
+            _references.TryAdd(ReferenceTypes.Enumeration, MetadataTypes.Enumeration);
+            _references.TryAdd(ReferenceTypes.Publication, MetadataTypes.Publication);
+            _references.TryAdd(ReferenceTypes.Characteristic, MetadataTypes.Characteristic);
+
+            _characteristics.Clear();
 
             ParallelOptions options = new ParallelOptions()
             {
@@ -98,6 +174,8 @@ namespace DaJet.Metadata.Core
         private void InitializeReferenceTypeCache(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
         {
             Guid type = cache.Key;
+
+            //TODO: get parser by metadata type !!!
 
             if (type == MetadataTypes.Constant)
             {
@@ -128,7 +206,7 @@ namespace DaJet.Metadata.Core
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
                 {
-                    ReferenceInfo info = parser.Parse(in reader, type, out string name);
+                    MetadataEntry info = parser.Parse(in reader, type, out string name);
 
                     if (string.IsNullOrEmpty(name))
                     {
@@ -193,7 +271,7 @@ namespace DaJet.Metadata.Core
 
             return entry.Count;
         }
-        internal bool TryGetReferenceInfo(Guid reference, out ReferenceInfo info)
+        internal bool TryGetReferenceInfo(Guid reference, out MetadataEntry info)
         {
             return _references.TryGetValue(reference, out info);
         }

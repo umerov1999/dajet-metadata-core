@@ -6,18 +6,17 @@ using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
 {
-    public sealed class CatalogParser : IMetadataObjectParser
+    public sealed class DocumentParser : IMetadataObjectParser
     {
         private readonly InfoBaseCache _cache;
         private ConfigFileParser _parser;
         private TablePartCollectionParser _tableParser;
         private MetadataPropertyCollectionParser _propertyParser;
 
-        private Catalog _target;
+        private Document _target;
         private MetadataEntry _entry;
         private ConfigFileConverter _converter;
-        private Dictionary<MetadataProperty, List<Guid>> _references;
-        public CatalogParser(InfoBaseCache cache)
+        public DocumentParser(InfoBaseCache cache)
         {
             _cache = cache;
         }
@@ -25,16 +24,16 @@ namespace DaJet.Metadata.Parsers
         {
             _entry = new MetadataEntry()
             {
-                MetadataType = MetadataTypes.Catalog,
+                MetadataType = MetadataTypes.Document,
                 MetadataUuid = new Guid(source.FileName)
             };
 
             _parser = new ConfigFileParser();
             _converter = new ConfigFileConverter();
 
-            _converter[1][3] += Reference; // Идентификатор ссылочного типа данных, например, "СправочникСсылка.Номенклатура"
+            _converter[1][3] += Reference; // ДокументСсылка
             _converter[1][9][1][2] += Name; // Имя объекта метаданных конфигурации
-            _converter[1][12] += Owners; // Коллекция владельцев справочника
+            //TODO: _converter[1][24] += Registers; // Коллекция регистров движения документа [1][24]
 
             _parser.Parse(in source, in _converter);
 
@@ -46,7 +45,7 @@ namespace DaJet.Metadata.Parsers
         }
         public void Parse(in ConfigFileReader reader, out MetadataObject target)
         {
-            _target = new Catalog()
+            _target = new Document()
             {
                 Uuid = new Guid(reader.FileName)
             };
@@ -73,24 +72,13 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            _converter[1][9][1][2] += Name;
-            _converter[1][9][1][3][2] += Alias;
-            //_converter[1][12][1] += Owners; // UUID объектов метаданных - владельцев справочника
-            _converter[1][17] += CodeLength;
-            _converter[1][18] += CodeType;
-            _converter[1][19] += DescriptionLength;
-            _converter[1][36] += HierarchyType;
-            _converter[1][37] += IsHierarchical;
+            //TODO
 
-            _converter[5] += TablePartCollection; // 932159f9-95b2-4e76-a8dd-8849fe5c5ded - идентификатор коллекции табличных частей
-            _converter[6] += PropertyCollection; // cf4abea7-37b2-11d4-940f-008048da11f9 - идентификатор коллекции реквизитов
-        }
-        private void Reference(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            if (_entry != null)
-            {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
-            }
+            //_converter[1][9][1][2] += Name;
+            //_converter[1][9][1][3][2] += Alias;
+
+            //_converter[5] += TablePartCollection;
+            //_converter[6] += PropertyCollection;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -104,18 +92,23 @@ namespace DaJet.Metadata.Parsers
                 _target.Name = source.Value;
             }
         }
-        private void Alias(in ConfigFileReader source, in CancelEventArgs args)
+        private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Alias = source.Value;
+            if (_entry != null)
+            {
+                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+            }
         }
-        private void Owners(in ConfigFileReader source, in CancelEventArgs args)
+        private void Registers(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (source.Token == TokenType.EndObject)
             {
                 args.Cancel = true;
-                
+
                 return;
             }
+
+            //TODO !!!
 
             // 1.12.0 - UUID коллекции владельцев справочника !?
             // 1.12.1 - количество владельцев справочника
@@ -136,35 +129,15 @@ namespace DaJet.Metadata.Parsers
 
             for (int n = 0; n < count; n++)
             {
-                _converter[1][12][offset + n][2][1] += OwnerUuid;
+                _converter[1][12][offset + n][2][1] += RegisterUuid;
             }
         }
-        private void OwnerUuid(in ConfigFileReader source, in CancelEventArgs args)
+        private void RegisterUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
-                _cache.AddCatalogOwner(_entry.MetadataUuid, source.GetUuid());
+                _cache.AddDocumentRegister(_entry.MetadataUuid, source.GetUuid());
             }
-        }
-        private void CodeType(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            _target.CodeType = (CodeType)source.GetInt32();
-        }
-        private void CodeLength(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            _target.CodeLength = source.GetInt32();
-        }
-        private void DescriptionLength(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            _target.DescriptionLength = source.GetInt32();
-        }
-        private void HierarchyType(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            _target.HierarchyType = (HierarchyType)source.GetInt32();
-        }
-        private void IsHierarchical(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            _target.IsHierarchical = (source.GetInt32() != 0);
         }
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -175,17 +148,6 @@ namespace DaJet.Metadata.Parsers
                 if (properties != null && properties.Count > 0)
                 {
                     _target.Properties = properties;
-                }
-
-                if (references != null && references.Count > 0)
-                {
-                    foreach (KeyValuePair<MetadataProperty, List<Guid>> reference in references)
-                    {
-                        if (reference.Value != null && reference.Value.Count > 0)
-                        {
-                            _references.Add(reference.Key, reference.Value);
-                        }
-                    }
                 }
             }
         }

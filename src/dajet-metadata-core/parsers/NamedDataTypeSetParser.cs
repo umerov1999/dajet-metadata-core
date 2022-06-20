@@ -8,13 +8,41 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class NamedDataTypeSetParser : IMetadataObjectParser
     {
+        private readonly InfoBaseCache _cache;
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
 
-        private List<Guid> _references;
+        private List<Guid> _references; // TODO: remove - configure DataTypeSet
+        private MetadataEntry _entry;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
-        public void Parse(in ConfigFileReader source, out MetadataObject target, out List<Guid> references)
+        public NamedDataTypeSetParser(InfoBaseCache cache)
+        {
+            _cache = cache;
+        }
+        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        {
+            _entry = new MetadataEntry()
+            {
+                MetadataType = MetadataTypes.NamedDataTypeSet,
+                MetadataUuid = new Guid(source.FileName)
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            _converter[1][1] += Reference; // Идентификатор ссылочного типа данных "Ссылка"
+            _converter[1][3][2] += Name; // Имя объекта конфигурации
+
+            _parser.Parse(in source, in _converter);
+
+            target = _entry;
+
+            _entry = null;
+            _parser = null;
+            _converter = null;
+        }
+        public void Parse(in ConfigFileReader source, out MetadataObject target)
         {
             _target = new NamedDataTypeSet()
             {
@@ -39,10 +67,6 @@ namespace DaJet.Metadata.Parsers
             _references = null;
             _typeParser = null;
         }
-        public void Parse(in ConfigFileReader source, out MetadataObject target, out Dictionary<MetadataProperty, List<Guid>> references)
-        {
-            throw new NotImplementedException();
-        }
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
@@ -55,11 +79,33 @@ namespace DaJet.Metadata.Parsers
         }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Reference = source.GetUuid();
+            if (_entry != null)
+            {
+                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+
+                return;
+            }
+
+            if (_target != null)
+            {
+                _target.Reference = source.GetUuid(); // TODO: remove ?
+            }
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
-            _target.Name = source.Value;
+            if (_entry != null)
+            {
+                _entry.Name = source.Value;
+
+                args.Cancel = true;
+
+                return;
+            }
+
+            if (_target != null)
+            {
+                _target.Name = source.Value;
+            }
         }
         private void Alias(in ConfigFileReader source, in CancelEventArgs args)
         {

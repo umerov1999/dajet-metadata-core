@@ -1,10 +1,13 @@
-﻿namespace DaJet.Metadata.Model
+﻿using System.Collections.Generic;
+
+namespace DaJet.Metadata.Model
 {
-    public sealed class Document : ApplicationObject
+    public sealed class Document : ApplicationObject, IAggregate
     {
         public int NumberLength { get; set; } = 8;
         public NumberType NumberType { get; set; } = NumberType.String;
         public Periodicity Periodicity { get; set; } = Periodicity.None;
+        public List<TablePart> TableParts { get; set; } = new List<TablePart>();
     }
     
     //PropertyNameLookup.Add("_idrref", "Ссылка");
