@@ -26,7 +26,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "Справочник.ПростойСправочник"; //"СправочникПредопределённые"; // ТестовыйСправочник
+            string metadataName = "Справочник.Номенклатура"; //"СправочникПредопределённые"; // ТестовыйСправочник
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 
@@ -39,8 +39,34 @@ namespace DaJet.Metadata.Test
                 ShowMetadataObject((Catalog)@object);
             }
 
-            DbName entry = service.GetChangeTableName(@object);
-            Console.WriteLine($"_{entry.Name}{entry.Code}");
+            try
+            {
+                DbName entry = service.GetChangeTableName(@object);
+                Console.WriteLine($"_{entry.Name}{entry.Code}");
+            }
+            catch (Exception error)
+            {
+                Console.WriteLine($"ChngR error: {error.Message}");
+            }
+
+            Console.WriteLine();
+            ShowDatabaseNames((Catalog)@object);
+        }
+        private void ShowDatabaseNames(Catalog catalog)
+        {
+            Console.WriteLine($"TableName: {catalog.TableName}");
+
+            Console.WriteLine("Properties:");
+
+            foreach (MetadataProperty property in catalog.Properties)
+            {
+                Console.WriteLine($"- {property.Name} ({property.DbName})");
+
+                foreach (DatabaseField field in property.Fields)
+                {
+                    Console.WriteLine($"--- {field.Name} ({field.TypeName})");
+                }
+            }
         }
         private void ShowMetadataObject(Catalog @object)
         {

@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    ///<summary>Смотри также <see cref="DaJet.Metadata.Model.DataTypes"/></summary>
+    ///<summary>Смотри также <see cref="DataTypes"/></summary>
     [Flags] internal enum DataTypeFlags : byte
     {
         None = 0x00,
@@ -26,7 +25,7 @@ namespace DaJet.Metadata.Model
     ///Внимание! Следующие типы данных не допускают использование составного типа данных:
     ///</br>
     ///<br>
-    ///"УникальныйИдентификатор", "ХранилищеЗначения", "ОпределяемыйТип" и "Характеристика".
+    ///"УникальныйИдентификатор", "ХранилищеЗначения", "ОпределяемыйТип", "Характеристика" и строка неограниченной длины.
     ///</br>
     ///</summary>
     public sealed class DataTypeSet

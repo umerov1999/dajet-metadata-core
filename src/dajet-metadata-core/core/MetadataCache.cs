@@ -64,9 +64,9 @@ namespace DaJet.Metadata.Core
         private readonly ConcurrentDictionary<Guid, List<Guid>> _owners = new();
 
         ///<summary>
-        ///<b>Коллекция документов и их регистров движения:</b>
-        ///<br><b>Ключ:</b> UUID объекта метаданных <see cref="Document"/> - регистратора</br>
-        ///<br><b>Значение:</b> список регистров движения <see cref="InformationRegister"/> или <see cref="AccumulationRegister"/></br>
+        ///<b>Коллекция документов и их регистров движений:</b>
+        ///<br><b>Ключ:</b> регистр движений <see cref="InformationRegister"/> или <see cref="AccumulationRegister"/></br>
+        ///<br><b>Значение:</b> список регистраторов движений <see cref="Document"/></br>
         ///</summary>
         private readonly ConcurrentDictionary<Guid, List<Guid>> _registers = new();
 
@@ -75,6 +75,49 @@ namespace DaJet.Metadata.Core
         ///<br>и их сопоставление объектам метаданных конфигурации</br>
         ///</summary>
         private DbNameCache _database;
+        internal DbName GetDbName(Guid uuid)
+        {
+            if (!_database.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            return entry;
+        }
+        internal DbName GetLineNo(Guid uuid)
+        {
+            if (!_database.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name == MetadataTokens.LineNo)
+                {
+                    return child;
+                }
+            }
+
+            throw new InvalidOperationException(nameof(GetLineNo));
+        }
+        internal DbName GetChngR(Guid uuid)
+        {
+            if (!_database.TryGet(uuid, out DbName entry))
+            {
+                throw new InvalidOperationException(nameof(GetDbName));
+            }
+
+            foreach (DbName child in entry.Children)
+            {
+                if (child.Name.EndsWith(MetadataTokens.ChngR))
+                {
+                    return child;
+                }
+            }
+
+            throw new InvalidOperationException(nameof(GetChngR));
+        }
 
         private void AddName(Guid type, Guid metadata, string name)
         {
@@ -112,14 +155,33 @@ namespace DaJet.Metadata.Core
         }
         private void AddDocumentRegister(Guid document, Guid register)
         {
-            if (_registers.TryGetValue(document, out List<Guid> registers))
+            if (_registers.TryGetValue(register, out List<Guid> documents))
             {
-                registers.Add(register);
+                documents.Add(document);
             }
             else
             {
-                _registers.TryAdd(document, new List<Guid>() { register });
+                _registers.TryAdd(register, new List<Guid>() { document });
             }
+        }
+
+        internal List<Guid> GetCatalogOwners(Guid catalog)
+        {
+            if (_owners.TryGetValue(catalog, out List<Guid> owners))
+            {
+                return owners;
+            }
+
+            return null;
+        }
+        internal List<Guid> GetRegisterRecorders(Guid register)
+        {
+            if (_registers.TryGetValue(register, out List<Guid> documents))
+            {
+                return documents;
+            }
+
+            return null;
         }
 
         #endregion
@@ -173,9 +235,44 @@ namespace DaJet.Metadata.Core
             _references.TryAdd(ReferenceTypes.Publication, new MetadataEntry(MetadataTypes.Publication, Guid.Empty));
             _references.TryAdd(ReferenceTypes.Characteristic, new MetadataEntry(MetadataTypes.Characteristic, Guid.Empty));
 
+            Dictionary<Guid, List<Guid>> metadata = new()
+            {
+                //{ MetadataTypes.Constant,             new List<Guid>() }, // Константы
+                //{ MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
+                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
+                { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
+                { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
+                { MetadataTypes.Document,             new List<Guid>() }, // Документы
+                { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
+                { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
+                { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
+                { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
+                { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
+            };
+
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, _root))
             {
-                new InfoBaseParser().Parse(in reader, out infoBase, out _cache);
+                new InfoBaseParser().Parse(in reader, out infoBase, in metadata);
+            }
+
+            foreach (var entry in metadata)
+            {
+                Dictionary<Guid, WeakReference<MetadataObject>> items = new();
+
+                if (!_cache.TryAdd(entry.Key, items))
+                {
+                    continue;
+                }
+
+                if (entry.Value.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (Guid item in entry.Value)
+                {
+                    _ = items.TryAdd(item, new WeakReference<MetadataObject>(null));
+                }
             }
 
             ParallelOptions options = new()
@@ -245,7 +342,7 @@ namespace DaJet.Metadata.Core
         }
         private void InitializeDbNameCache()
         {
-            _database.Clear();
+            //TODO: add option to load or not DbNames !?
 
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, ConfigFiles.DbNames))
             {
@@ -262,9 +359,13 @@ namespace DaJet.Metadata.Core
 
             return entry.Count;
         }
-        internal bool TryGetReferenceInfo(Guid reference, out MetadataInfo info)
+        internal bool TryGetReferenceInfo(Guid reference, out MetadataEntry info)
         {
             return _references.TryGetValue(reference, out info);
+        }
+        internal bool IsCharacteristic(Guid reference)
+        {
+            return _characteristics.TryGetValue(reference, out _);
         }
         internal IEnumerable<MetadataObject> GetMetadataObjects(Guid type)
         {
@@ -351,54 +452,25 @@ namespace DaJet.Metadata.Core
                 throw new InvalidOperationException($"Metadata type parser is under development \"{metadataType}\"");
             }
 
-            if (type == MetadataTypes.SharedProperty)
+            if (type == MetadataTypes.SharedProperty || type == MetadataTypes.NamedDataTypeSet)
             {
-                GetSharedProperty(uuid, in parser, out metadata);
-            }
-            else if (type == MetadataTypes.NamedDataTypeSet)
-            {
-                GetNamedDataTypeSet(uuid, in parser, out metadata);
+                using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
+                {
+                    parser.Parse(in reader, out metadata);
+                }
+
+                if (type == MetadataTypes.SharedProperty)
+                {
+                    Configurator.ConfigureDatabaseNames(this, in metadata);
+                }
             }
             else
             {
                 GetApplicationObject(uuid, in parser, out metadata);
             }
         }
-        private void GetSharedProperty(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
-        {
-            List<Guid> references;
-            
-            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
-            {
-                parser.Parse(in reader, out metadata, out references);
-            }
-
-            SharedProperty target = metadata as SharedProperty;
-
-            Configurator.ConfigureReferenceTypes(this, target.PropertyType, in references);
-        }
-        private void GetNamedDataTypeSet(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
-        {
-            List<Guid> references;
-            
-            using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
-            {
-                parser.Parse(in reader, out metadata, out references);
-            }
-
-            NamedDataTypeSet target = metadata as NamedDataTypeSet;
-
-            Configurator.ConfigureReferenceTypes(this, target.DataTypeSet, in references);
-        }
         private void GetApplicationObject(Guid uuid, in IMetadataObjectParser parser, out MetadataObject metadata)
         {
-            //TODO: store reference types in DataTypeSet !?
-            Dictionary<MetadataProperty, List<Guid>> references;
-
-            //TODO: create metadata instance here and initialize system properties first ?
-            // otherwise system properties are added to the end - not convinient from the JDTO serialization point of view ...
-            // another way: inserting system properties into collection is not good for performance ...
-
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
             {
                 parser.Parse(in reader, out metadata);
@@ -410,18 +482,12 @@ namespace DaJet.Metadata.Core
 
             Configurator.ConfigureSystemProperties(this, in metadata);
 
-            if (references != null && references.Count > 0)
-            {
-                // TODO: remove this call - store reference types in DataTypeSet !!!
-                Configurator.ConfigureMetadataProperties(this, in metadata, in references);
-            }
-
             if (metadata is ApplicationObject owner && metadata is IAggregate)
             {
                 Configurator.ConfigureTableParts(this, in owner);
             }
 
-            //TODO: configure database field names - lookup DbNameCache (_data)
+            Configurator.ConfigureDatabaseNames(this, in metadata); //TODO: option to configure database names
 
             if (metadata is IPredefinedValues) //TODO: option to load predefined values
             {
@@ -437,50 +503,6 @@ namespace DaJet.Metadata.Core
                     }
                 }
             }
-        }
-
-        internal DbName GetDbName(Guid uuid)
-        {
-            if (!_database.TryGet(uuid, out DbName entry))
-            {
-                throw new InvalidOperationException(nameof(GetDbName));
-            }
-
-            return entry;
-        }
-        internal DbName GetLineNo(Guid uuid)
-        {
-            if (!_database.TryGet(uuid, out DbName entry))
-            {
-                throw new InvalidOperationException(nameof(GetDbName));
-            }
-
-            foreach (DbName child in entry.Children)
-            {
-                if (child.Name == MetadataTokens.LineNo)
-                {
-                    return child;
-                }
-            }
-
-            throw new InvalidOperationException(nameof(GetLineNo));
-        }
-        internal DbName GetChngR(Guid uuid)
-        {
-            if (!_database.TryGet(uuid, out DbName entry))
-            {
-                throw new InvalidOperationException(nameof(GetDbName));
-            }
-
-            foreach (DbName child in entry.Children)
-            {
-                if (child.Name.EndsWith(MetadataTokens.ChngR))
-                {
-                    return child;
-                }
-            }
-
-            throw new InvalidOperationException(nameof(GetChngR));
         }
     }
 }

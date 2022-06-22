@@ -63,7 +63,7 @@ namespace DaJet.Metadata.Core
                 throw new ArgumentNullException(nameof(infoBase));
             }
 
-            if (!_cache.TryGetReferenceInfo(reference, out MetadataInfo info))
+            if (!_cache.TryGetReferenceInfo(reference, out MetadataEntry info))
             {
                 return null;
             }

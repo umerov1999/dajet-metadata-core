@@ -10,7 +10,7 @@ namespace DaJet.Metadata.Parsers
     {
         private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
-        private MetadataPropertyCollectionParser _propertyCollectionParser;
+        private MetadataPropertyCollectionParser _propertyParser;
 
         private MetadataInfo _entry;
         private InformationRegister _target;
@@ -45,7 +45,7 @@ namespace DaJet.Metadata.Parsers
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
-            _propertyCollectionParser = new MetadataPropertyCollectionParser();
+            _propertyParser = new MetadataPropertyCollectionParser(_cache);
 
             _target = new InformationRegister()
             {
@@ -61,7 +61,7 @@ namespace DaJet.Metadata.Parsers
             _target = null;
             _parser = null;
             _converter = null;
-            _propertyCollectionParser = null;
+            _propertyParser = null;
         }
         private void ConfigureConverter()
         {
@@ -113,7 +113,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyCollectionParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
                 if (properties != null && properties.Count > 0)
                 {

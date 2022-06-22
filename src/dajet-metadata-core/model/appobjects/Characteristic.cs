@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
     public sealed class Characteristic : ApplicationObject,
         IReferenceCode, IDescription, IReferenceHierarchy, IPredefinedValues, IAggregate
     {
-        ///<summary>
-        ///Идентификатор характеристики, описания типов значений.
-        ///Используется как тип значения "Характеристика" в реквизитах других объектов метаданных.
-        ///</summary>
-        public Guid Reference { get; set; } = Guid.Empty; //THINK: remove ?
         ///<summary>Описание типов значений характеристики, свойство "ТипЗначения".</summary>
         public DataTypeSet DataTypeSet { get; set; }
         public int CodeLength { get; set; } = 9;

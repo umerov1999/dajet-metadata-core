@@ -8,6 +8,13 @@ namespace DaJet.Metadata.Parsers
     ///<summary>Парсер для чтения объекта "ОписаниеТипов".</summary>
     public sealed class DataTypeSetParser
     {
+        private readonly MetadataCache _cache;
+        private int _pointer;
+        private string[] _qualifiers = new string[3];
+        public DataTypeSetParser(MetadataCache cache)
+        {
+            _cache = cache;
+        }
         ///<summary>
         ///Объект чтения файла метаданных <see cref="ConfigFileReader"/> перед вызовом этого метода
         ///<br>
@@ -17,13 +24,12 @@ namespace DaJet.Metadata.Parsers
         ///<c><![CDATA[source.Char == '{' && source.Token == TokenType.StartObject]]></c>
         ///</br>
         ///</summary>
-        ///<param name="source">объект чтения файла метаданных.</param>
-        ///<param name="target">объект описания типа данных.</param>
-        ///<param name="references">список ссылок на специальные и ссылочные типы данных для преобразования.</param>
-        public void Parse(in ConfigFileReader source, out DataTypeSet target, out List<Guid> references)
+        ///<param name="source">Объект чтения файла метаданных.</param>
+        ///<param name="target">Объект описания типа данных.</param>
+        public void Parse(in ConfigFileReader source, out DataTypeSet target)
         {
             target = new DataTypeSet();
-            references = new List<Guid>();
+            List<Guid> references = new();
 
             _ = source.Read(); // 0 index
             if (source.Value != "Pattern")
@@ -59,6 +65,7 @@ namespace DaJet.Metadata.Parsers
                         }
                         else if (source.Value == MetadataTokens.S) // {"S"} | {"S",10,0} | {"S",10,1}
                         {
+                            //FIXME: строки неограниченной длины не поддерживают составной тип данных !
                             ReadString(in source, in target);
                         }
                         else if (source.Value == MetadataTokens.N) // {"N",10,2,0} | {"N",10,2,1}
@@ -72,10 +79,17 @@ namespace DaJet.Metadata.Parsers
                     }
                 }
             }
-        }
 
-        private int _pointer;
-        private string[] _qualifiers = new string[3];
+            if (references.Count > 0)
+            {
+                // Configure reference part of data type
+                // Внимание!
+                // Если описание типов ссылается на определяемый тип или характеристику,
+                // которые не являются или не содержат в своём составе ссылочные типы данных,
+                // то в таком случае описание типов будет содержать только примитивные типы данных.
+                Configurator.ConfigureDataTypeSet(in _cache, in target, in references);
+            }
+        }
         private void ReadQualifiers(in ConfigFileReader reader)
         {
             while (reader.Read())
@@ -126,7 +140,8 @@ namespace DaJet.Metadata.Parsers
 
             if (_pointer == -1)
             {
-                target.StringLength = 0; // Неограниченная длина - nvarchar(max)
+                // Строка неограниченной длины - nvarchar(max)
+                target.StringLength = 0; // Не может быть составным типом !
                 target.StringKind = StringKind.Variable;
             }
             else if (_pointer == 1)
@@ -167,17 +182,7 @@ namespace DaJet.Metadata.Parsers
                 target.IsUuid = true; // Не может быть составным типом !
                 return;
             }
-
-            // Если ссылочный тип является определяемым типом или характеристикой,
-            // то вполне возможно, что такой тип не допускает использование ссылок.
-            // Окончательное конфигурирование ссылочных типов данных выполняется
-            // классом Configurator в методе ConfigureReferenceTypes, где происходит
-            // обработка List<Guid> references с использованием кэша ссылок.
-            // Внимание! Если логика обработки ссылочных типов поменяется,
-            // то следующую строчку кода вероятно нужно будет раскомментировать.
-
-            //target.CanBeReference = true;
-
+            
             references.Add(type);
         }
     }

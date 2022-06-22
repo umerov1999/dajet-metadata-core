@@ -16,7 +16,6 @@ namespace DaJet.Metadata.Parsers
         private Catalog _target;
         private MetadataInfo _entry;
         private ConfigFileConverter _converter;
-        private Dictionary<MetadataProperty, List<Guid>> _references;
         public CatalogParser(MetadataCache cache)
         {
             _cache = cache;
@@ -54,8 +53,8 @@ namespace DaJet.Metadata.Parsers
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
-            _tableParser = new TablePartCollectionParser();
-            _propertyParser = new MetadataPropertyCollectionParser(_target);
+            _tableParser = new TablePartCollectionParser(_cache);
+            _propertyParser = new MetadataPropertyCollectionParser(_cache, _target);
 
             _parser.Parse(in reader, in _converter);
 
@@ -75,7 +74,6 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][9][1][2] += Name;
             _converter[1][9][1][3][2] += Alias;
-            //FIXME: _converter[1][12][1] += Owners; // UUID объектов метаданных - владельцев справочника
             _converter[1][17] += CodeLength;
             _converter[1][18] += CodeType;
             _converter[1][19] += DescriptionLength;
@@ -170,22 +168,11 @@ namespace DaJet.Metadata.Parsers
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
                 if (properties != null && properties.Count > 0)
                 {
                     _target.Properties = properties;
-                }
-
-                if (references != null && references.Count > 0)
-                {
-                    foreach (KeyValuePair<MetadataProperty, List<Guid>> reference in references)
-                    {
-                        if (reference.Value != null && reference.Value.Count > 0)
-                        {
-                            _references.Add(reference.Key, reference.Value);
-                        }
-                    }
                 }
             }
         }

@@ -48,15 +48,15 @@ namespace DaJet.Metadata.Parsers
         {
             _target = new Characteristic()
             {
-                Uuid = new Guid(source.FileName) // [1][3]
+                Uuid = new Guid(source.FileName)
             };
 
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
-            _typeParser = new DataTypeSetParser();
-            _tableParser = new TablePartCollectionParser();
-            _propertyParser = new MetadataPropertyCollectionParser(_target);
+            _typeParser = new DataTypeSetParser(_cache);
+            _tableParser = new TablePartCollectionParser(_cache);
+            _propertyParser = new MetadataPropertyCollectionParser(_cache, _target);
 
             _parser.Parse(in source, in _converter);
 
@@ -74,8 +74,6 @@ namespace DaJet.Metadata.Parsers
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
-
-            //FIXME: _converter[1][9] += CharacteristicUuid;
 
             _converter[1][13][1][2] += Name;
             _converter[1][13][1][3][2] += Alias;
@@ -99,11 +97,6 @@ namespace DaJet.Metadata.Parsers
             if (_entry != null)
             {
                 _entry.CharacteristicUuid = source.GetUuid();
-            }
-
-            if (_target != null)
-            {
-                _target.Reference = source.GetUuid(); // TODO: remove ?
             }
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
@@ -144,18 +137,16 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
+                _typeParser.Parse(in source, out DataTypeSet type);
 
                 _target.DataTypeSet = type;
-                
-                //TODO: store references in DataTypeSet or _target !!! ?
             }
         }
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
                 if (properties != null && properties.Count > 0)
                 {

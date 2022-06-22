@@ -37,6 +37,9 @@ namespace DaJet.Metadata.Test
             else
             {
                 ShowMetadataObject((SharedProperty)@object);
+                Console.WriteLine();
+                Console.WriteLine("Database names:");
+                ShowDatabaseNames((SharedProperty)@object);
             }
         }
         private void ShowMetadataObject(SharedProperty @object)
@@ -105,6 +108,15 @@ namespace DaJet.Metadata.Test
             else if (type.CanBeReference)
             {
                 Console.WriteLine($"  * {type} [{name}]");
+            }
+        }
+        private void ShowDatabaseNames(SharedProperty @object)
+        {
+            Console.WriteLine($"DbName (property): {@object.DbName}");
+
+            foreach (DatabaseField field in @object.Fields)
+            {
+                Console.WriteLine($"{field.Name} ({field.TypeName})");
             }
         }
     }

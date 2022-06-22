@@ -45,7 +45,6 @@ namespace DaJet.Metadata.Test
             Console.WriteLine($"Name: {@object.Name}");
             Console.WriteLine($"Alias: {@object.Alias}");
             Console.WriteLine($"Comment: {@object.Comment}");
-            Console.WriteLine($"Reference: {@object.Reference}");
             
             Console.WriteLine("DataTypeSet:");
 

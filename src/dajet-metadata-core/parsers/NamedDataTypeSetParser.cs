@@ -1,7 +1,6 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -12,7 +11,6 @@ namespace DaJet.Metadata.Parsers
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
 
-        private List<Guid> _references; // TODO: remove - configure DataTypeSet
         private MetadataInfo _entry;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
@@ -51,7 +49,7 @@ namespace DaJet.Metadata.Parsers
             
             ConfigureConverter();
 
-            _typeParser = new DataTypeSetParser();
+            _typeParser = new DataTypeSetParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
@@ -63,14 +61,12 @@ namespace DaJet.Metadata.Parsers
             _target = null;
             _parser = null;
             _converter = null;
-            _references = null;
             _typeParser = null;
         }
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 
-            _converter[1][1] += Reference;
             _converter[1][3][2] += Name;
             _converter[1][3][3][2] += Alias;
             _converter[1][3][4] += Comment;
@@ -81,13 +77,6 @@ namespace DaJet.Metadata.Parsers
             if (_entry != null)
             {
                 _entry.ReferenceUuid = source.GetUuid();
-
-                return;
-            }
-
-            if (_target != null)
-            {
-                _target.Reference = source.GetUuid(); // TODO: remove ?
             }
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
@@ -120,7 +109,7 @@ namespace DaJet.Metadata.Parsers
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type, out _references);
+                _typeParser.Parse(in source, out DataTypeSet type);
 
                 _target.DataTypeSet = type;
             }

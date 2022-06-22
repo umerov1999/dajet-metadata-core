@@ -1,6 +1,5 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 
@@ -8,17 +7,22 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class TablePartCollectionParser
     {
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private ConfigFileConverter _converter;
         private MetadataPropertyCollectionParser _propertyParser;
         private TablePart _tablePart;
         private List<TablePart> _target;
+        public TablePartCollectionParser(MetadataCache cache)
+        {
+            _cache = cache;
+        }
         public void Parse(in ConfigFileReader reader, out List<TablePart> target)
         {
             ConfigureCollectionConverter(in reader);
 
             _parser = new ConfigFileParser();
-            _propertyParser = new MetadataPropertyCollectionParser();
+            _propertyParser = new MetadataPropertyCollectionParser(_cache);
 
             _target = new List<TablePart>();
 
@@ -106,16 +110,11 @@ namespace DaJet.Metadata.Parsers
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
                 if (properties != null && properties.Count > 0)
                 {
                     _tablePart.Properties = properties;
-                }
-
-                if (references != null && references.Count > 0)
-                {
-                    //TODO: store references in property's DataTypeSet !?
                 }
             }
         }

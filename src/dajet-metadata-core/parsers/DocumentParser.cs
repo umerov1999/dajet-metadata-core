@@ -53,8 +53,8 @@ namespace DaJet.Metadata.Parsers
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
-            _tableParser = new TablePartCollectionParser();
-            _propertyParser = new MetadataPropertyCollectionParser(_target);
+            _tableParser = new TablePartCollectionParser(_cache);
+            _propertyParser = new MetadataPropertyCollectionParser(_cache);
 
             _parser.Parse(in reader, in _converter);
 
@@ -143,7 +143,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (source.Token == TokenType.StartObject)
             {
-                _propertyParser.Parse(in source, out List<MetadataProperty> properties, out Dictionary<MetadataProperty, List<Guid>> references);
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
 
                 if (properties != null && properties.Count > 0)
                 {

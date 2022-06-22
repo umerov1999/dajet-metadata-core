@@ -1,7 +1,6 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 
@@ -9,19 +8,69 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InfoBaseParser
     {
-        private readonly ConfigFileParser _parser = new();
-
+        private ConfigFileParser _parser;
         private ConfigFileConverter _converter;
-        private readonly ConfigFileTokenHandler _cacheHandler;
-        private readonly ConfigFileTokenHandler _metadataHandler;
+        private readonly ConfigFileTokenHandler _metadataHandler; // cache delegate for re-use
 
-        InfoBase _infoBase;
+        private InfoBase _infoBase;
         private Dictionary<Guid, List<Guid>> _metadata;
-        private ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache;
         public InfoBaseParser()
         {
-            _cacheHandler = new ConfigFileTokenHandler(MetadataCache);
             _metadataHandler = new ConfigFileTokenHandler(MetadataCollection);
+        }
+        public void Parse(in ConfigFileReader reader, out InfoBase infoBase)
+        {
+            _infoBase = new InfoBase()
+            {
+                Uuid = new Guid(reader.FileName),
+                YearOffset = reader.YearOffset,
+                PlatformVersion = reader.PlatformVersion
+            };
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            ConfigureInfoBaseConverter();
+            
+            _converter[3][1][1] += Cancel; // Прервать чтение файла после прочтения свойств конфигурации
+
+            _parser.Parse(in reader, in _converter);
+
+            // Parsing result
+            infoBase = _infoBase;
+
+            // Dispose private variables
+            _infoBase = null;
+            _parser = null;
+            _converter = null;
+        }
+        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, in Dictionary<Guid, List<Guid>> metadata)
+        {
+            _infoBase = new InfoBase()
+            {
+                Uuid = new Guid(reader.FileName),
+                YearOffset = reader.YearOffset,
+                PlatformVersion = reader.PlatformVersion
+            };
+
+            _metadata = metadata;
+
+            _parser = new ConfigFileParser();
+            _converter = new ConfigFileConverter();
+
+            ConfigureInfoBaseConverter();
+            ConfigureMetadataConverter();
+
+            _parser.Parse(in reader, in _converter);
+
+            // Parsing results
+            infoBase = _infoBase;
+
+            // Dispose private variables
+            _infoBase = null;
+            _metadata = null;
+            _parser = null;
+            _converter = null;
         }
         private void ConfigureInfoBaseConverter()
         {
@@ -43,138 +92,14 @@ namespace DaJet.Metadata.Parsers
         private void ConfigureMetadataConverter()
         {
             // Коллекция объектов метаданных
-            _converter[2] += ConfigureMetadataDictionary;
+            _converter[2] += ConfigureComponents;
         }
-        private void ConfigureCancellation()
+        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
         {
-            // Прервать чтение файла после прочтения свойств конфигурации
-            _converter[3][1][1] += Cancel;
-        }
-        private void InitializeMetadataCache()
-        {
-            _cache = new ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>>();
-            _ = _cache.TryAdd(MetadataTypes.SharedProperty,       new Dictionary<Guid, WeakReference<MetadataObject>>()); // Общие реквизиты
-            _ = _cache.TryAdd(MetadataTypes.NamedDataTypeSet,     new Dictionary<Guid, WeakReference<MetadataObject>>()); // Определяемые типы
-            _ = _cache.TryAdd(MetadataTypes.Catalog,              new Dictionary<Guid, WeakReference<MetadataObject>>()); // Справочники
-            _ = _cache.TryAdd(MetadataTypes.Document,             new Dictionary<Guid, WeakReference<MetadataObject>>()); // Документы
-            _ = _cache.TryAdd(MetadataTypes.Constant,             new Dictionary<Guid, WeakReference<MetadataObject>>()); // Константы
-            _ = _cache.TryAdd(MetadataTypes.Enumeration,          new Dictionary<Guid, WeakReference<MetadataObject>>()); // Перечисления
-            _ = _cache.TryAdd(MetadataTypes.Publication,          new Dictionary<Guid, WeakReference<MetadataObject>>()); // Планы обмена
-            _ = _cache.TryAdd(MetadataTypes.Characteristic,       new Dictionary<Guid, WeakReference<MetadataObject>>()); // Планы видов характеристик
-            _ = _cache.TryAdd(MetadataTypes.InformationRegister,  new Dictionary<Guid, WeakReference<MetadataObject>>()); // Регистры сведений
-            _ = _cache.TryAdd(MetadataTypes.AccumulationRegister, new Dictionary<Guid, WeakReference<MetadataObject>>()); // Регистры накопления
-        }
-        private void InitializeMetadataDictionary()
-        {
-            _metadata = new Dictionary<Guid, List<Guid>>()
+            if (source.Token == TokenType.EndObject)
             {
-                { MetadataTypes.Subsystem,            new List<Guid>() }, // Подсистемы
-                { MetadataTypes.NamedDataTypeSet,     new List<Guid>() }, // Определяемые типы
-                { MetadataTypes.SharedProperty,       new List<Guid>() }, // Общие реквизиты
-                { MetadataTypes.Catalog,              new List<Guid>() }, // Справочники
-                { MetadataTypes.Constant,             new List<Guid>() }, // Константы
-                { MetadataTypes.Document,             new List<Guid>() }, // Документы
-                { MetadataTypes.Enumeration,          new List<Guid>() }, // Перечисления
-                { MetadataTypes.Publication,          new List<Guid>() }, // Планы обмена
-                { MetadataTypes.Characteristic,       new List<Guid>() }, // Планы видов характеристик
-                { MetadataTypes.InformationRegister,  new List<Guid>() }, // Регистры сведений
-                { MetadataTypes.AccumulationRegister, new List<Guid>() }  // Регистры накопления
-            };
-        }
-
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase)
-        {
-            _converter = new ConfigFileConverter();
-
-            ConfigureInfoBaseConverter();
-            ConfigureCancellation();
-
-            _infoBase = new InfoBase()
-            {
-                Uuid = new Guid(reader.FileName),
-                YearOffset = reader.YearOffset,
-                PlatformVersion = reader.PlatformVersion
-            };
-
-            _parser.Parse(in reader, in _converter);
-
-            // Parsing result
-            infoBase = _infoBase;
-
-            // Dispose private variables
-            _infoBase = null;
-            _converter = null;
-        }
-        public void Parse(in ConfigFileReader reader, out Dictionary<Guid, List<Guid>> metadata)
-        {
-            _converter = new ConfigFileConverter();
-
-            ConfigureMetadataConverter();
-
-            InitializeMetadataDictionary();
-
-            _parser.Parse(in reader, in _converter);
-
-            // Parsing results
-            metadata = _metadata;
-
-            // Dispose private variables
-            _metadata = null;
-            _converter = null;
-        }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, out Dictionary<Guid, List<Guid>> metadata)
-        {
-            _converter = new ConfigFileConverter();
-
-            ConfigureInfoBaseConverter();
-            ConfigureMetadataConverter();
-
-            _infoBase = new InfoBase()
-            {
-                Uuid = new Guid(reader.FileName),
-                YearOffset = reader.YearOffset,
-                PlatformVersion = reader.PlatformVersion
-            };
-
-            InitializeMetadataDictionary();
-
-            _parser.Parse(in reader, in _converter);
-
-            // Parsing results
-            infoBase = _infoBase;
-            metadata = _metadata;
-
-            // Dispose private variables
-            _infoBase = null;
-            _metadata = null;
-            _converter = null;
-        }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, in ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
-        {
-            _converter = new ConfigFileConverter();
-
-            ConfigureInfoBaseConverter();
-            ConfigureMetadataConverter();
-
-            _infoBase = new InfoBase()
-            {
-                Uuid = new Guid(reader.FileName),
-                YearOffset = reader.YearOffset,
-                PlatformVersion = reader.PlatformVersion
-            };
-
-            InitializeMetadataCache();
-
-            _parser.Parse(in reader, in _converter);
-
-            // Parsing results
-            cache = _cache;
-            infoBase = _infoBase;
-
-            // Dispose private variables
-            _cache = null;
-            _infoBase = null;
-            _converter = null;
+                args.Cancel = true;
+            }
         }
 
         #region "Свойства конфигурации"
@@ -245,7 +170,7 @@ namespace DaJet.Metadata.Parsers
 
         #region "Коллекция объектов метаданных"
 
-        private void ConfigureMetadataDictionary(in ConfigFileReader source, in CancelEventArgs args)
+        private void ConfigureComponents(in ConfigFileReader source, in CancelEventArgs args)
         {
             int offset = 2; // текущая позиция [2] - последующие позиции +1
             int count = source.GetInt32(); // количество компонентов платформы
@@ -282,49 +207,7 @@ namespace DaJet.Metadata.Parsers
             
             while (count > 0)
             {
-                node[offset + count] += (_cache != null) ? _cacheHandler : _metadataHandler;
-                count--;
-            }
-        }
-        private void MetadataCache(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            if (source.Token == TokenType.EndObject)
-            {
-                return;
-            }
-
-            int count = 0;
-            Guid type = Guid.Empty;
-
-            if (source.Read()) // 0 - Идентификатор типа объекта метаданных
-            {
-                type = source.GetUuid();
-            }
-
-            if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> collection))
-            {
-                return; // Неподдерживаемый или неизвестный тип объекта метаданных
-            }
-
-            if (source.Read()) // 1 - Количество объектов метаданных в коллекции
-            {
-                count = source.GetInt32();
-            }
-
-            while (count > 0)
-            {
-                if (!source.Read())
-                {
-                    break;
-                }
-
-                Guid uuid = source.GetUuid(); // Идентификатор объекта метаданных
-
-                if (uuid != Guid.Empty)
-                {
-                    collection.Add(uuid, new WeakReference<MetadataObject>(null));
-                }
-
+                node[offset + count] += _metadataHandler;
                 count--;
             }
         }
@@ -338,7 +221,7 @@ namespace DaJet.Metadata.Parsers
             int count = 0;
             Guid type = Guid.Empty;
 
-            if (source.Read()) // 0 - Идентификатор типа объекта метаданных
+            if (source.Read()) // 0 - Идентификатор общего типа объекта метаданных
             {
                 type = source.GetUuid();
             }
@@ -372,13 +255,5 @@ namespace DaJet.Metadata.Parsers
         }
 
         #endregion
-
-        private void Cancel(in ConfigFileReader source, in CancelEventArgs args)
-        {
-            if (source.Token == TokenType.EndObject)
-            {
-                args.Cancel = true;
-            }
-        }
     }
 }

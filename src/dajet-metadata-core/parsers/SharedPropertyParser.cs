@@ -1,7 +1,6 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -13,7 +12,6 @@ namespace DaJet.Metadata.Parsers
         private DataTypeSetParser _typeParser;
 
         int _count = 0;
-        private List<Guid> _references;
         private MetadataInfo _entry;
         private SharedProperty _target;
         private ConfigFileConverter _converter;
@@ -51,7 +49,7 @@ namespace DaJet.Metadata.Parsers
 
             ConfigureConverter();
 
-            _typeParser = new DataTypeSetParser();
+            _typeParser = new DataTypeSetParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
@@ -64,7 +62,6 @@ namespace DaJet.Metadata.Parsers
             _target = null;
             _parser = null;
             _converter = null;
-            _references = null;
             _typeParser = null;
         }
         private void ConfigureConverter()
@@ -132,7 +129,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            _typeParser.Parse(in source, out DataTypeSet type, out _references);
+            _typeParser.Parse(in source, out DataTypeSet type);
 
             _target.PropertyType = type;
         }

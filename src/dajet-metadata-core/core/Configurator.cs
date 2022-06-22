@@ -10,7 +10,7 @@ namespace DaJet.Metadata.Core
         {
             if (metadata is Catalog catalog)
             {
-                ConfigureCatalog(in catalog);
+                ConfigureCatalog(in cache, in catalog);
             }
             else if (metadata is Document document)
             {
@@ -62,23 +62,7 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        internal static void ConfigureMetadataProperties(in MetadataCache cache, in MetadataObject metadata, in Dictionary<MetadataProperty, List<Guid>> references)
-        {
-            if (metadata is not ApplicationObject entity)
-            {
-                return;
-            }
-
-            foreach (MetadataProperty property in entity.Properties)
-            {
-                if (references.TryGetValue(property, out List<Guid> referenceTypes))
-                {
-                    //TODO: store reference types in DataTypeSet !?
-                    ConfigureReferenceTypes(in cache, property.PropertyType, in referenceTypes);
-                }
-            }
-        }
-        internal static void ConfigureReferenceTypes(in MetadataCache cache, in DataTypeSet target, in List<Guid> references)
+        internal static void ConfigureDataTypeSet(in MetadataCache cache, in DataTypeSet target, in List<Guid> references)
         {
             if (references == null || references.Count == 0)
             {
@@ -94,42 +78,57 @@ namespace DaJet.Metadata.Core
 
                 if (reference == Guid.Empty) { continue; }
 
-                count += ResolveAndCountReferenceType(in cache, in target, reference);
+                count += ResolveAndCountReferenceTypes(in cache, in target, reference);
 
                 if (count > 1) { break; }
             }
 
-            if (count == 0)
+            if (count == 0) // zero reference types
             {
-                return; // zero reference types
+                target.CanBeReference = false;
+                target.Reference = Guid.Empty;
+                return; 
             }
 
-            if (count == 1)
+            if (count == 1) // single reference type
             {
                 target.CanBeReference = true;
-                target.Reference = reference; // single reference type
+
+                if (cache.TryGetReferenceInfo(reference, out MetadataEntry entry))
+                {
+                    target.Reference = entry.MetadataUuid; // uuid объекта метаданных
+                }
+                else
+                {
+                    // unsupported reference type, например "БизнесПроцесс"
+                    target.Reference = reference;
+                }
             }
-            else
+            else // multiple reference type
             {
                 target.CanBeReference = true;
-                target.Reference = Guid.Empty;// multiple reference type
+                target.Reference = Guid.Empty;
             }
         }
-        private static int ResolveAndCountReferenceType(in MetadataCache cache, in DataTypeSet target, Guid reference)
+        private static int ResolveAndCountReferenceTypes(in MetadataCache cache, in DataTypeSet target, Guid reference)
         {
-            // DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
-            // Additional date types of references are not allowed in this case !
+            // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
+            // 1. DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
+            //    Additional references to another data types are not allowed in this case. (!)
+            // 2. NamedDataTypeSet and Characteristic can not reference them self or each other. (!)
+            // 3. Если ссылочный тип имеет значение, например, "СправочникСсылка", то есть любой справочник,
+            //    в таком случае необходимо вычислить количество справочников в составе конфигурации:
+            //    если возможным справочником будет только один, то это будет single reference type. (!)
+            // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка". (!)
 
-            if (cache.TryGetReferenceInfo(reference, out MetadataInfo info))
+            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
             {
                 if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
-                    (info.MetadataType == MetadataTypes.Characteristic && reference == info.CharacteristicUuid))
+                    (info.MetadataType == MetadataTypes.Characteristic && cache.IsCharacteristic(reference)))
                 {
+                    // Lazy-load of NamedDataTypeSets and Characteristics: recursion is avoided because of rule #2.
                     // THINK: Pre-load NamedDataTypeSets and Characteristics !?
                     MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
-
-                    // DataTypeSet of NamedDataTypeSet or Characteristic are not allowed
-                    // to have references to another NamedDataTypeSets or Characteristics !
 
                     if (metadata is NamedDataTypeSet namedSet)
                     {
@@ -142,12 +141,12 @@ namespace DaJet.Metadata.Core
 
                     if (target.CanBeReference && target.Reference == Guid.Empty)
                     {
-                        return 2;
+                        return 2; // multiple reference type (may be more then 2 in fact)
                     }
                 }
                 else
                 {
-                    return 1;
+                    return 1; // single reference type
                 }
             }
 
@@ -190,18 +189,13 @@ namespace DaJet.Metadata.Core
             return count;
         }
 
-        internal static void ConfigureDataTypeSetReferences(in MetadataCache cache, in DataTypeSet target)
-        {
-            //TODO: resolve references
-        }
-
         #region "TABLE PARTS"
 
         internal static void ConfigureTableParts(in MetadataCache cache, in ApplicationObject owner)
         {
             if (owner is not IAggregate aggregate)
             {
-                throw new InvalidOperationException($"Metadata object \"{owner.Name}\" does not implement IAggregate interface.");
+                return;
             }
 
             foreach (TablePart tablePart in aggregate.TableParts)
@@ -258,14 +252,14 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyНомерСтроки(in MetadataCache cache, in TablePart tablePart)
         {
-            DbName entry = cache.GetLineNo(tablePart.Uuid);
+            DbName db = cache.GetLineNo(tablePart.Uuid);
 
             MetadataProperty property = new MetadataProperty()
             {
                 Name = "НомерСтроки",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = CreateDbName(entry.Name, entry.Code)
+                DbName = CreateDbName(db.Name, db.Code)
             };
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
@@ -305,7 +299,7 @@ namespace DaJet.Metadata.Core
         // 7. Наименование     = Description        - string
         // 8. Предопределённый = PredefinedDataName - string
 
-        private static void ConfigureCatalog(in Catalog catalog)
+        private static void ConfigureCatalog(in MetadataCache cache, in Catalog catalog)
         {
             if (catalog.IsHierarchical)
             {
@@ -318,9 +312,11 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyСсылка(catalog);
             ConfigurePropertyПометкаУдаления(catalog);
 
-            if (catalog.Owners.Count > 0)
+            List<Guid> owners = cache.GetCatalogOwners(catalog.Uuid);
+
+            if (owners != null && owners.Count > 0)
             {
-                ConfigurePropertyВладелец(catalog);
+                ConfigurePropertyВладелец(in catalog, in owners);
             }
 
             if (catalog.IsHierarchical)
@@ -537,7 +533,7 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyВладелец(in Catalog catalog)
+        private static void ConfigurePropertyВладелец(in Catalog catalog, in List<Guid> owners)
         {
             MetadataProperty property = new MetadataProperty
             {
@@ -548,9 +544,9 @@ namespace DaJet.Metadata.Core
             };
             property.PropertyType.CanBeReference = true;
 
-            if (catalog.Owners.Count == 1) // Single type value
+            if (owners.Count == 1) // Single type value
             {
-                property.PropertyType.Reference = catalog.Owners[0]; // owner is always metadata object uuid
+                property.PropertyType.Reference = owners[0]; // FIXME (?) owner is always metadata object uuid
                 
                 property.Fields.Add(new DatabaseField()
                 {
@@ -998,7 +994,7 @@ namespace DaJet.Metadata.Core
 
         #endregion
 
-        #region "DATABASE FIELD NAMES"
+        #region "CONFIGURE DATABASE NAMES"
 
         private static string CreateDbName(string token, int code)
         {
@@ -1011,10 +1007,69 @@ namespace DaJet.Metadata.Core
             //
             //return $"_{token}{code}".ToLowerInvariant();
         }
-        public static void ConfigureDatabaseFields(in MetadataProperty property)
+        internal static void ConfigureDatabaseNames(in MetadataCache cache, in MetadataObject metadata)
         {
-            //TODO: find DbName in DbNameCache by property.Uuid (meta-uuid)
+            DbName db = cache.GetDbName(metadata.Uuid);
 
+            if (metadata is SharedProperty property)
+            {
+                property.DbName = CreateDbName(db.Name, db.Code);
+
+                ConfigureDatabaseFields(in cache, property);
+                
+                return;
+            }
+
+            if (metadata is not ApplicationObject entity)
+            {
+                return;
+            }
+
+            entity.TableName = CreateDbName(db.Name, db.Code);
+
+            ConfigureDatabaseProperties(in cache, in entity);
+            
+            ConfigureDatabaseTableParts(in cache, in entity);
+        }
+        private static void ConfigureDatabaseProperties(in MetadataCache cache, in ApplicationObject entity)
+        {
+            foreach (MetadataProperty property in entity.Properties)
+            {
+                if (property is SharedProperty)
+                {
+                    continue;
+                }
+
+                if (property.Purpose == PropertyPurpose.System)
+                {
+                    continue;
+                }
+                
+                DbName db = cache.GetDbName(property.Uuid);
+
+                property.DbName = CreateDbName(db.Name, db.Code);
+
+                ConfigureDatabaseFields(in cache, in property);
+            }
+        }
+        private static void ConfigureDatabaseTableParts(in MetadataCache cache, in ApplicationObject entity)
+        {
+            if (entity is not IAggregate aggregate)
+            {
+                return;
+            }
+
+            foreach (TablePart tablePart in aggregate.TableParts)
+            {
+                DbName db = cache.GetDbName(tablePart.Uuid);
+
+                tablePart.TableName = entity.TableName + CreateDbName(db.Name, db.Code);
+
+                ConfigureDatabaseProperties(in cache, tablePart);
+            }
+        }
+        private static void ConfigureDatabaseFields(in MetadataCache cache, in MetadataProperty property)
+        {
             if (property.PropertyType.IsMultipleType)
             {
                 ConfigureDatabaseFieldsForMultipleType(in property);
@@ -1080,6 +1135,36 @@ namespace DaJet.Metadata.Core
                 Purpose = FieldPurpose.Discriminator
             });
 
+            if (property.PropertyType.CanBeBoolean)
+            {
+                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.L, "binary", 1)
+                {
+                    Purpose = FieldPurpose.Boolean
+                });
+            }
+
+            if (property.PropertyType.CanBeNumeric)
+            {
+                // length can be updated from database
+                property.Fields.Add(new DatabaseField(
+                    property.DbName + "_" + MetadataTokens.N,
+                    "numeric", 9,
+                    property.PropertyType.NumericPrecision,
+                    property.PropertyType.NumericScale)
+                {
+                    Purpose = FieldPurpose.Numeric
+                });
+            }
+
+            if (property.PropertyType.CanBeDateTime)
+            {
+                // length, precision and scale can be updated from database
+                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.T, "datetime2", 6, 19, 0)
+                {
+                    Purpose = FieldPurpose.DateTime
+                });
+            }
+
             if (property.PropertyType.CanBeString)
             {
                 if (property.PropertyType.StringKind == StringKind.Fixed)
@@ -1105,37 +1190,7 @@ namespace DaJet.Metadata.Core
                     });
                 }
             }
-
-            if (property.PropertyType.CanBeNumeric)
-            {
-                // length can be updated from database
-                property.Fields.Add(new DatabaseField(
-                    property.DbName + "_" + MetadataTokens.N,
-                    "numeric", 9,
-                    property.PropertyType.NumericPrecision,
-                    property.PropertyType.NumericScale)
-                {
-                    Purpose = FieldPurpose.Numeric
-                });
-            }
-
-            if (property.PropertyType.CanBeBoolean)
-            {
-                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.L, "binary", 1)
-                {
-                    Purpose = FieldPurpose.Boolean
-                });
-            }
-
-            if (property.PropertyType.CanBeDateTime)
-            {
-                // length, precision and scale can be updated from database
-                property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.T, "datetime2", 6, 19, 0)
-                {
-                    Purpose = FieldPurpose.DateTime
-                });
-            }
-
+            
             if (property.PropertyType.CanBeReference)
             {
                 if (property.PropertyType.Reference == Guid.Empty) // miltiple refrence type

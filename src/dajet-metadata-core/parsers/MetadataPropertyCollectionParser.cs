@@ -8,6 +8,7 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class MetadataPropertyCollectionParser
     {
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
         private readonly MetadataObject _owner;
@@ -16,35 +17,35 @@ namespace DaJet.Metadata.Parsers
         private PropertyPurpose _purpose;
         private MetadataProperty _property;
         private List<MetadataProperty> _target;
-        private Dictionary<MetadataProperty, List<Guid>> _references;
         private ConfigFileConverter _converter;
-        public MetadataPropertyCollectionParser() { }
-        public MetadataPropertyCollectionParser(MetadataObject owner)
+        public MetadataPropertyCollectionParser(MetadataCache cache)
         {
+            _cache = cache;
+        }
+        public MetadataPropertyCollectionParser(MetadataCache cache, MetadataObject owner)
+        {
+            _cache = cache;
             _owner = owner;
         }
-        public void Parse(in ConfigFileReader source, out List<MetadataProperty> target, out Dictionary<MetadataProperty, List<Guid>> references)
+        public void Parse(in ConfigFileReader source, out List<MetadataProperty> target)
         {
             ConfigureCollectionConverter(in source);
 
             _target = new List<MetadataProperty>();
-            _references = new Dictionary<MetadataProperty, List<Guid>>();
 
-            _typeParser = new DataTypeSetParser();
+            _typeParser = new DataTypeSetParser(_cache);
 
             _parser = new ConfigFileParser();
             _parser.Parse(in source, in _converter);
 
             // result
             target = _target;
-            references = _references;
 
             // dispose private variables
             _target = null;
             _parser = null;
             _property = null;
             _converter = null;
-            _references = null;
             _typeParser = null;
         }
         
@@ -147,9 +148,6 @@ namespace DaJet.Metadata.Parsers
         private void PropertyUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             _property.Uuid = source.GetUuid();
-
-            //TODO: create DbName
-            //_property.DbName = ???
         }
         private void PropertyName(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -161,18 +159,13 @@ namespace DaJet.Metadata.Parsers
         }
         private void PropertyType(in ConfigFileReader source, in CancelEventArgs args)
         {
-            // Описание типа данных свойства (корневой узел объекта DataTypeSet)
+            // Корневой узел объекта "ОписаниеТипов"
 
             if (source.Token == TokenType.StartObject)
             {
-                _typeParser.Parse(in source, out DataTypeSet type, out List<Guid> references);
+                _typeParser.Parse(in source, out DataTypeSet type);
 
                 _property.PropertyType = type;
-
-                if (references != null && references.Count > 0)
-                {
-                    _references.Add(_property, references); //TODO: store in PropertyType !?
-                }
             }
         }
         private void PropertyUsage(in ConfigFileReader source, in CancelEventArgs args)
