@@ -6,7 +6,7 @@ namespace DaJet.Metadata.Core
 {
     internal static class Configurator
     {
-        internal static void ConfigureSystemProperties(in InfoBaseCache cache, in MetadataObject metadata)
+        internal static void ConfigureSystemProperties(in MetadataCache cache, in MetadataObject metadata)
         {
             if (metadata is Catalog catalog)
             {
@@ -37,7 +37,7 @@ namespace DaJet.Metadata.Core
                 ConfigureAccumulationRegister(in register2);
             }
         }
-        internal static void ConfigureSharedProperties(in InfoBaseCache cache, in MetadataObject metadata)
+        internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
         {
             if (metadata is not ApplicationObject target)
             {
@@ -62,7 +62,7 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        internal static void ConfigureMetadataProperties(in InfoBaseCache cache, in MetadataObject metadata, in Dictionary<MetadataProperty, List<Guid>> references)
+        internal static void ConfigureMetadataProperties(in MetadataCache cache, in MetadataObject metadata, in Dictionary<MetadataProperty, List<Guid>> references)
         {
             if (metadata is not ApplicationObject entity)
             {
@@ -78,7 +78,7 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        internal static void ConfigureReferenceTypes(in InfoBaseCache cache, in DataTypeSet target, in List<Guid> references)
+        internal static void ConfigureReferenceTypes(in MetadataCache cache, in DataTypeSet target, in List<Guid> references)
         {
             if (references == null || references.Count == 0)
             {
@@ -115,12 +115,12 @@ namespace DaJet.Metadata.Core
                 target.Reference = Guid.Empty;// multiple reference type
             }
         }
-        private static int ResolveAndCountReferenceType(in InfoBaseCache cache, in DataTypeSet target, Guid reference)
+        private static int ResolveAndCountReferenceType(in MetadataCache cache, in DataTypeSet target, Guid reference)
         {
             // DataTypeSet (property type) can have only one reference to NamedDataTypeSet or Characteristic
             // Additional date types of references are not allowed in this case !
 
-            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
+            if (cache.TryGetReferenceInfo(reference, out MetadataInfo info))
             {
                 if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
                     (info.MetadataType == MetadataTypes.Characteristic && reference == info.CharacteristicUuid))
@@ -190,14 +190,14 @@ namespace DaJet.Metadata.Core
             return count;
         }
 
-        internal static void ConfigureDataTypeSetReferences(in InfoBaseCache cache, in DataTypeSet target)
+        internal static void ConfigureDataTypeSetReferences(in MetadataCache cache, in DataTypeSet target)
         {
             //TODO: resolve references
         }
 
         #region "TABLE PARTS"
 
-        internal static void ConfigureTableParts(in InfoBaseCache cache, in ApplicationObject owner)
+        internal static void ConfigureTableParts(in MetadataCache cache, in ApplicationObject owner)
         {
             if (owner is not IAggregate aggregate)
             {
@@ -256,7 +256,7 @@ namespace DaJet.Metadata.Core
 
             tablePart.Properties.Add(property);
         }
-        private static void ConfigurePropertyНомерСтроки(in InfoBaseCache cache, in TablePart tablePart)
+        private static void ConfigurePropertyНомерСтроки(in MetadataCache cache, in TablePart tablePart)
         {
             DbName entry = cache.GetLineNo(tablePart.Uuid);
 
@@ -870,7 +870,7 @@ namespace DaJet.Metadata.Core
 
         #region "Predefined values (catalogs and characteristics)"
 
-        public static void ConfigurePredefinedValues(in InfoBaseCache cache, in MetadataObject metadata)
+        public static void ConfigurePredefinedValues(in MetadataCache cache, in MetadataObject metadata)
         {
             if (metadata is not IPredefinedValues owner) return;
 

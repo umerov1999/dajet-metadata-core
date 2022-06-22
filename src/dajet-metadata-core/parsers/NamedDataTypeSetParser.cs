@@ -8,21 +8,21 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class NamedDataTypeSetParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
 
         private List<Guid> _references; // TODO: remove - configure DataTypeSet
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private NamedDataTypeSet _target;
         private ConfigFileConverter _converter;
-        public NamedDataTypeSetParser(InfoBaseCache cache)
+        public NamedDataTypeSetParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.NamedDataTypeSet,
                 MetadataUuid = new Guid(source.FileName)
@@ -58,7 +58,6 @@ namespace DaJet.Metadata.Parsers
 
             // result
             target = _target;
-            references = _references;
 
             // dispose private variables
             _target = null;
@@ -81,7 +80,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+                _entry.ReferenceUuid = source.GetUuid();
 
                 return;
             }

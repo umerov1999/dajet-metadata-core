@@ -8,22 +8,22 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class SharedPropertyParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
 
         int _count = 0;
         private List<Guid> _references;
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private SharedProperty _target;
         private ConfigFileConverter _converter;
-        public SharedPropertyParser(InfoBaseCache cache)
+        public SharedPropertyParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.SharedProperty,
                 MetadataUuid = new Guid(source.FileName)

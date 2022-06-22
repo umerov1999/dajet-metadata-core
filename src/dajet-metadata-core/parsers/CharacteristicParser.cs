@@ -8,22 +8,22 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class CharacteristicParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private DataTypeSetParser _typeParser;
         private TablePartCollectionParser _tableParser;
         private MetadataPropertyCollectionParser _propertyParser;
 
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private Characteristic _target;
         private ConfigFileConverter _converter;
-        public CharacteristicParser(InfoBaseCache cache)
+        public CharacteristicParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.Characteristic,
                 MetadataUuid = new Guid(source.FileName)
@@ -75,7 +75,7 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            _converter[1][9] += CharacteristicUuid;
+            //FIXME: _converter[1][9] += CharacteristicUuid;
 
             _converter[1][13][1][2] += Name;
             _converter[1][13][1][3][2] += Alias;
@@ -91,14 +91,14 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+                _entry.ReferenceUuid = source.GetUuid();
             }
         }
         private void CharacteristicUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
-                _cache.AddCharacteristic(source.GetUuid(), _entry.MetadataUuid);
+                _entry.CharacteristicUuid = source.GetUuid();
             }
 
             if (_target != null)

@@ -8,22 +8,22 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class CatalogParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private TablePartCollectionParser _tableParser;
         private MetadataPropertyCollectionParser _propertyParser;
 
         private Catalog _target;
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private ConfigFileConverter _converter;
         private Dictionary<MetadataProperty, List<Guid>> _references;
-        public CatalogParser(InfoBaseCache cache)
+        public CatalogParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.Catalog,
                 MetadataUuid = new Guid(source.FileName)
@@ -75,7 +75,7 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][9][1][2] += Name;
             _converter[1][9][1][3][2] += Alias;
-            //_converter[1][12][1] += Owners; // UUID объектов метаданных - владельцев справочника
+            //FIXME: _converter[1][12][1] += Owners; // UUID объектов метаданных - владельцев справочника
             _converter[1][17] += CodeLength;
             _converter[1][18] += CodeType;
             _converter[1][19] += DescriptionLength;
@@ -89,7 +89,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+                _entry.ReferenceUuid = source.GetUuid();
             }
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
@@ -132,7 +132,7 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            int offset = 2; // начальный индекс N
+            int offset = 2; // начальный индекс N [1][12][2]
 
             for (int n = 0; n < count; n++)
             {
@@ -143,7 +143,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddCatalogOwner(_entry.MetadataUuid, source.GetUuid());
+                _entry.CatalogOwners.Add(source.GetUuid());
             }
         }
         private void CodeType(in ConfigFileReader source, in CancelEventArgs args)

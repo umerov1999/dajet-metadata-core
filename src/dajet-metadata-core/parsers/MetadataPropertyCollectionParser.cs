@@ -147,6 +147,9 @@ namespace DaJet.Metadata.Parsers
         private void PropertyUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             _property.Uuid = source.GetUuid();
+
+            //TODO: create DbName
+            //_property.DbName = ???
         }
         private void PropertyName(in ConfigFileReader source, in CancelEventArgs args)
         {

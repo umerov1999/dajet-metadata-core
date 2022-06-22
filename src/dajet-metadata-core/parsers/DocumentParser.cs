@@ -8,21 +8,21 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class DocumentParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private TablePartCollectionParser _tableParser;
         private MetadataPropertyCollectionParser _propertyParser;
 
         private Document _target;
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private ConfigFileConverter _converter;
-        public DocumentParser(InfoBaseCache cache)
+        public DocumentParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.Document,
                 MetadataUuid = new Guid(source.FileName)
@@ -33,7 +33,7 @@ namespace DaJet.Metadata.Parsers
 
             _converter[1][3] += Reference; // ДокументСсылка
             _converter[1][9][1][2] += Name; // Имя объекта метаданных конфигурации
-            //TODO: _converter[1][24] += Registers; // Коллекция регистров движения документа [1][24]
+            _converter[1][24] += Registers; // Коллекция регистров движения документа
 
             _parser.Parse(in source, in _converter);
 
@@ -96,7 +96,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
+                _entry.ReferenceUuid = source.GetUuid();
             }
         }
         private void Registers(in ConfigFileReader source, in CancelEventArgs args)
@@ -110,13 +110,13 @@ namespace DaJet.Metadata.Parsers
 
             //TODO !!!
 
-            // 1.12.0 - UUID коллекции владельцев справочника !?
-            // 1.12.1 - количество владельцев справочника
-            // 1.12.N - описание владельцев
-            // 1.12.N.2.1 - uuid'ы владельцев (file names)
+            // 1.24.0 - UUID коллекции регистров движения !?
+            // 1.24.1 - количество регистров движения
+            // 1.24.N - описание регистров движения
+            // 1.24.N.2.1 - uuid'ы регистров движения (file names)
 
-            _ = source.Read(); // [1][12][0] - UUID коллекции владельцев справочника
-            _ = source.Read(); // [1][12][1] - количество владельцев справочника
+            _ = source.Read(); // [1][24][0] - UUID коллекции регистров движения
+            _ = source.Read(); // [1][24][1] - количество регистров движения
 
             int count = source.GetInt32();
 
@@ -125,18 +125,18 @@ namespace DaJet.Metadata.Parsers
                 return;
             }
 
-            int offset = 2; // начальный индекс N
+            int offset = 2; // начальный индекс N [1][24][2]
 
             for (int n = 0; n < count; n++)
             {
-                _converter[1][12][offset + n][2][1] += RegisterUuid;
+                _converter[1][24][offset + n][2][1] += RegisterUuid;
             }
         }
         private void RegisterUuid(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
-                _cache.AddDocumentRegister(_entry.MetadataUuid, source.GetUuid());
+                _entry.DocumentRegisters.Add(source.GetUuid());
             }
         }
         private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)

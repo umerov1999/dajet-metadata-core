@@ -149,7 +149,7 @@ namespace DaJet.Metadata.Parsers
             _metadata = null;
             _converter = null;
         }
-        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, out ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
+        public void Parse(in ConfigFileReader reader, out InfoBase infoBase, in ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
         {
             _converter = new ConfigFileConverter();
 

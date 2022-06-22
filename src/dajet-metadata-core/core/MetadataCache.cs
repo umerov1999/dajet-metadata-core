@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DaJet.Metadata.Core
 {
-    public sealed class InfoBaseCache
+    public sealed class MetadataCache
     {
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
@@ -22,19 +22,28 @@ namespace DaJet.Metadata.Core
         ///<b>Кэш объектов метаданных:</b>
         ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
         ///<br><b>Ключ 2:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
-        ///<br><b>Значение:</b> описание объекта метаданных и его кэшируемый экземпляр</br>
+        ///<br><b>Значение:</b> кэшируемый объект метаданных</br>
         ///</summary>
-        private ConcurrentDictionary<Guid, Dictionary<Guid, MetadataEntry>> _cache;
+        private readonly ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache = new();
+
+        ///<summary>
+        ///<b>Имена объектов метаданных:</b>
+        ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
+        ///<br><b>Ключ 2:</b> имя объекта метаданных, например, "Номенклатура"</br>
+        ///<br><b>Значение:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names = new();
 
         ///<summary>
         ///<br><b>Ключ:</b> UUID типа данных "Ссылка", например, "ОпределяемыйТип", "ЛюбаяСсылка",</br>
         ///<br>"СправочникСсылка", "СправочникСсылка.Номенклатура"  и т.п. (общие и конкретные типы данных).</br>
         ///<br></br>
-        ///<br><b>Значение:</b> UUID объекта метаданных. Для ссылок на общие типы данных - значение <see cref="MetadataTypes"/>.</br>
+        ///<br><b>Значение:</b> UUID общего и конкретного типов объекта метаданных.</br>
+        ///<br>Для ссылок на общие типы данных - значение <see cref="MetadataTypes"/>.</br>
         ///<br></br>
         ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
         ///</summary>
-        private readonly ConcurrentDictionary<Guid, Guid> _references = new();
+        private readonly ConcurrentDictionary<Guid, MetadataEntry> _references = new();
 
         ///<summary>
         ///<br><b>Ключ:</b> UUID типа данных "Характеристика" - исключительный случай для <see cref="_references"/>,</br>
@@ -61,15 +70,36 @@ namespace DaJet.Metadata.Core
         ///</summary>
         private readonly ConcurrentDictionary<Guid, List<Guid>> _registers = new();
 
-        public void AddReference(Guid reference, Guid metadata)
+        ///<summary>
+        ///<br>Кэш идентификаторов <see cref="DbName"/> объектов СУБД</br>
+        ///<br>и их сопоставление объектам метаданных конфигурации</br>
+        ///</summary>
+        private DbNameCache _database;
+
+        private void AddName(Guid type, Guid metadata, string name)
+        {
+            // metadata object name to uuid mapping
+            if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
+            {
+                names.Add(name, metadata);
+            }
+            else
+            {
+                _ = _names.TryAdd(type, new Dictionary<string, Guid>()
+                {
+                    { name, metadata }
+                });
+            }
+        }
+        private void AddReference(Guid reference, MetadataEntry metadata)
         {
             _ = _references.TryAdd(reference, metadata);
         }
-        public void AddCharacteristic(Guid characteristic, Guid metadata)
+        private void AddCharacteristic(Guid characteristic, Guid metadata)
         {
             _ = _characteristics.TryAdd(characteristic, metadata);
         }
-        public void AddCatalogOwner(Guid catalog, Guid owner)
+        private void AddCatalogOwner(Guid catalog, Guid owner)
         {
             if (_owners.TryGetValue(catalog, out List<Guid> owners))
             {
@@ -80,7 +110,7 @@ namespace DaJet.Metadata.Core
                 _owners.TryAdd(catalog, new List<Guid>() { owner });
             }
         }
-        public void AddDocumentRegister(Guid document, Guid register)
+        private void AddDocumentRegister(Guid document, Guid register)
         {
             if (_registers.TryGetValue(document, out List<Guid> registers))
             {
@@ -92,27 +122,14 @@ namespace DaJet.Metadata.Core
             }
         }
 
-        // Общий тип метаданных + имя объекта метаданных + тип объекта метаданных
-        // Коллекция используется для поиска объекта метаданных по его полному имени
-        // Например, Справочник.Номенклатура = UUID объекта метаданных
-        // Далее выполняется поиск подробного описания объекта метаданных в коллекции _cache
-        private ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names;
-
-        // Код типа объекта метаданных + тип объекта метаданных, например, "Справочник.Номенклатура"
-        private Dictionary<int, Guid> _codes;
-
-        // Идентификаторы объектов СУБД для объектов метаданных,
-        // в том числе их реквизитов и вспомогательных таблиц СУБД
-        private DbNameCache _data;
-
         #endregion
 
-        internal InfoBaseCache(DatabaseProvider provider, in string connectionString)
+        internal MetadataCache(DatabaseProvider provider, in string connectionString)
         {
             _provider = provider;
             _connectionString = connectionString;
 
-            _parsers = new()
+            _parsers = new() // supported metadata object parsers
             {
                 { MetadataTypes.Catalog, new CatalogParser(this) },
                 { MetadataTypes.Document, new DocumentParser(this) },
@@ -125,15 +142,12 @@ namespace DaJet.Metadata.Core
                 { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser(this) } // since 1C:Enterprise 8.3.3 version
             };
         }
-
         internal string ConnectionString { get { return _connectionString; } }
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
-
         internal void Initialize(out InfoBase infoBase)
         {
             InitializeRootFile();
             InitializeMetadataCache(out infoBase);
-            InitializeReferenceCache();
             InitializeDbNameCache();
         }
         private void InitializeRootFile()
@@ -145,57 +159,40 @@ namespace DaJet.Metadata.Core
         }
         private void InitializeMetadataCache(out InfoBase infoBase)
         {
+            _cache.Clear();
+            _names.Clear();
+            _owners.Clear();
+            _registers.Clear();
+            _references.Clear();
+            _characteristics.Clear();
+
+            _references.TryAdd(ReferenceTypes.AnyReference, new MetadataEntry(Guid.Empty, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Catalog, new MetadataEntry(MetadataTypes.Catalog, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Document, new MetadataEntry(MetadataTypes.Document, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Enumeration, new MetadataEntry(MetadataTypes.Enumeration, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Publication, new MetadataEntry(MetadataTypes.Publication, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Characteristic, new MetadataEntry(MetadataTypes.Characteristic, Guid.Empty));
+
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, _root))
             {
                 new InfoBaseParser().Parse(in reader, out infoBase, out _cache);
             }
-        }
-        private void InitializeReferenceCache()
-        {
-            _names = new ConcurrentDictionary<Guid, Dictionary<string, Guid>>();
-            
-            _references.Clear();
-            _references.TryAdd(ReferenceTypes.AnyReference, Guid.Empty);
-            _references.TryAdd(ReferenceTypes.Catalog, MetadataTypes.Catalog);
-            _references.TryAdd(ReferenceTypes.Document, MetadataTypes.Document);
-            _references.TryAdd(ReferenceTypes.Enumeration, MetadataTypes.Enumeration);
-            _references.TryAdd(ReferenceTypes.Publication, MetadataTypes.Publication);
-            _references.TryAdd(ReferenceTypes.Characteristic, MetadataTypes.Characteristic);
 
-            _characteristics.Clear();
-
-            ParallelOptions options = new ParallelOptions()
+            ParallelOptions options = new()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
-            Parallel.ForEach(_cache, options, InitializeReferenceTypeCache);
+            ParallelLoopResult result = Parallel.ForEach(_cache, options, InitializeMetadata);
         }
-        private void InitializeReferenceTypeCache(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
+        private void InitializeMetadata(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
         {
-            Guid type = cache.Key;
+            Guid type = cache.Key; // общий тип объектов метаданных, например, "Справочник"
 
-            //TODO: get parser by metadata type !!!
-
-            if (type == MetadataTypes.Constant)
+            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
             {
-                return;
+                return; // Unsupported metadata type
             }
-
-            if (!(type == MetadataTypes.Catalog ||
-                type == MetadataTypes.Document ||
-                type == MetadataTypes.Enumeration ||
-                type == MetadataTypes.Publication ||
-                type == MetadataTypes.Characteristic ||
-                type == MetadataTypes.SharedProperty ||
-                type == MetadataTypes.NamedDataTypeSet ||
-                type == MetadataTypes.InformationRegister ||
-                type == MetadataTypes.AccumulationRegister))
-            {
-                return;
-            }
-
-            ReferenceParser parser = new();
 
             foreach (var entry in cache.Value)
             {
@@ -206,59 +203,53 @@ namespace DaJet.Metadata.Core
 
                 using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, entry.Key))
                 {
-                    MetadataEntry info = parser.Parse(in reader, type, out string name);
+                    parser.Parse(in reader, out MetadataInfo metadata);
 
-                    if (string.IsNullOrEmpty(name))
+                    if (string.IsNullOrWhiteSpace(metadata.Name))
                     {
                         continue; // accidentally: unsupported metadata object type
                     }
 
-                    // metadata object name to uuid mapping
-                    if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
+                    if (!string.IsNullOrWhiteSpace(metadata.Name))
                     {
-                        names.Add(name, entry.Key);
-                    }
-                    else
-                    {
-                        _ = _names.TryAdd(type, new Dictionary<string, Guid>() { { name, entry.Key } });
+                        AddName(metadata.MetadataType, metadata.MetadataUuid, metadata.Name);
                     }
 
-                    // reference type uuid to metadata object mapping
-                    if (info.ReferenceUuid != Guid.Empty)
+                    if (metadata.ReferenceUuid != Guid.Empty)
                     {
-                        if (info.MetadataType == MetadataTypes.Characteristic)
+                        AddReference(metadata.ReferenceUuid, new MetadataEntry(metadata.MetadataType, metadata.MetadataUuid));
+                    }
+
+                    if (metadata.CharacteristicUuid != Guid.Empty)
+                    {
+                        AddCharacteristic(metadata.CharacteristicUuid, metadata.MetadataUuid);
+                    }
+
+                    if (metadata.CatalogOwners.Count > 0)
+                    {
+                        foreach (Guid owner in metadata.CatalogOwners)
                         {
-                            _ = _references.TryAdd(info.CharacteristicUuid, info);
+                            AddCatalogOwner(metadata.MetadataUuid, owner);
                         }
-                        _ = _references.TryAdd(info.ReferenceUuid, info);
+                    }
+
+                    if (metadata.DocumentRegisters.Count > 0)
+                    {
+                        foreach (Guid register in metadata.DocumentRegisters)
+                        {
+                            AddDocumentRegister(metadata.MetadataUuid, register);
+                        }
                     }
                 }
             }
         }
         private void InitializeDbNameCache()
         {
+            _database.Clear();
+
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, ConfigFiles.DbNames))
             {
-                new DbNamesParser().Parse(in reader, out _data);
-            }
-
-            if (_data == null)
-            {
-                return;
-            }
-
-            _codes = new Dictionary<int, Guid>();
-
-            foreach (DbName item in _data.DbNames)
-            {
-                if (item.Name == MetadataTokens.Chrc ||
-                    item.Name == MetadataTokens.Enum ||
-                    item.Name == MetadataTokens.Node ||
-                    item.Name == MetadataTokens.Document ||
-                    item.Name == MetadataTokens.Reference)
-                {
-                    _codes.Add(item.Code, item.Uuid);
-                }
+                new DbNamesParser().Parse(in reader, out _database);
             }
         }
 
@@ -271,7 +262,7 @@ namespace DaJet.Metadata.Core
 
             return entry.Count;
         }
-        internal bool TryGetReferenceInfo(Guid reference, out MetadataEntry info)
+        internal bool TryGetReferenceInfo(Guid reference, out MetadataInfo info)
         {
             return _references.TryGetValue(reference, out info);
         }
@@ -410,7 +401,7 @@ namespace DaJet.Metadata.Core
 
             using (ConfigFileReader reader = new(_provider, _connectionString, ConfigTables.Config, uuid))
             {
-                parser.Parse(in reader, out metadata, out references);
+                parser.Parse(in reader, out metadata);
             }
 
             // Shared properties are always in the bottom.
@@ -450,7 +441,7 @@ namespace DaJet.Metadata.Core
 
         internal DbName GetDbName(Guid uuid)
         {
-            if (!_data.TryGet(uuid, out DbName entry))
+            if (!_database.TryGet(uuid, out DbName entry))
             {
                 throw new InvalidOperationException(nameof(GetDbName));
             }
@@ -459,7 +450,7 @@ namespace DaJet.Metadata.Core
         }
         internal DbName GetLineNo(Guid uuid)
         {
-            if (!_data.TryGet(uuid, out DbName entry))
+            if (!_database.TryGet(uuid, out DbName entry))
             {
                 throw new InvalidOperationException(nameof(GetDbName));
             }
@@ -476,7 +467,7 @@ namespace DaJet.Metadata.Core
         }
         internal DbName GetChngR(Guid uuid)
         {
-            if (!_data.TryGet(uuid, out DbName entry))
+            if (!_database.TryGet(uuid, out DbName entry))
             {
                 throw new InvalidOperationException(nameof(GetDbName));
             }

@@ -7,19 +7,19 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class PublicationParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
 
         private Publication _target;
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private ConfigFileConverter _converter;
-        public PublicationParser(InfoBaseCache cache)
+        public PublicationParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.Publication,
                 MetadataUuid = new Guid(source.FileName)
@@ -90,9 +90,7 @@ namespace DaJet.Metadata.Parsers
         {
             if (_entry != null)
             {
-                _cache.AddReference(source.GetUuid(), _entry.MetadataUuid);
-
-                return;
+                _entry.ReferenceUuid = source.GetUuid();
             }
         }
     }

@@ -174,7 +174,7 @@ namespace DaJet.Metadata.Test
                 InfoBaseParser.Parse(in reader, out infoBase, out collections);
             }
 
-            MetadataEntry reference;
+            MetadataInfo reference;
             ReferenceParser parser = new();
 
             foreach (var item in collections)

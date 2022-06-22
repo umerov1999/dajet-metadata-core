@@ -5,11 +5,11 @@ namespace DaJet.Metadata.Core
 {
     public sealed class MetadataService
     {
-        private InfoBaseCache _cache;
+        private MetadataCache _cache;
 
         public void OpenInfoBase(DatabaseProvider provider, in string connectionString, out InfoBase infoBase)
         {
-            _cache = new InfoBaseCache(provider, in connectionString);
+            _cache = new MetadataCache(provider, in connectionString);
 
             UpdateInfoBase(out infoBase);
         }
@@ -63,7 +63,7 @@ namespace DaJet.Metadata.Core
                 throw new ArgumentNullException(nameof(infoBase));
             }
 
-            if (!_cache.TryGetReferenceInfo(reference, out MetadataEntry info))
+            if (!_cache.TryGetReferenceInfo(reference, out MetadataInfo info))
             {
                 return null;
             }

@@ -18,20 +18,28 @@ namespace DaJet.Metadata.Model
             Code = code;
             Name = name;
         }
-        public readonly int Code { get; } // Unique code
-        public readonly Guid Uuid { get; } // Metadata object uuid (not unique because of duplicates in child entries)
-        public readonly string Name { get; } // Prefix of the database object name
+        public static DbName Empty
+        {
+            get { return new DbName(); }
+        }
+        public readonly int Code { get; } = 0;
+        public readonly Guid Uuid { get; } = Guid.Empty;
+        public readonly string Name { get; } = string.Empty;
         public readonly List<DbName> Children { get; } = new List<DbName>(); // VT + LineNo | Reference + ReferenceChngR
         public override string ToString()
         {
             return $"{Name} {{{Code}:{Uuid}}}";
         }
     }
-    /// <summary>
-    /// Коллекция идентификаторов <see cref="DbName"/> объектов СУБД для объектов метаданных
-    /// </summary>
+    ///<summary>
+    ///Коллекция идентификаторов СУБД <see cref="DbName"/> объектов метаданных конфигурации:
+    ///<br>1. UUID объекта метаданных, в том числе реквизита или вспомогательной таблицы СУБД</br>
+    ///<br>2. Уникальный числовой код объекта метаданных и СУБД</br>
+    ///<br>3. Буквенный идентификатор объекта СУБД, например, Reference, Fld, VT, LineNo и т.п.</br>
+    ///</summary>
     public sealed class DbNameCache
     {
+        private readonly Dictionary<int, Guid> _codes = new();
         private readonly Dictionary<Guid, DbName> _cache = new();
         public IEnumerable<DbName> DbNames
         {
@@ -41,8 +49,32 @@ namespace DaJet.Metadata.Model
         {
             return _cache.TryGetValue(uuid, out entry);
         }
+        public bool TryGet(int code, out Guid uuid)
+        {
+            return _codes.TryGetValue(code, out uuid);
+        }
+        public bool TryGet(int code, out DbName entry)
+        {
+            if (!_codes.TryGetValue(code, out Guid uuid))
+            {
+                entry = DbName.Empty;
+
+                return false;
+            }
+
+            return _cache.TryGetValue(uuid, out entry);
+        }
         public void Add(Guid uuid, int code, string name)
         {
+            if (name == MetadataTokens.Chrc ||
+                name == MetadataTokens.Enum ||
+                name == MetadataTokens.Node ||
+                name == MetadataTokens.Document ||
+                name == MetadataTokens.Reference)
+            {
+                _ = _codes.TryAdd(code, uuid);
+            }
+
             // NOTE: the case when child and parent items are in the wrong order is not assumed
 
             if (_cache.TryGetValue(uuid, out DbName entry))
@@ -53,6 +85,11 @@ namespace DaJet.Metadata.Model
             {
                 _cache.Add(uuid, new DbName(uuid, code, name));
             }
+        }
+        public void Clear()
+        {
+            _codes.Clear();
+            _cache.Clear();
         }
     }
 }

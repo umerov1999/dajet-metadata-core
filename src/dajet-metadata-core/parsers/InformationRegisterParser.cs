@@ -8,20 +8,20 @@ namespace DaJet.Metadata.Parsers
 {
     public sealed class InformationRegisterParser : IMetadataObjectParser
     {
-        private readonly InfoBaseCache _cache;
+        private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
         private MetadataPropertyCollectionParser _propertyCollectionParser;
 
-        private MetadataEntry _entry;
+        private MetadataInfo _entry;
         private InformationRegister _target;
         private ConfigFileConverter _converter;
-        public InformationRegisterParser(InfoBaseCache cache)
+        public InformationRegisterParser(MetadataCache cache)
         {
             _cache = cache;
         }
-        public void Parse(in ConfigFileReader source, out MetadataEntry target)
+        public void Parse(in ConfigFileReader source, out MetadataInfo target)
         {
-            _entry = new MetadataEntry()
+            _entry = new MetadataInfo()
             {
                 MetadataType = MetadataTypes.InformationRegister,
                 MetadataUuid = new Guid(source.FileName)
@@ -51,7 +51,6 @@ namespace DaJet.Metadata.Parsers
             {
                 Uuid = new Guid(reader.FileName)
             };
-            _references = new Dictionary<MetadataProperty, List<Guid>>();
 
             _parser.Parse(in reader, in _converter);
 
@@ -119,17 +118,6 @@ namespace DaJet.Metadata.Parsers
                 if (properties != null && properties.Count > 0)
                 {
                     _target.Properties.AddRange(properties);
-                }
-
-                if (references != null && references.Count > 0)
-                {
-                    foreach (KeyValuePair<MetadataProperty, List<Guid>> reference in references)
-                    {
-                        if (reference.Value != null && reference.Value.Count > 0)
-                        {
-                            _references.Add(reference.Key, reference.Value);
-                        }
-                    }
                 }
             }
         }
