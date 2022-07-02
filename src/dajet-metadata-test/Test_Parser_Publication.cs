@@ -1,15 +1,11 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
-using DaJet.Metadata.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 namespace DaJet.Metadata.Test
 {
-    [TestClass] public class Test_Parser_Catalog
+    [TestClass] public class Test_Parser_Publication
     {
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
@@ -30,7 +26,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "Справочник.Номенклатура"; //"СправочникПредопределённые"; // ТестовыйСправочник
+            string metadataName = "ПланОбмена.ПланОбмена1"; // "ПланОбмена.ПланОбмена";
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 
@@ -40,23 +36,25 @@ namespace DaJet.Metadata.Test
             }
             else
             {
-                ShowMetadataObject((Catalog)@object);
-            }
-
-            try
-            {
-                DbName entry = service.GetChangeTableName(@object);
-                Console.WriteLine($"_{entry.Name}{entry.Code}");
-            }
-            catch (Exception error)
-            {
-                Console.WriteLine($"ChngR error: {error.Message}");
+                ShowMetadataObject((Publication)@object);
             }
 
             Console.WriteLine();
-            ShowDatabaseNames((Catalog)@object);
+            ShowArticles((Publication)@object);
+
+            Console.WriteLine();
+            ShowDatabaseNames((Publication)@object);
         }
-        private void ShowDatabaseNames(Catalog catalog)
+        private void ShowArticles(Publication @object)
+        {
+            Console.WriteLine("Articles:");
+
+            foreach (var article in @object.Articles)
+            {
+                Console.WriteLine($" - {{{article.Key}}} {article.Value}");
+            }
+        }
+        private void ShowDatabaseNames(Publication catalog)
         {
             Console.WriteLine($"TableName: {catalog.TableName}");
 
@@ -72,7 +70,7 @@ namespace DaJet.Metadata.Test
                 }
             }
         }
-        private void ShowMetadataObject(Catalog @object)
+        private void ShowMetadataObject(Publication @object)
         {
             Console.WriteLine($"Uuid: {@object.Uuid}");
             Console.WriteLine($"Name: {@object.Name}");
@@ -167,98 +165,6 @@ namespace DaJet.Metadata.Test
             else if (type.CanBeReference)
             {
                 Console.WriteLine($"  * {type} [{name}]");
-            }
-        }
-
-        ISqlMetadataReader SqlMetadataReader = new SqlMetadataReader();
-        IMetadataCompareAndMergeService CompareMergeService = new MetadataCompareAndMergeService(); // comparator
-        [TestMethod] public void MS_Compare_With_Database()
-        {
-            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out _infoBase);
-
-            SqlMetadataReader.UseConnectionString(MS_CONNECTION_STRING);
-            SqlMetadataReader.UseDatabaseProvider(DatabaseProvider.SQLServer);
-
-            int count = 0;
-            List<string> delete;
-            List<string> insert;
-
-            using (StreamWriter stream = new StreamWriter(@"C:\temp\Test_Catalogs.txt", false, Encoding.UTF8))
-            {
-                foreach (MetadataObject metadata in service.GetMetadataObjects(in _infoBase, MetadataTypes.Catalog))
-                {
-                    if (metadata is not ApplicationObject @object)
-                    {
-                        continue; // should not happen
-                    }
-
-                    count++;
-
-                    bool result = CompareWithDatabase(@object, out delete, out insert);
-                    
-                    if (!result)
-                    {
-                        LogResult(stream, @object, delete, insert);
-                    }
-
-                    if (@object is not IAggregate aggregate)
-                    {
-                        continue; // should not happen
-                    }
-
-                    foreach (TablePart tablePart in aggregate.TableParts)
-                    {
-                        result = CompareWithDatabase(tablePart, out delete, out insert);
-                        
-                        if (!result)
-                        {
-                            LogResult(stream, tablePart, delete, insert);
-                        }
-                    }
-                }
-                stream.WriteLine("*******************************");
-                stream.WriteLine(count.ToString() + " objects processed.");
-            }
-        }
-        private bool CompareWithDatabase(ApplicationObject @object, out List<string> delete, out List<string> insert)
-        {
-            delete = new List<string>();
-            insert = new List<string>();
-
-            List<SqlFieldInfo> sqlFields = SqlMetadataReader.GetSqlFieldsOrderedByName(@object.TableName);
-
-            if (sqlFields.Count == 0)
-            {
-                return false;
-            }
-
-            List<string> targetFields = CompareMergeService.PrepareComparison(@object.Properties);
-            List<string> sourceFields = CompareMergeService.PrepareComparison(sqlFields);
-
-            CompareMergeService.Compare(targetFields, sourceFields, out delete, out insert);
-
-            return (delete.Count + insert.Count) == 0;
-        }
-        private void LogResult(StreamWriter stream, ApplicationObject @object, List<string> delete, List<string> insert)
-        {
-            stream.WriteLine("\"" + @object.Name + "\" (" + @object.TableName + "):");
-            
-            if (delete.Count > 0)
-            {
-                stream.WriteLine("  Delete fields:");
-                foreach (string field in delete)
-                {
-                    stream.WriteLine("   - " + field);
-                }
-            }
-
-            if (insert.Count > 0)
-            {
-                stream.WriteLine("  Insert fields:");
-                foreach (string field in insert)
-                {
-                    stream.WriteLine("   - " + field);
-                }
             }
         }
     }

@@ -82,11 +82,13 @@ namespace DaJet.Metadata.Parsers
             // тип коллекции свойств
             Guid type = source.GetUuid();
 
-            if (type == SystemUuid.InformationRegister_Measure)
+            if (type == SystemUuid.InformationRegister_Measure ||
+                type == SystemUuid.AccumulationRegister_Measure)
             {
                 _purpose = PropertyPurpose.Measure;
             }
-            else if (type == SystemUuid.InformationRegister_Dimension)
+            else if (type == SystemUuid.InformationRegister_Dimension
+                || type == SystemUuid.AccumulationRegister_Dimension)
             {
                 _purpose = PropertyPurpose.Dimension;
             }

@@ -30,11 +30,11 @@ namespace DaJet.Metadata.Core
             }
             else if (metadata is InformationRegister register1)
             {
-                ConfigureInformationRegister(in register1);
+                ConfigureInformationRegister(in cache, in register1);
             }
             else if (metadata is AccumulationRegister register2)
             {
-                ConfigureAccumulationRegister(in register2);
+                ConfigureAccumulationRegister(in cache, in register2);
             }
         }
         internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
@@ -282,7 +282,33 @@ namespace DaJet.Metadata.Core
 
         private static void ConfigureEnumeration(in Enumeration enumeration)
         {
+            ConfigurePropertyСсылка(enumeration);
+            ConfigurePropertyПорядок(in enumeration);
+        }
+        private static void ConfigurePropertyПорядок(in Enumeration enumeration)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Порядок",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_EnumOrder"
+            };
+            
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
 
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Scale = 0,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            enumeration.Properties.Add(property);
         }
 
         #endregion
@@ -441,6 +467,7 @@ namespace DaJet.Metadata.Core
             if (code.CodeType == CodeType.String)
             {
                 property.PropertyType.CanBeString = true;
+                property.PropertyType.StringKind = StringKind.Variable;
                 property.PropertyType.StringLength = code.CodeLength;
 
                 property.Fields.Add(new DatabaseField()
@@ -546,7 +573,7 @@ namespace DaJet.Metadata.Core
 
             if (owners.Count == 1) // Single type value
             {
-                property.PropertyType.Reference = owners[0]; // FIXME (?) owner is always metadata object uuid
+                property.PropertyType.Reference = owners[0];
                 
                 property.Fields.Add(new DatabaseField()
                 {
@@ -651,7 +678,64 @@ namespace DaJet.Metadata.Core
 
         private static void ConfigurePublication(in Publication publication)
         {
+            ConfigurePropertyСсылка(publication);
+            ConfigurePropertyВерсияДанных(publication);
+            ConfigurePropertyПометкаУдаления(publication);
+            ConfigurePropertyКод(publication);
+            ConfigurePropertyНаименование(publication);
+            ConfigurePropertyНомерОтправленного(in publication);
+            ConfigurePropertyНомерПринятого(in publication);
+            ConfigurePropertyПредопределённый(publication);
+        }
+        private static void ConfigurePropertyНомерОтправленного(in Publication publication)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "НомерОтправленного",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_SentNo"
+            };
 
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Scale = 0,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            publication.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомерПринятого(in Publication publication)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "НомерПринятого",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_ReceivedNo"
+            };
+            
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 10;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Scale = 0,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            publication.Properties.Add(property);
         }
 
         #endregion
@@ -667,9 +751,122 @@ namespace DaJet.Metadata.Core
 
         private static void ConfigureDocument(in Document document)
         {
+            ConfigurePropertyСсылка(document);
+            ConfigurePropertyВерсияДанных(document);
+            ConfigurePropertyПометкаУдаления(document);
+            
+            ConfigurePropertyДата(document);
 
+            if (document.NumberLength > 0)
+            {
+                if (document.Periodicity != Periodicity.None)
+                {
+                    ConfigurePropertyПериодНомера(document);
+                }
+
+                ConfigurePropertyНомер(document);
+            }
+
+            ConfigurePropertyПроведён(document);
         }
+        private static void ConfigurePropertyДата(in Document document)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Дата",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Date_Time"
+            };
+            property.PropertyType.CanBeDateTime = true;
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+            document.Properties.Add(property);
+        }
+        private static void ConfigurePropertyПериодНомера(in Document document)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "ПериодНомера",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_NumberPrefix"
+            };
 
+            property.PropertyType.CanBeDateTime = true;
+            property.PropertyType.DateTimePart = DateTimePart.Date;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 6,
+                Precision = 19,
+                TypeName = "datetime2"
+            });
+            document.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомер(in Document document)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Номер",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Number"
+            };
+
+            if (document.NumberType == NumberType.Number)
+            {
+                property.PropertyType.CanBeNumeric = true;
+                property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+                property.PropertyType.NumericPrecision = document.NumberLength;
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = property.DbName,
+                    Precision = document.NumberLength,
+                    TypeName = "numeric"
+                });
+            }
+            else
+            {
+                property.PropertyType.CanBeString = true;
+                property.PropertyType.StringKind = StringKind.Variable;
+                property.PropertyType.StringLength = document.NumberLength;
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = property.DbName,
+                    Length = document.NumberLength,
+                    TypeName = "nvarchar"
+                });
+            }
+            document.Properties.Add(property);
+        }
+        private static void ConfigurePropertyПроведён(in Document document)
+        {
+            MetadataProperty property = new MetadataProperty()
+            {
+                Name = "Проведён",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_Posted"
+            };
+
+            property.PropertyType.CanBeBoolean = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+            document.Properties.Add(property);
+        }
+        
         #endregion
 
         #region "INFORMATION REGISTER"
@@ -680,18 +877,11 @@ namespace DaJet.Metadata.Core
         // 3. "ВидДвижения" = RecordType - string { "Receipt", "Expense" }
         // 4. "Активность"  = Active     - bool
 
-        private static void ConfigureInformationRegister(in InformationRegister register)
+        private static void ConfigureInformationRegister(in MetadataCache cache, in InformationRegister register)
         {
-            if (register == null)
-            {
-                return;
-            }
-
             if (register.UseRecorder)
             {
-                // Описание типов свойства "Регистратор" конфигурируется после чтения метаданных документов:
-                // именно объект метаданных "Документ" содержит ссылки на свои регистры движения.
-                ConfigurePropertyРегистратор(register);
+                ConfigurePropertyРегистратор(in cache, register);
             }
 
             if (register.Periodicity != RegisterPeriodicity.None)
@@ -714,7 +904,16 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_Period"
             };
+            
             property.PropertyType.CanBeDateTime = true;
+
+            if (register is InformationRegister inforeg)
+            {
+                if (inforeg.Periodicity == RegisterPeriodicity.Second)
+                {
+                    property.PropertyType.DateTimePart = DateTimePart.DateTime;
+                }
+            }
 
             property.Fields.Add(new DatabaseField()
             {
@@ -753,7 +952,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyАктивность(in ApplicationObject register)
         {
-            MetadataProperty property = new MetadataProperty()
+            MetadataProperty property = new()
             {
                 Name = "Активность",
                 Uuid = Guid.Empty,
@@ -771,100 +970,128 @@ namespace DaJet.Metadata.Core
 
             register.Properties.Add(property);
         }
-        private static void ConfigurePropertyРегистратор(in ApplicationObject register)
+        private static void ConfigurePropertyРегистратор(in MetadataCache cache, in ApplicationObject register)
         {
-            MetadataProperty property = new MetadataProperty()
+            List<Guid> recorders = cache.GetRegisterRecorders(register.Uuid);
+
+            if (recorders == null || recorders.Count == 0) { return; }
+
+            MetadataProperty property = new()
             {
                 Uuid = Guid.Empty,
                 Name = "Регистратор",
                 Purpose = PropertyPurpose.System,
                 DbName = "_Recorder"
             };
-            property.PropertyType.CanBeReference = true;
 
-            property.Fields.Add(new DatabaseField()
+            DatabaseField field = new()
             {
                 Name = "_RecorderRRef",
                 Length = 16,
                 TypeName = "binary",
                 IsPrimaryKey = true,
                 Purpose = FieldPurpose.Value
-            });
+            };
 
-            register.Properties.Add(property); // TODO: register.Properties.Insert(0, property); ???
+            property.Fields.Add(field);
 
-            //MetadataProperty property = register.Properties.Where(p => p.Name == "Регистратор").FirstOrDefault();
-            //if (property == null)
-            //{
-            //    // добавляем новое свойство
-            //    property = new MetadataProperty()
-            //    {
-            //        Name = "Регистратор",
-            //        Purpose = PropertyPurpose.System,
-            //        Uuid = Guid.Empty,
-            //        DbName = (provider == DatabaseProvider.SQLServer ? "_Recorder" : "_recorder")
-            //    };
-            //    property.PropertyType.CanBeReference = true;
-            //    property.PropertyType.ReferenceTypeUuid = document.Uuid; // single type value
-            //                                                             //property.PropertyType.ReferenceTypeCode = document.TypeCode; // single type value
-            //    property.Fields.Add(new DatabaseField()
-            //    {
-            //        Name = (provider == DatabaseProvider.SQLServer ? "_RecorderRRef" : "_recorderrref"),
-            //        Length = 16,
-            //        TypeName = "binary",
-            //        Scale = 0,
-            //        Precision = 0,
-            //        IsNullable = false,
-            //        KeyOrdinal = 0,
-            //        IsPrimaryKey = true,
-            //        Purpose = FieldPurpose.Value
-            //    });
-            //    register.Properties.Add(property);
-            //    return;
-            //}
-            //// На всякий случай проверям повторное обращение одного и того же документа
-            //if (property.PropertyType.ReferenceTypeUuid == document.Uuid) return;
-            //// Проверям необходимость добавления поля для хранения кода типа документа
-            //if (property.PropertyType.ReferenceTypeUuid == Guid.Empty) return;
-            //// Изменяем назначение поля для хранения ссылки на документ, предварительно убеждаясь в его наличии
-            //DatabaseField field = property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recorderrref").FirstOrDefault();
-            //if (field != null)
-            //{
-            //    field.Purpose = FieldPurpose.Object;
-            //}
-            //// Добавляем поле для хранения кода типа документа, предварительно убеждаясь в его отсутствии
-            //if (property.Fields.Where(f => f.Name.ToLowerInvariant() == "_recordertref").FirstOrDefault() == null)
-            //{
-            //    property.Fields.Add(new DatabaseField()
-            //    {
-            //        Name = (provider == DatabaseProvider.SQLServer ? "_RecorderTRef" : "_recordertref"),
-            //        Length = 4,
-            //        TypeName = "binary",
-            //        Scale = 0,
-            //        Precision = 0,
-            //        IsNullable = false,
-            //        KeyOrdinal = 0,
-            //        IsPrimaryKey = true,
-            //        Purpose = FieldPurpose.TypeCode
-            //    });
-            //}
-            //// Устанавливаем признак множественного типа значения (составного типа данных)
-            ////property.PropertyType.ReferenceTypeCode = 0; // multiple type value
-            //property.PropertyType.ReferenceTypeUuid = Guid.Empty; // multiple type value
+            property.PropertyType.CanBeReference = true;
+
+            if (recorders.Count == 1) // Single type value
+            {
+                property.PropertyType.Reference = recorders[0];
+            }
+            else // Multiple type value
+            {
+                property.PropertyType.Reference = Guid.Empty;
+
+                field.Purpose = FieldPurpose.Object;
+
+                property.Fields.Add(new DatabaseField()
+                {
+                    Name = "_RecorderTRef",
+                    Length = 4,
+                    TypeName = "binary",
+                    IsPrimaryKey = true,
+                    Purpose = FieldPurpose.TypeCode
+                });
+            }
+            
+            register.Properties.Add(property);
         }
 
         #endregion
 
         #region "ACCUMULATION REGISTER"
 
-        private static void ConfigureAccumulationRegister(in AccumulationRegister register)
+        private static void ConfigureAccumulationRegister(in MetadataCache cache, in AccumulationRegister register)
         {
+            ConfigurePropertyРегистратор(in cache, register);
+            ConfigurePropertyПериод(register);
+            ConfigurePropertyНомерЗаписи(register);
+            
+            if (register.RegisterKind == RegisterKind.Balance)
+            {
+                ConfigurePropertyВидДвижения(in register);
+            }
 
+            ConfigurePropertyАктивность(register);
+        }
+        ///<summary>Вид движения <see cref="RecordType"/> регистра накопления остатков</summary>
+        private static void ConfigurePropertyВидДвижения(in AccumulationRegister register)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "ВидДвижения",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_RecordKind"
+            };
+            
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 1;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 5,
+                Precision = 1,
+                TypeName = "numeric"
+            });
+            
+            register.Properties.Add(property);
+        }
+        ///<summary>
+        ///<b>Справка 1С:Предприятие 8 :</b> Хеш-функция измерений.
+        ///<br>Поле присутствует, если количество измерений не позволяет организовать уникальный индекс по измерениям.</br>
+        ///</summary>
+        private static void ConfigurePropertyDimHash(in AccumulationRegister register)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "DimHash",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_DimHash"
+            };
+            
+            property.PropertyType.CanBeNumeric = true;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            register.Properties.Add(property);
         }
 
         #endregion
 
-        #region "Predefined values (catalogs and characteristics)"
+        #region "PREDEFINED VALUES (catalogs and characteristics)"
 
         public static void ConfigurePredefinedValues(in MetadataCache cache, in MetadataObject metadata)
         {
@@ -989,6 +1216,45 @@ namespace DaJet.Metadata.Core
 
                     ConfigurePredefinedValue(children, pv, owner);
                 }
+            }
+        }
+
+        #endregion
+
+        #region "PUBLICATION ARTICLES"
+
+        public static void ConfigureArticles(in MetadataCache cache, in Publication publication)
+        {
+            string fileName = publication.Uuid.ToString() + ".1"; // файл описания состава плана обмена
+
+            ConfigObject configObject;
+
+            using (ConfigFileReader reader = new(cache.DatabaseProvider, cache.ConnectionString, ConfigTables.Config, fileName))
+            {
+                configObject = new ConfigFileParser().Parse(reader);
+            }
+
+            if (configObject == null)
+            {
+                return;
+            }
+
+            int count = configObject.GetInt32(new int[] { 1 }); // количество объектов в составе плана обмена
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            int offset = 2;
+
+            for (int i = 1; i <= count; i++)
+            {
+                Guid uuid = configObject.GetUuid(new int[] { i * offset });
+                
+                AutoPublication setting = (AutoPublication)configObject.GetInt32(new int[] { (i * offset) + 1 });
+
+                publication.Articles.Add(uuid, setting);
             }
         }
 

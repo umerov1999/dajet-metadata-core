@@ -1,6 +1,7 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace DaJet.Metadata.Parsers
@@ -9,6 +10,8 @@ namespace DaJet.Metadata.Parsers
     {
         private readonly MetadataCache _cache;
         private ConfigFileParser _parser;
+        private TablePartCollectionParser _tableParser;
+        private MetadataPropertyCollectionParser _propertyParser;
 
         private Publication _target;
         private MetadataInfo _entry;
@@ -29,7 +32,7 @@ namespace DaJet.Metadata.Parsers
             _converter = new ConfigFileConverter();
 
             _converter[1][3] += Reference; // Идентификатор ссылочного типа данных
-            _converter[1][12][2] += Name; // Имя объекта конфигурации
+            _converter[1][12][2] += Name;  // Имя объекта конфигурации
 
             _parser.Parse(in source, in _converter);
 
@@ -49,6 +52,8 @@ namespace DaJet.Metadata.Parsers
             ConfigureConverter();
 
             _parser = new ConfigFileParser();
+            _tableParser = new TablePartCollectionParser(_cache);
+            _propertyParser = new MetadataPropertyCollectionParser(_cache);
 
             _parser.Parse(in reader, in _converter);
 
@@ -59,18 +64,21 @@ namespace DaJet.Metadata.Parsers
             _target = null;
             _parser = null;
             _converter = null;
+            _tableParser = null;
+            _propertyParser = null;
         }
         private void ConfigureConverter()
         {
             _converter = new ConfigFileConverter();
 
-            //TODO
+            _converter[1][12][2] += Name;
+            _converter[1][12][3][2] += Alias;
+            _converter[1][15] += CodeLength;
+            _converter[1][17] += DescriptionLength;
+            _converter[1][26] += IsDistributed;
 
-            //_converter[1][9][1][2] += Name;
-            //_converter[1][9][1][3][2] += Alias;
-
-            //_converter[5] += TablePartCollection;
-            //_converter[6] += PropertyCollection;
+            _converter[3] += PropertyCollection;
+            _converter[5] += TablePartCollection;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -86,11 +94,56 @@ namespace DaJet.Metadata.Parsers
                 _target.Name = source.Value;
             }
         }
+        private void Alias(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Alias = source.Value;
+        }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
                 _entry.ReferenceUuid = source.GetUuid();
+            }
+        }
+        private void CodeLength(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.CodeLength = source.GetInt32();
+        }
+        private void DescriptionLength(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.DescriptionLength = source.GetInt32();
+        }
+        private void IsDistributed(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.IsDistributed = (source.GetInt32() != 0);
+        }
+        private void PropertyCollection(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.StartObject)
+            {
+                _propertyParser.Parse(in source, out List<MetadataProperty> properties);
+
+                if (properties != null && properties.Count > 0)
+                {
+                    _target.Properties = properties;
+                }
+            }
+        }
+        private void TablePartCollection(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            if (source.Token == TokenType.StartObject)
+            {
+                _tableParser.Parse(in source, out List<TablePart> tables);
+
+                if (tables != null && tables.Count > 0)
+                {
+                    foreach (TablePart table in tables)
+                    {
+                        table.Owner = _target;
+                    }
+
+                    _target.TableParts = tables;
+                }
             }
         }
     }

@@ -1,5 +1,7 @@
 ﻿using DaJet.Metadata.Model;
+using DaJet.Metadata.Services;
 using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Core
 {
@@ -78,6 +80,16 @@ namespace DaJet.Metadata.Core
             }
 
             _cache.GetMetadataObject(type, uuid, out metadata);
+        }
+
+        public IEnumerable<MetadataObject> GetMetadataObjects(in InfoBase infoBase, Guid type)
+        {
+            if (infoBase == null)
+            {
+                throw new ArgumentNullException(nameof(infoBase));
+            }
+
+            return _cache.GetMetadataObjects(type);
         }
 
         public DbName GetChangeTableName(MetadataObject metadata)

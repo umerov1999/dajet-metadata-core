@@ -72,13 +72,14 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            //TODO
+            _converter[1][9][1][2] += Name;
+            _converter[1][9][1][3][2] += Alias;
+            _converter[1][11] += NumberType;
+            _converter[1][12] += NumberLength;
+            _converter[1][13] += Periodicity;
 
-            //_converter[1][9][1][2] += Name;
-            //_converter[1][9][1][3][2] += Alias;
-
-            //_converter[5] += TablePartCollection;
-            //_converter[6] += PropertyCollection;
+            _converter[3] += TablePartCollection;
+            _converter[5] += PropertyCollection;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -91,6 +92,22 @@ namespace DaJet.Metadata.Parsers
             {
                 _target.Name = source.Value;
             }
+        }
+        private void Alias(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Alias = source.Value;
+        }
+        private void NumberType(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.NumberType = (NumberType)source.GetInt32();
+        }
+        private void NumberLength(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.NumberLength = source.GetInt32();
+        }
+        private void Periodicity(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Periodicity = (Periodicity)source.GetInt32();
         }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -107,8 +124,6 @@ namespace DaJet.Metadata.Parsers
 
                 return;
             }
-
-            //TODO !!!
 
             // 1.24.0 - UUID коллекции регистров движения !?
             // 1.24.1 - количество регистров движения

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace DaJet.Metadata.Model
+namespace DaJet.Metadata.Services
 {
     public enum DiffKind { None, Insert, Update, Delete }
     public sealed class DiffObject

@@ -3,16 +3,18 @@ using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class Publication : ApplicationObject, IReferenceCode, IDescription
+    public sealed class Publication : ApplicationObject,
+        IReferenceCode, IDescription, IAggregate
     {
         public int CodeLength { get; set; } = 9; // min 1
         public CodeType CodeType { get; set; } = CodeType.String; // always
         public int DescriptionLength { get; set; } = 25; // min 1
         public bool IsDistributed { get; set; }
-        public Publisher Publisher { get; set; }
-        public List<Subscriber> Subscribers { get; set; } = new List<Subscriber>();
+        public List<TablePart> TableParts { get; set; } = new List<TablePart>();
+        public Publisher Publisher { get; set; } // ЭтотУзел (предопределённый)
+        public List<Subscriber> Subscribers { get; set; } = new List<Subscriber>(); // Узлы подписчики
         /// <summary>
-        /// Состав плана обмена. Ключ словаря - идентификатор файла объекта метаданных (<see cref="MetadataObject.FileName"/>).
+        /// Состав плана обмена. Ключ словаря - идентификатор файла объекта метаданных (<see cref="MetadataObject.Uuid"/>).
         /// </summary>
         public Dictionary<Guid, AutoPublication> Articles { get; set; } = new Dictionary<Guid, AutoPublication>();
     }

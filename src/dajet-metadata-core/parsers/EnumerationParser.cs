@@ -13,6 +13,8 @@ namespace DaJet.Metadata.Parsers
         private Enumeration _target;
         private MetadataInfo _entry;
         private ConfigFileConverter _converter;
+        private int _count; // количество значений перечисления
+        private EnumValue _value;
         public EnumerationParser(MetadataCache cache)
         {
             _cache = cache;
@@ -64,13 +66,9 @@ namespace DaJet.Metadata.Parsers
         {
             _converter = new ConfigFileConverter();
 
-            //TODO
-
-            //_converter[1][9][1][2] += Name;
-            //_converter[1][9][1][3][2] += Alias;
-
-            //_converter[5] += TablePartCollection;
-            //_converter[6] += PropertyCollection;
+            _converter[1][5][1][2] += Name;
+            _converter[1][5][1][3][2] += Alias;
+            _converter[6] += EnumerationValues;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -86,12 +84,72 @@ namespace DaJet.Metadata.Parsers
                 _target.Name = source.Value;
             }
         }
+        private void Alias(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.Alias = source.Value;
+        }
         private void Reference(in ConfigFileReader source, in CancelEventArgs args)
         {
             if (_entry != null)
             {
                 _entry.ReferenceUuid = source.GetUuid();
             }
+        }
+        private void EnumerationValues(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _converter[6][0] += Uuid;
+            _converter[6][1] += Count;
+        }
+        ///<summary>Идентификатор коллекции значений перечисления <see cref="SystemUuid.Enumeration_Values"/></summary>
+        private void Uuid(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            // Guid type = source.GetUuid();
+        }
+        private void Count(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _count = source.GetInt32(); // [6][1] количество значений перечисления
+
+            _converter = _converter[6]; // корневой узел коллекции
+
+            int offset = 2; // начальный индекс для узлов элементов коллекции от её корня
+
+            for (int n = 0; n < _count; n++)
+            {
+                _converter[offset + n] += ValueConverter;
+            }
+        }
+        private void ValueConverter(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            // начало чтения объекта свойства
+            if (source.Token == TokenType.StartObject)
+            {
+                // корневой узел объекта свойства
+                _converter = _converter.Path(source.Level - 1, source.Path);
+
+                _value = new EnumValue();
+
+                _converter[0][1][1][2] += ValueUuid;
+                _converter[0][1][2] += ValueName;
+                _converter[0][1][3][2] += ValueAlias;
+            }
+
+            // завершение чтения объекта свойства
+            if (source.Token == TokenType.EndObject)
+            {
+                _target.Values.Add(_value);
+            }
+        }
+        private void ValueUuid(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _value.Uuid = source.GetUuid();
+        }
+        private void ValueName(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _value.Name = source.Value;
+        }
+        private void ValueAlias(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _value.Alias = source.Value;
         }
     }
 }

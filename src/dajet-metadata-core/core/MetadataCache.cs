@@ -489,6 +489,21 @@ namespace DaJet.Metadata.Core
 
             Configurator.ConfigureDatabaseNames(this, in metadata); //TODO: option to configure database names
 
+            if (metadata is Publication publication)
+            {
+                try
+                {
+                    Configurator.ConfigureArticles(this, in publication);
+                }
+                catch (Exception error)
+                {
+                    if (error.Message == "Zero length file") // FIXME !
+                    {
+                        // Publication has no articles file in Config table
+                    }
+                }
+            }
+
             if (metadata is IPredefinedValues) //TODO: option to load predefined values
             {
                 try
@@ -497,7 +512,7 @@ namespace DaJet.Metadata.Core
                 }
                 catch (Exception error)
                 {
-                    if (error.Message == "Zero length file")
+                    if (error.Message == "Zero length file") // FIXME !
                     {
                         // Metadata object has no predefined values file in Config table
                     }

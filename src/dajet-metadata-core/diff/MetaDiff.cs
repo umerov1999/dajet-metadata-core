@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using DaJet.Metadata.Model;
+using System.Collections.Generic;
 
-namespace DaJet.Metadata.Model
+namespace DaJet.Metadata.Services
 {
     public enum DiffType
     {
