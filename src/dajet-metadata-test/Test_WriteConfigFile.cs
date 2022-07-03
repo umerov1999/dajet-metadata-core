@@ -9,7 +9,18 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Test_WriteConfigFile
     {
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=cerberus;Integrated Security=True;Encrypt=False;";
+        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=cerberus;Integrated Security=True;Encrypt=False;";
+        [TestMethod] public void WriteDBNamesToFile()
+        {
+            using (ConfigFileReader reader = new(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Params, ConfigFiles.DbNames))
+            {
+                using (StreamWriter stream = new StreamWriter("C:\\temp\\DBNames.txt", false, Encoding.UTF8))
+                {
+                    stream.Write(reader.Stream.ReadToEnd());
+                }
+            }
+        }
         [TestMethod] public void WriteRowDataToFile()
         {
             // Предопределённые значения "Справочник.СправочникПредопределённые"

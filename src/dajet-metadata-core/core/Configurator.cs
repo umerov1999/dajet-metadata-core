@@ -51,6 +51,8 @@ namespace DaJet.Metadata.Core
                     if (usage == SharedPropertyUsage.Use)
                     {
                         target.Properties.Add(property);
+
+                        ConfigureSharedPropertiesForTableParts(target, property);
                     }
                 }
                 else // Auto
@@ -58,8 +60,32 @@ namespace DaJet.Metadata.Core
                     if (property.AutomaticUsage == AutomaticUsage.Use)
                     {
                         target.Properties.Add(property);
+
+                        ConfigureSharedPropertiesForTableParts(target, property);
                     }
                 }
+            }
+        }
+        internal static void ConfigureSharedPropertiesForTableParts(ApplicationObject owner, SharedProperty property)
+        {
+            if (property.DataSeparationUsage != DataSeparationUsage.Use)
+            {
+                return;
+            }
+
+            if (property.DataSeparationMode != DataSeparationMode.Independent)
+            {
+                return;
+            }
+
+            if (owner is not IAggregate aggregate)
+            {
+                return;
+            }
+
+            foreach (TablePart table in aggregate.TableParts)
+            {
+                table.Properties.Add(property);
             }
         }
         internal static void ConfigureDataTypeSet(in MetadataCache cache, in DataTypeSet target, in List<Guid> references)
@@ -121,32 +147,62 @@ namespace DaJet.Metadata.Core
             //    если возможным справочником будет только один, то это будет single reference type. (!)
             // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка". (!)
 
-            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
+            if (cache.TryResolveCharacteristic(reference, out Guid uuid))
             {
-                if (info.MetadataType == MetadataTypes.NamedDataTypeSet ||
-                    (info.MetadataType == MetadataTypes.Characteristic && cache.IsCharacteristic(reference)))
+                // Lazy-load of Characteristic: recursion is avoided because of rule #2.
+                // THINK: Option to pre-load Characteristics !?
+                MetadataObject metadata = cache.GetMetadataObjectCached(MetadataTypes.Characteristic, uuid);
+
+                if (metadata is not Characteristic characteristic)
                 {
-                    // Lazy-load of NamedDataTypeSets and Characteristics: recursion is avoided because of rule #2.
-                    // THINK: Pre-load NamedDataTypeSets and Characteristics !?
-                    MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
+                    return 0; // this should not happen
+                }
 
-                    if (metadata is NamedDataTypeSet namedSet)
-                    {
-                        target.Apply(namedSet.DataTypeSet);
-                    }
-                    else if (metadata is Characteristic characteristic)
-                    {
-                        target.Apply(characteristic.DataTypeSet);
-                    }
+                target.Apply(characteristic.DataTypeSet);
 
-                    if (target.CanBeReference && target.Reference == Guid.Empty)
-                    {
-                        return 2; // multiple reference type (may be more then 2 in fact)
-                    }
+                if (!target.CanBeReference)
+                {
+                    return 0; // no reference types
+                }
+
+                if (target.Reference == Guid.Empty)
+                {
+                    return 2; // multiple reference type (may be more then 2 in fact)
                 }
                 else
                 {
                     return 1; // single reference type
+                }
+            }
+
+            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
+            {
+                if (info.MetadataType == MetadataTypes.NamedDataTypeSet)
+                {
+                    // Lazy-load of NamedDataTypeSet: recursion is avoided because of rule #2.
+                    // THINK: Option to pre-load NamedDataTypeSets !?
+                    MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
+
+                    if (metadata is not NamedDataTypeSet namedSet)
+                    {
+                        return 0; // this should not happen
+                    }
+
+                    target.Apply(namedSet.DataTypeSet);
+
+                    if (!target.CanBeReference)
+                    {
+                        return 0; // no reference types
+                    }
+
+                    if (target.Reference == Guid.Empty)
+                    {
+                        return 2; // multiple reference type (may be more then 2 in fact)
+                    }
+                    else
+                    {
+                        return 1; // single reference type
+                    }
                 }
             }
 
@@ -184,6 +240,12 @@ namespace DaJet.Metadata.Core
                 if (count > 1) { return count; }
                 count += cache.CountMetadataObjects(MetadataTypes.Characteristic);
                 if (count > 1) { return count; }
+            }
+            else
+            {
+                // Это не общий ссылочный тип
+                // TODO: ПланСчетовСсылка не учитывается
+                return 1; // single reference type 
             }
 
             return count;
@@ -1275,11 +1337,14 @@ namespace DaJet.Metadata.Core
         }
         internal static void ConfigureDatabaseNames(in MetadataCache cache, in MetadataObject metadata)
         {
-            DbName db = cache.GetDbName(metadata.Uuid);
+            if (!cache.TryGetDbName(metadata.Uuid, out DbName entry))
+            {
+                return; // Сюда попадаем если для общего реквизита не настроено ни одного объекта метаданных для использования
+            }
 
             if (metadata is SharedProperty property)
             {
-                property.DbName = CreateDbName(db.Name, db.Code);
+                property.DbName = CreateDbName(entry.Name, entry.Code);
 
                 ConfigureDatabaseFields(in cache, property);
                 
@@ -1291,7 +1356,7 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            entity.TableName = CreateDbName(db.Name, db.Code);
+            entity.TableName = CreateDbName(entry.Name, entry.Code);
 
             ConfigureDatabaseProperties(in cache, in entity);
             
@@ -1310,10 +1375,13 @@ namespace DaJet.Metadata.Core
                 {
                     continue;
                 }
-                
-                DbName db = cache.GetDbName(property.Uuid);
 
-                property.DbName = CreateDbName(db.Name, db.Code);
+                if (!cache.TryGetDbName(property.Uuid, out DbName entry))
+                {
+                    continue;
+                }
+
+                property.DbName = CreateDbName(entry.Name, entry.Code);
 
                 ConfigureDatabaseFields(in cache, in property);
             }
@@ -1327,9 +1395,12 @@ namespace DaJet.Metadata.Core
 
             foreach (TablePart tablePart in aggregate.TableParts)
             {
-                DbName db = cache.GetDbName(tablePart.Uuid);
+                if (!cache.TryGetDbName(tablePart.Uuid, out DbName entry))
+                {
+                    continue;
+                }
 
-                tablePart.TableName = entity.TableName + CreateDbName(db.Name, db.Code);
+                tablePart.TableName = entity.TableName + CreateDbName(entry.Name, entry.Code);
 
                 ConfigureDatabaseProperties(in cache, tablePart);
             }

@@ -73,6 +73,8 @@ namespace DaJet.Metadata.Parsers
             _converter[1][6] += AutomaticUsage;
             _converter[1][2][1] += UsageSettings; // количество объектов метаданных, у которых значение использования общего реквизита не равно "Автоматически"
             _converter[1][1][1][2] += PropertyType; // описание допустимых типов данных (объект)
+            _converter[1][5] += DataSeparationUsage;
+            _converter[1][12] += DataSeparationMode;
         }
         private void Name(in ConfigFileReader source, in CancelEventArgs args)
         {
@@ -121,6 +123,14 @@ namespace DaJet.Metadata.Parsers
 
                 _count--; // Конец чтения настройки для объекта метаданных
             }
+        }
+        private void DataSeparationMode(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.DataSeparationMode = (DataSeparationMode)source.GetInt32();
+        }
+        private void DataSeparationUsage(in ConfigFileReader source, in CancelEventArgs args)
+        {
+            _target.DataSeparationUsage = (DataSeparationUsage)source.GetInt32();
         }
         private void PropertyType(in ConfigFileReader source, in CancelEventArgs args)
         {

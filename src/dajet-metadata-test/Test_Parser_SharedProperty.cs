@@ -1,7 +1,10 @@
 ﻿using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
+using DaJet.Metadata.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.IO;
+using System.Text;
 
 namespace DaJet.Metadata.Test
 {
@@ -26,7 +29,7 @@ namespace DaJet.Metadata.Test
         }
         private void TEST()
         {
-            string metadataName = "ОбщийРеквизит.ОбщийРеквизит2";
+            string metadataName = "ОбщийРеквизит.ОбщийРеквизит1";
 
             MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
 
@@ -117,6 +120,31 @@ namespace DaJet.Metadata.Test
             foreach (DatabaseField field in @object.Fields)
             {
                 Console.WriteLine($"{field.Name} ({field.TypeName})");
+            }
+        }
+
+        [TestMethod] public void DumpToFile()
+        {
+            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out _infoBase);
+
+            string metadataName = "ОбщийРеквизит.ОбщийРеквизит3";
+
+            MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
+
+            if (@object == null)
+            {
+                Console.WriteLine($"Metadata object \"{metadataName}\" is not found.");
+                return;
+            }
+
+            string fileName = @object.Uuid.ToString();
+            string outputFile = $"C:\\temp\\1c-dumps\\{@object.Name}.dump";
+
+            using (ConfigFileReader reader = new(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
+            {
+                ConfigObject config = new ConfigFileParser().Parse(reader);
+
+                new ConfigFileWriter().Write(config, outputFile);
             }
         }
     }

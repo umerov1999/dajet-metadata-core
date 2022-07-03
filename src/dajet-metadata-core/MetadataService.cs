@@ -92,9 +92,14 @@ namespace DaJet.Metadata.Core
             return _cache.GetMetadataObjects(type);
         }
 
-        public DbName GetChangeTableName(MetadataObject metadata)
+        public string GetChangeTableName(MetadataObject metadata)
         {
-            return _cache.GetChngR(metadata.Uuid);
+            if (!_cache.TryGetChngR(metadata.Uuid, out DbName entry))
+            {
+                return string.Empty;
+            }
+
+            return $"_{entry.Name}{entry.Code}";
         }
     }
 }

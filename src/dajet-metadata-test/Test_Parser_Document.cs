@@ -39,15 +39,8 @@ namespace DaJet.Metadata.Test
                 ShowMetadataObject((Document)@object);
             }
 
-            try
-            {
-                DbName entry = service.GetChangeTableName(@object);
-                Console.WriteLine($"_{entry.Name}{entry.Code}");
-            }
-            catch (Exception error)
-            {
-                Console.WriteLine($"ChngR error: {error.Message}");
-            }
+            Console.WriteLine();
+            Console.WriteLine("Change table: " + service.GetChangeTableName(@object));
 
             Console.WriteLine();
             ShowDatabaseNames((Document)@object);

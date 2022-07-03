@@ -11,6 +11,8 @@ namespace DaJet.Metadata.Test
 {
     [TestClass] public class Test_Parser_Catalog
     {
+        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=trade_11_2_3_159_demo;Integrated Security=True;Encrypt=False;";
+        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=accounting_3_0_72_72_demo;Integrated Security=True;Encrypt=False;";
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
 
@@ -43,15 +45,8 @@ namespace DaJet.Metadata.Test
                 ShowMetadataObject((Catalog)@object);
             }
 
-            try
-            {
-                DbName entry = service.GetChangeTableName(@object);
-                Console.WriteLine($"_{entry.Name}{entry.Code}");
-            }
-            catch (Exception error)
-            {
-                Console.WriteLine($"ChngR error: {error.Message}");
-            }
+            Console.WriteLine();
+            Console.WriteLine("Change table: " + service.GetChangeTableName(@object));
 
             Console.WriteLine();
             ShowDatabaseNames((Catalog)@object);

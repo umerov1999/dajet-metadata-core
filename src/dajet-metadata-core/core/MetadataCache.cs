@@ -75,20 +75,15 @@ namespace DaJet.Metadata.Core
         ///<br>и их сопоставление объектам метаданных конфигурации</br>
         ///</summary>
         private DbNameCache _database;
-        internal DbName GetDbName(Guid uuid)
+        internal bool TryGetDbName(Guid uuid, out DbName entry)
         {
-            if (!_database.TryGet(uuid, out DbName entry))
-            {
-                throw new InvalidOperationException(nameof(GetDbName));
-            }
-
-            return entry;
+            return _database.TryGet(uuid, out entry);
         }
         internal DbName GetLineNo(Guid uuid)
         {
             if (!_database.TryGet(uuid, out DbName entry))
             {
-                throw new InvalidOperationException(nameof(GetDbName));
+                throw new InvalidOperationException(nameof(GetLineNo));
             }
 
             foreach (DbName child in entry.Children)
@@ -101,22 +96,24 @@ namespace DaJet.Metadata.Core
 
             throw new InvalidOperationException(nameof(GetLineNo));
         }
-        internal DbName GetChngR(Guid uuid)
+        internal bool TryGetChngR(Guid uuid, out DbName entry)
         {
-            if (!_database.TryGet(uuid, out DbName entry))
+            if (!_database.TryGet(uuid, out entry))
             {
-                throw new InvalidOperationException(nameof(GetDbName));
+                return false;
             }
 
             foreach (DbName child in entry.Children)
             {
                 if (child.Name.EndsWith(MetadataTokens.ChngR))
                 {
-                    return child;
+                    entry = child;
+                    
+                    return true;
                 }
             }
 
-            throw new InvalidOperationException(nameof(GetChngR));
+            return false;
         }
 
         private void AddName(Guid type, Guid metadata, string name)
@@ -363,9 +360,9 @@ namespace DaJet.Metadata.Core
         {
             return _references.TryGetValue(reference, out info);
         }
-        internal bool IsCharacteristic(Guid reference)
+        internal bool TryResolveCharacteristic(Guid reference, out Guid uuid)
         {
-            return _characteristics.TryGetValue(reference, out _);
+            return _characteristics.TryGetValue(reference, out uuid);
         }
         internal IEnumerable<MetadataObject> GetMetadataObjects(Guid type)
         {
@@ -482,12 +479,17 @@ namespace DaJet.Metadata.Core
 
             Configurator.ConfigureSystemProperties(this, in metadata);
 
+            Configurator.ConfigureDatabaseNames(this, in metadata);
+
             if (metadata is ApplicationObject owner && metadata is IAggregate)
             {
+                // FIXME:
+                // ConfigureDatabaseNames should be called for the owner first:
+                // the name of table part reference field is dependent on table name of the owner
+                // Owner table name: _Reference1008
+                // Table part reference field name: _Reference1008_IDRRef
                 Configurator.ConfigureTableParts(this, in owner);
             }
-
-            Configurator.ConfigureDatabaseNames(this, in metadata); //TODO: option to configure database names
 
             if (metadata is Publication publication)
             {
