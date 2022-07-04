@@ -1,16 +1,11 @@
 ﻿using Npgsql;
-using System;
-using System.Collections.Generic;
 using System.Data.Common;
 
 namespace DaJet.Data.PostgreSql
 {
     public sealed class PgQueryExecutor : QueryExecutor
     {
-        public PgQueryExecutor(in string connectionString) : base(connectionString)
-        {
-            // do nothing
-        }
+        public PgQueryExecutor(in string connectionString) : base(connectionString) { }
         protected override DbConnection GetDbConnection()
         {
             return new NpgsqlConnection(_connectionString);

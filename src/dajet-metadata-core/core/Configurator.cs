@@ -450,7 +450,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyВерсияДанных(in ApplicationObject metadata)
         {
-            MetadataProperty property = new MetadataProperty()
+            MetadataProperty property = new()
             {
                 Name = "ВерсияДанных",
                 Uuid = Guid.Empty,
@@ -463,7 +463,8 @@ namespace DaJet.Metadata.Core
             {
                 Name = property.DbName,
                 Length = 8,
-                TypeName = "timestamp"
+                TypeName = "timestamp",
+                Purpose = FieldPurpose.Version
             });
 
             metadata.Properties.Add(property);

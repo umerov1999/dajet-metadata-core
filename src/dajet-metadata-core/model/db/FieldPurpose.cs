@@ -2,27 +2,32 @@
 {
     public enum FieldPurpose
     {
-        /// <summary>Value of the property (default).</summary>
+        /// <summary>Value of the property (default). _Fld</summary>
         Value,
-        /// <summary>Helps to locate fields having [boolean, string, number, binary, datetime, object] types</summary>
+        ///<summary>Дискриминатор составного типа данных _Fld + _TYPE
+        ///<br><b>0x01</b> - Неопределено = null</br>
+        ///<br><b>0x02</b> - Булево = boolean</br>
+        ///<br><b>0x03</b> - Число = decimal</br>
+        ///<br><b>0x04</b> - Дата = DateTime</br>
+        ///<br><b>0x05</b> - Строка = string</br>
+        ///<br><b>0x08</b> - Ссылка = EntityRef</br>
+        ///</summary>
         Discriminator,
-        /// <summary>Boolean value.</summary>
+        /// <summary>Boolean value. _Fld + _L</summary>
         Boolean,
-        /// <summary>String value.</summary>
+        /// <summary>String value. _Fld + _S</summary>
         String,
-        /// <summary>Numeric value.</summary>
+        /// <summary>Numeric value. _Fld + _N</summary>
         Numeric,
-        /// <summary>Binary value (bytes array).</summary>
-        Binary,
-        /// <summary>Date and time value.</summary>
+        /// <summary>Date and time value. _Fld + _T</summary>
         DateTime,
-        /// <summary>Reference type primary key value.</summary>
-        Object,
-        /// <summary>Type code of the reference type (class discriminator).</summary>
+        /// <summary>Type code of the reference type (class discriminator). _Fld + _RTRef</summary>
         TypeCode,
-        /// <summary>Record's version (timestamp|rowversion).</summary>
+        /// <summary>Reference type primary key value. _Fld + _RRRef</summary>
+        Object,
+        /// <summary>Record's version (timestamp | rowversion).</summary>
         Version,
-        /// <summary>Ordinal key value for ordered sets of records.</summary>
-        Ordinal
+        /// <summary>Binary value (bytes array).</summary>
+        Binary
     }
 }

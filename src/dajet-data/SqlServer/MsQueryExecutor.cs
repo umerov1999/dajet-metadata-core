@@ -1,16 +1,11 @@
 ﻿using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
 using System.Data.Common;
 
 namespace DaJet.Data.SqlServer
 {
     public sealed class MsQueryExecutor : QueryExecutor
     {
-        public MsQueryExecutor(in string connectionString) : base(connectionString)
-        {
-            // do nothing
-        }
+        public MsQueryExecutor(in string connectionString) : base(connectionString) { }
         protected override DbConnection GetDbConnection()
         {
             return new SqlConnection(_connectionString);
