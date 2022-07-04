@@ -13,12 +13,23 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TryOpenInfoBase()
         {
-            MetadataService service = new();
-            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out InfoBase infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SQLServer
+            };
+
+            MetadataService service = new(options);
+
+            if (!service.TryOpenInfoBase(out InfoBase infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
 
             string metadataName = "РегистрСведений.ВходящаяОчередьRabbitMQ";
 
-            MetadataObject @object = service.GetMetadataObject(in infoBase, metadataName);
+            MetadataObject @object = service.GetMetadataObject(metadataName);
 
             if (@object == null)
             {
@@ -31,31 +42,37 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void PG_TryOpenInfoBase()
         {
-            MetadataService service = new MetadataService();
-            service.OpenInfoBase(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, out InfoBase infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = PG_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.PostgreSQL
+            };
+
+            MetadataService service = new(options);
+
+            if (!service.TryOpenInfoBase(out InfoBase infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
 
             string metadataName = "РегистрСведений.ВходящаяОчередьRabbitMQ";
 
             Stopwatch watch = new();
             watch.Start();
-            MetadataObject @object = service.GetMetadataObject(in infoBase, metadataName);
+            MetadataObject @object = service.GetMetadataObject(metadataName);
             watch.Stop();
             Console.WriteLine($"1 = {watch.ElapsedMilliseconds} ms");
 
             watch.Restart();
-            @object = service.GetMetadataObject(in infoBase, metadataName);
+            @object = service.GetMetadataObject(metadataName);
             watch.Stop();
             Console.WriteLine($"2 = {watch.ElapsedMilliseconds} ms");
 
             watch.Restart();
-            @object = service.GetMetadataObject(in infoBase, MetadataTypes.InformationRegister, @object.Uuid);
+            @object = service.GetMetadataObject(MetadataTypes.InformationRegister, @object.Uuid);
             watch.Stop();
             Console.WriteLine($"3 = {watch.ElapsedMilliseconds} ms");
-
-            watch.Restart();
-            service.GetMetadataObject(in infoBase, MetadataTypes.InformationRegister, @object.Uuid, out @object);
-            watch.Stop();
-            Console.WriteLine($"4 = {watch.ElapsedMilliseconds} ms");
 
             if (@object == null)
             {

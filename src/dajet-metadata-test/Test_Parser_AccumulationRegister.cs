@@ -16,19 +16,45 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TEST()
         {
-            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out _infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SQLServer
+            };
+
+            service.Configure(options);
+
+            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
+
             TEST();
         }
         [TestMethod] public void PG_TEST()
         {
-            service.OpenInfoBase(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, out _infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = PG_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.PostgreSQL
+            };
+
+            service.Configure(options);
+
+            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
+
             TEST();
         }
         private void TEST()
         {
             string metadataName = "РегистрНакопления.РегистрНакопленияОбороты"; // "РегистрНакопления.РегистрНакопленияОстатки";
 
-            MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
+            MetadataObject @object = service.GetMetadataObject(metadataName);
 
             if (@object == null)
             {

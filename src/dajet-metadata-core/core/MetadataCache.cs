@@ -1,4 +1,7 @@
-﻿using DaJet.Metadata.Model;
+﻿using DaJet.Data;
+using DaJet.Data.PostgreSql;
+using DaJet.Data.SqlServer;
+using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using System;
 using System.Collections.Concurrent;
@@ -203,6 +206,19 @@ namespace DaJet.Metadata.Core
         }
         internal string ConnectionString { get { return _connectionString; } }
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
+        internal IQueryExecutor CreateQueryExecutor()
+        {
+            if (_provider == DatabaseProvider.SQLServer)
+            {
+                return new MsQueryExecutor(_connectionString);
+            }
+            else if (_provider == DatabaseProvider.PostgreSQL)
+            {
+                return new PgQueryExecutor(_connectionString);
+            }
+
+            throw new InvalidOperationException($"Unsupported database provider: {_provider}");
+        }
         internal void Initialize(out InfoBase infoBase)
         {
             InitializeRootFile();
@@ -435,6 +451,40 @@ namespace DaJet.Metadata.Core
             GetMetadataObject(type, uuid, out metadata);
 
             reference.SetTarget(metadata);
+        }
+
+        internal MetadataEntity GetMetadataEntity(Guid uuid)
+        {
+            List<Guid> entityTypes = new()
+            {
+                MetadataTypes.Catalog,
+                MetadataTypes.Document,
+                MetadataTypes.Publication,
+                MetadataTypes.Characteristic,
+                MetadataTypes.InformationRegister,
+                MetadataTypes.AccumulationRegister
+            };
+
+            foreach (Guid type in entityTypes)
+            {
+                if (_names.TryGetValue(type, out Dictionary<string, Guid> entities))
+                {
+                    foreach (var entity in entities)
+                    {
+                        if (entity.Value == uuid)
+                        {
+                            return new MetadataEntity()
+                            {
+                                Type = type,
+                                Uuid = entity.Value,
+                                Name = entity.Key
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)

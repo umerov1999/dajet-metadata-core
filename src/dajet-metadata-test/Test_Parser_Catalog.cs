@@ -22,19 +22,45 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TEST()
         {
-            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out _infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SQLServer
+            };
+
+            service.Configure(options);
+
+            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
+
             TEST();
         }
         [TestMethod] public void PG_TEST()
         {
-            service.OpenInfoBase(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, out _infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = PG_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.PostgreSQL
+            };
+
+            service.Configure(options);
+
+            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
+
             TEST();
         }
         private void TEST()
         {
             string metadataName = "Справочник.Номенклатура"; //"СправочникПредопределённые"; // ТестовыйСправочник
 
-            MetadataObject @object = service.GetMetadataObject(in _infoBase, metadataName);
+            MetadataObject @object = service.GetMetadataObject(metadataName);
 
             if (@object == null)
             {
@@ -169,10 +195,22 @@ namespace DaJet.Metadata.Test
         IMetadataCompareAndMergeService CompareMergeService = new MetadataCompareAndMergeService(); // comparator
         [TestMethod] public void MS_Compare_With_Database()
         {
-            service.OpenInfoBase(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, out _infoBase);
+            MetadataServiceOptions options = new()
+            {
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SQLServer
+            };
 
-            SqlMetadataReader.UseConnectionString(MS_CONNECTION_STRING);
-            SqlMetadataReader.UseDatabaseProvider(DatabaseProvider.SQLServer);
+            service.Configure(options);
+
+            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            {
+                Console.WriteLine($"Failed to open info base: {error}");
+                return;
+            }
+
+            SqlMetadataReader.UseDatabaseProvider(options.DatabaseProvider);
+            SqlMetadataReader.UseConnectionString(options.ConnectionString);
 
             int count = 0;
             List<string> delete;
@@ -180,7 +218,7 @@ namespace DaJet.Metadata.Test
 
             using (StreamWriter stream = new StreamWriter(@"C:\temp\Test_Catalogs.txt", false, Encoding.UTF8))
             {
-                foreach (MetadataObject metadata in service.GetMetadataObjects(in _infoBase, MetadataTypes.Catalog))
+                foreach (MetadataObject metadata in service.GetMetadataObjects(MetadataTypes.Catalog))
                 {
                     if (metadata is not ApplicationObject @object)
                     {
