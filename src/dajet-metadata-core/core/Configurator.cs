@@ -299,7 +299,9 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_KeyField"
             };
-            property.PropertyType.IsBinary = true;
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericPrecision = 5;
 
             property.Fields.Add(new DatabaseField()
             {

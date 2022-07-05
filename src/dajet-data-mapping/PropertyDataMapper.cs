@@ -1,136 +1,140 @@
 ﻿using DaJet.Metadata.Model;
+using System.Data;
+using System.Text;
 
 namespace DaJet.Data.Mapping
 {
     internal readonly struct PropertyDataMapper
     {
-        private readonly int _value = -1;
-        private readonly int _number = -1;
-        private readonly int _string = -1;
-        private readonly int _object = -1;
-        private readonly int _boolean = -1;
-        private readonly int _date_time = -1;
-        private readonly int _type_code = -1;
-        private readonly int _discriminator = -1;
+        private readonly int _uuid = -1;   // binary(16)
+        private readonly int _binary = -1; // BASE64
+        private readonly int _discriminator = -1; // _TYPE
+        private readonly int _boolean = -1;       // _L
+        private readonly int _numeric = -1;       // _N
+        private readonly int _date_time = -1;     // _T
+        private readonly int _string = -1;        // _S
+        private readonly int _type_code = -1;     // _RTRef
+        private readonly int _object = -1;        // _RRRef
+
         internal PropertyDataMapper(MetadataProperty property, ref int ordinal)
         {
-            if (InfoBase.ReferenceTypeUuids.TryGetValue(Property.PropertyType.ReferenceTypeUuid, out ApplicationObject metaObject))
-            {
-                Enumeration = metaObject as Enumeration;
-            }
-
             for (int i = 0; i < property.Fields.Count; i++)
             {
-                ordinal++;
-
                 FieldPurpose purpose = property.Fields[i].Purpose;
 
-                if (purpose == FieldPurpose.Value)
+                if (purpose == FieldPurpose.Value) // single type value
                 {
-                    _value = ordinal;
+                    DataTypeSet type = property.PropertyType;
+
+                    if (type.IsUuid) { _uuid = ordinal; } // binary(16)
+                    else if (type.IsValueStorage) { _binary = ordinal; } // varbinary(max)
+                    else if (type.CanBeBoolean) { _boolean = ordinal; } // // binary(1) - ЭтоГруппа (инвертировать)
+                    else if (type.CanBeNumeric) { _numeric = ordinal; } // numeric | binary(x)
+                    else if (type.CanBeDateTime) { _date_time = ordinal; } // datetime2
+                    else if (type.CanBeString) { _string = ordinal; } // nvarchar(max) | nvarchar(x) | nchar(x)
+                    else if (type.CanBeReference) { _object = ordinal; } // binary(16)
+                    else if (type.IsBinary) { _binary = ordinal; } // Характеристика.ТипЗначения -> varbinary(max)
+                    else
+                    {
+                        continue; // this should not happen - ignore field
+                    }
                 }
-                else if (purpose == FieldPurpose.Version)
+                else if (purpose == FieldPurpose.Version) // single type value
                 {
-                    _value = ordinal; // timestamp | rowversion -> binary(8)
+                    _binary = ordinal; // Ссылка.ВерсияДанных : timestamp | rowversion -> binary(8)
                 }
-                else if (purpose == FieldPurpose.Discriminator)
+                else if (purpose == FieldPurpose.Discriminator) // multiple type value
                 {
                     _discriminator = ordinal; // binary(1) -> byte
-                    // 0x01 - Неопределено -> null     -> null
-                    // 0x02 - Булево       -> bool     -> jxs:boolean  + true | false
-                    // 0x03 - Число        -> decimal  -> jxs:decimal  + numeric
-                    // 0x04 - Дата         -> DateTime -> jxs:dateTime + string (ISO 8601)
-                    // 0x05 - Строка       -> string   -> jxs:string   + string
-                    // 0x08 - Ссылка       -> Guid     -> jcfg:EnumRef     + Name
-                    //                                  | jcfg:CatalogRef  + UUID
-                    // EntityRef { TypeCode, Identity } | jcfg:DocumentRef + UUID
                 }
-                else if (purpose == FieldPurpose.Boolean)
+                else if (purpose == FieldPurpose.Boolean) // multiple type value
                 {
                     _boolean = ordinal; // binary(1) -> 0x00 | 0x01 -> bool
                 }
-                else if (purpose == FieldPurpose.Numeric)
+                else if (purpose == FieldPurpose.Numeric) // multiple type value
                 {
-                    _number = ordinal; // numeric -> decimal | int | long
+                    _numeric = ordinal; // numeric -> decimal | int | long
                 }
-                else if (purpose == FieldPurpose.DateTime)
+                else if (purpose == FieldPurpose.DateTime) // multiple type value
                 {
                     _date_time = ordinal; // datetime2 -> DateTime
                 }
-                else if (purpose == FieldPurpose.String)
+                else if (purpose == FieldPurpose.String) // multiple type value
                 {
                     _string = ordinal; // nvarchar | nchar -> string
                 }
-                else if (purpose == FieldPurpose.TypeCode)
+                else if (purpose == FieldPurpose.TypeCode) // multiple type value
                 {
                     _type_code = ordinal; // binary(4) -> int
                 }
-                else if (purpose == FieldPurpose.Object)
+                else if (purpose == FieldPurpose.Object) // multiple type value
                 {
                     _object = ordinal; // binary(16) -> Guid
                 }
                 else
                 {
-                    // this should not happen =)
+                    continue; // this should not happen - ignore field
                 }
+
+                ordinal++;
             }
         }
-        internal void BuildSelectCommand(StringBuilder script, string tableAlias)
+        internal string BuildSelectScript(in MetadataProperty property, in string tableAlias)
         {
-            for (int i = 0; i < Property.Fields.Count; i++)
+            StringBuilder script = new(string.Empty);
+
+            for (int i = 0; i < property.Fields.Count; i++)
             {
-                if (Property.Fields[i].Purpose == FieldPurpose.TypeCode ||
-                    Property.Fields[i].Purpose == FieldPurpose.Discriminator)
+                DatabaseField field = property.Fields[i];
+
+                if (script.Length > 0)
+                {
+                    script.Append($", ");
+                }
+
+                if (field.Purpose == FieldPurpose.TypeCode ||
+                    field.Purpose == FieldPurpose.Discriminator)
                 {
                     script.Append("CAST(");
                 }
 
                 if (string.IsNullOrEmpty(tableAlias))
                 {
-                    script.Append(Property.Fields[i].Name);
+                    script.Append(field.Name);
                 }
                 else
                 {
-                    script.Append($"{tableAlias}.{Property.Fields[i].Name}");
+                    script.Append($"{tableAlias}.{field.Name}");
                 }
 
-                if (Property.Fields[i].Purpose == FieldPurpose.TypeCode ||
-                    Property.Fields[i].Purpose == FieldPurpose.Discriminator)
+                if (field.Purpose == FieldPurpose.TypeCode ||
+                    field.Purpose == FieldPurpose.Discriminator)
                 {
                     script.Append(" AS int)");
                 }
-
-                script.Append($" AS [{Property.Name}], ");
             }
+
+            return script.ToString();
         }
+        
         public object GetValue(IDataReader reader)
         {
-            if (DiscriminatorOrdinal > -1)
+            if (_discriminator > -1)
             {
                 return GetMultipleValue(reader);
             }
-            else if (TypeCodeOrdinal > -1)
+            else if (_type_code > -1)
             {
                 return GetObjectValue(reader);
             }
+
             return GetSingleValue(reader);
-        }
-        private string GetEnumValue(Enumeration enumeration, Guid value)
-        {
-            for (int i = 0; i < enumeration.Values.Count; i++)
-            {
-                if (enumeration.Values[i].Uuid == value)
-                {
-                    return enumeration.Values[i].Name;
-                }
-            }
-            return string.Empty;
         }
         private object GetSingleValue(IDataReader reader)
         {
-            if (reader.IsDBNull(ValueOrdinal))
+            if (reader.IsDBNull(_value))
             {
-                return null;
+                return null!;
             }
 
             if (Property.PropertyType.IsUuid) // УникальныйИдентификатор
@@ -379,6 +383,20 @@ namespace DaJet.Data.Mapping
             }
 
             return new EntityRef(property.PropertyType.ReferenceTypeCode, uuid);
+        }
+
+
+
+        private string GetEnumValue(Enumeration enumeration, Guid value)
+        {
+            for (int i = 0; i < enumeration.Values.Count; i++)
+            {
+                if (enumeration.Values[i].Uuid == value)
+                {
+                    return enumeration.Values[i].Name;
+                }
+            }
+            return string.Empty;
         }
     }
 }
