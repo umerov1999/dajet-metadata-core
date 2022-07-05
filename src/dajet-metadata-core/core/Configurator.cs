@@ -620,7 +620,7 @@ namespace DaJet.Metadata.Core
             {
                 Name = property.DbName,
                 Length = 1,
-                TypeName = "binary"
+                TypeName = "binary" // инвертировать !
             });
 
             metadata.Properties.Add(property);

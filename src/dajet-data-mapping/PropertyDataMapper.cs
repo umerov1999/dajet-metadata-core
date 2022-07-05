@@ -92,9 +92,22 @@ namespace DaJet.Data.Mapping
                     script.Append($", ");
                 }
 
+                if (_discriminator > -1)
+                {
+                    // TODO !!!
+                }
+
                 if (field.Purpose == FieldPurpose.TypeCode ||
                     field.Purpose == FieldPurpose.Discriminator)
                 {
+                    // TODO exceptions:
+                    // - _KeyField (табличная часть) binary(4) -> int CanBeNumeric
+                    // - _Folder (иерархические ссылочные типы) binary(1) -> bool инвертировать !!!
+                    // - _Version (ссылочные типы) timestamp binary(8) -> IsBinary
+                    // - _Type (тип значений характеристики) varbinary(max) -> IsBinary nullable
+                    // - _RecordKind (вид движения накопления) numeric(1) CanBeNumeric Приход = 0, Расход = 1
+                    // - _DimHash numeric(10) ?
+
                     script.Append("CAST(");
                 }
 
@@ -137,9 +150,13 @@ namespace DaJet.Data.Mapping
                 return null!;
             }
 
-            if (Property.PropertyType.IsUuid) // УникальныйИдентификатор
+            if (_uuid > -1) // УникальныйИдентификатор
             {
-                return new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(ValueOrdinal)));
+                return new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(_uuid)));
+            }
+            else if (Property.PropertyType.IsBinary) // ВерсияДанных, КлючСтроки
+            {
+                return ((byte[])reader.GetValue(ValueOrdinal));
             }
             else if (Property.PropertyType.IsValueStorage) // ХранилищеЗначения
             {
