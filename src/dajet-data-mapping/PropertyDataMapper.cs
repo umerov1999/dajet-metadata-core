@@ -13,26 +13,46 @@ namespace DaJet.Data.Mapping
         private readonly int _numeric = -1;       // _N
         private readonly int _date_time = -1;     // _T
         private readonly int _string = -1;        // _S
-        private readonly int _type_code = -1;     // _RTRef
+        private readonly int _type_code = -1;     // _RTRef : for single type value = actual value; for multiple = ordinal !
         private readonly int _object = -1;        // _RRRef
+        private readonly bool _invert = false;    // _Folder
+        private readonly bool _single = false; // single or multiple type value flag
 
-        internal PropertyDataMapper(MetadataProperty property, ref int ordinal)
+        // Исключения из правил:
+        // - _KeyField (табличная часть) binary(4) -> int CanBeNumeric
+        // - _Folder (иерархические ссылочные типы) binary(1) -> bool инвертировать !!!
+        // - _Version (ссылочные типы) timestamp binary(8) -> IsBinary
+        // - _Type (тип значений характеристики) varbinary(max) -> IsBinary nullable
+        // - _RecordKind (вид движения накопления) numeric(1) CanBeNumeric Приход = 0, Расход = 1
+        // - _DimHash numeric(10) ?
+
+        internal PropertyDataMapper(in MetadataProperty property, ref int ordinal)
         {
+            DataTypeSet type = property.PropertyType;
+            
+            _single = !type.IsMultipleType;
+
             for (int i = 0; i < property.Fields.Count; i++)
             {
                 FieldPurpose purpose = property.Fields[i].Purpose;
 
                 if (purpose == FieldPurpose.Value) // single type value
                 {
-                    DataTypeSet type = property.PropertyType;
-
                     if (type.IsUuid) { _uuid = ordinal; } // binary(16)
                     else if (type.IsValueStorage) { _binary = ordinal; } // varbinary(max)
-                    else if (type.CanBeBoolean) { _boolean = ordinal; } // // binary(1) - ЭтоГруппа (инвертировать)
+                    else if (type.CanBeBoolean)
+                    {
+                        _boolean = ordinal; // binary(1)
+                        _invert = (property.Fields[i].Name == "_Folder"); // ЭтоГруппа (инвертировать)
+                    } 
                     else if (type.CanBeNumeric) { _numeric = ordinal; } // numeric | binary(x)
                     else if (type.CanBeDateTime) { _date_time = ordinal; } // datetime2
                     else if (type.CanBeString) { _string = ordinal; } // nvarchar(max) | nvarchar(x) | nchar(x)
-                    else if (type.CanBeReference) { _object = ordinal; } // binary(16)
+                    else if (type.CanBeReference)
+                    {
+                        _object = ordinal; // binary(16)
+                        _type_code = type.TypeCode; // binary(4)
+                    }
                     else if (type.IsBinary) { _binary = ordinal; } // Характеристика.ТипЗначения -> varbinary(max)
                     else
                     {
@@ -79,7 +99,8 @@ namespace DaJet.Data.Mapping
                 ordinal++;
             }
         }
-        internal string BuildSelectScript(in MetadataProperty property, in string tableAlias)
+        
+        internal string BuildSelectScript(in MetadataProperty property, in string tableAlias = null!)
         {
             StringBuilder script = new(string.Empty);
 
@@ -92,22 +113,18 @@ namespace DaJet.Data.Mapping
                     script.Append($", ");
                 }
 
-                if (_discriminator > -1)
+                if (field.Name == "_KeyField") // Табличная часть "КлючСтроки"
                 {
-                    // TODO !!!
+                    script.Append("CAST(CAST(_KeyField AS int) AS numeric(5,0))");
+                    continue;
                 }
 
-                if (field.Purpose == FieldPurpose.TypeCode ||
-                    field.Purpose == FieldPurpose.Discriminator)
-                {
-                    // TODO exceptions:
-                    // - _KeyField (табличная часть) binary(4) -> int CanBeNumeric
-                    // - _Folder (иерархические ссылочные типы) binary(1) -> bool инвертировать !!!
-                    // - _Version (ссылочные типы) timestamp binary(8) -> IsBinary
-                    // - _Type (тип значений характеристики) varbinary(max) -> IsBinary nullable
-                    // - _RecordKind (вид движения накопления) numeric(1) CanBeNumeric Приход = 0, Расход = 1
-                    // - _DimHash numeric(10) ?
+                bool cast_to_int =
+                    field.Purpose == FieldPurpose.TypeCode ||
+                    field.Purpose == FieldPurpose.Discriminator;
 
+                if (cast_to_int)
+                {
                     script.Append("CAST(");
                 }
 
@@ -120,8 +137,7 @@ namespace DaJet.Data.Mapping
                     script.Append($"{tableAlias}.{field.Name}");
                 }
 
-                if (field.Purpose == FieldPurpose.TypeCode ||
-                    field.Purpose == FieldPurpose.Discriminator)
+                if (cast_to_int)
                 {
                     script.Append(" AS int)");
                 }
@@ -130,290 +146,150 @@ namespace DaJet.Data.Mapping
             return script.ToString();
         }
         
-        public object GetValue(IDataReader reader)
+        public object? GetValue(in IDataReader reader)
         {
-            if (_discriminator > -1)
+            if (_single)
             {
-                return GetMultipleValue(reader);
-            }
-            else if (_type_code > -1)
-            {
-                return GetObjectValue(reader);
-            }
-
-            return GetSingleValue(reader);
-        }
-        private object GetSingleValue(IDataReader reader)
-        {
-            if (reader.IsDBNull(_value))
-            {
-                return null!;
-            }
-
-            if (_uuid > -1) // УникальныйИдентификатор
-            {
-                return new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(_uuid)));
-            }
-            else if (Property.PropertyType.IsBinary) // ВерсияДанных, КлючСтроки
-            {
-                return ((byte[])reader.GetValue(ValueOrdinal));
-            }
-            else if (Property.PropertyType.IsValueStorage) // ХранилищеЗначения
-            {
-                return ((byte[])reader.GetValue(ValueOrdinal));
-            }
-            else if (Property.PropertyType.CanBeString)
-            {
-                return reader.GetString(ValueOrdinal);
-            }
-            else if (Property.PropertyType.CanBeBoolean)
-            {
-                if (Property.Purpose == PropertyPurpose.System && Property.Name == "ЭтоГруппа")
-                {
-                    if (Provider == DatabaseProvider.SQLServer)
-                    {
-                        return (((byte[])reader.GetValue(ValueOrdinal))[0] == 0); // Unique 1C case =) Уникальный случай для 1С (булево значение инвертируется) !!!
-                    }
-                    else
-                    {
-                        return !reader.GetBoolean(ValueOrdinal); // Unique 1C case =) Уникальный случай для 1С (булево значение инвертируется) !!!
-                    }
-                }
-                if (Provider == DatabaseProvider.SQLServer)
-                {
-                    return (((byte[])reader.GetValue(ValueOrdinal))[0] != 0); // All other cases - во всех остальных случаях булево значение не инвертируется
-                }
-                else
-                {
-                    return reader.GetBoolean(ValueOrdinal); // All other cases - во всех остальных случаях булево значение не инвертируется
-                }
-            }
-            else if (Property.PropertyType.CanBeNumeric)
-            {
-                return reader.GetDecimal(ValueOrdinal);
-            }
-            else if (Property.PropertyType.CanBeDateTime)
-            {
-                DateTime dateTime = reader.GetDateTime(ValueOrdinal);
-                if (InfoBase.YearOffset > 0)
-                {
-                    dateTime = dateTime.AddYears(-InfoBase.YearOffset);
-                }
-                return dateTime;
-            }
-            else if (Property.PropertyType.CanBeReference)
-            {
-                Guid uuid = new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(ValueOrdinal)));
-
-                if (Enumeration != null)
-                {
-                    return new EntityRef(Property.PropertyType.ReferenceTypeCode, uuid,
-                        CONST_TYPE_ENUM + "." + Enumeration.Name, GetEnumValue(Enumeration, uuid));
-                }
-                return GetEntityRef(Property, uuid);
-            }
-
-            return null; // this should not happen
-        }
-        private object GetMultipleValue(IDataReader reader)
-        {
-            if (reader.IsDBNull(DiscriminatorOrdinal))
-            {
-                // Такое может быть, например, для реквизитов групп элементов справочников,
-                // которые используются только для групп
-                return null;
-            }
-
-            int discriminator;
-            if (Provider == DatabaseProvider.SQLServer)
-            {
-                discriminator = reader.GetInt32(DiscriminatorOrdinal);
+                return GetSingleValue(in reader);
             }
             else
             {
-                discriminator = ((byte[])reader.GetValue(DiscriminatorOrdinal))[0];
+                return GetMultipleValue(in reader);
             }
-
-            if (discriminator == 1) // Неопределено
-            {
-                return null;
-            }
-            else if (discriminator == 2) // Булево
-            {
-                if (Provider == DatabaseProvider.SQLServer)
-                {
-                    return (((byte[])reader.GetValue(BooleanOrdinal))[0] != 0);
-                }
-                else
-                {
-                    return reader.GetBoolean(BooleanOrdinal);
-                }
-            }
-            else if (discriminator == 3) // Число
-            {
-                return reader.GetDecimal(NumberOrdinal);
-            }
-            else if (discriminator == 4) // Дата
-            {
-                DateTime dateTime = reader.GetDateTime(DateTimeOrdinal);
-                if (InfoBase.YearOffset > 0)
-                {
-                    dateTime = dateTime.AddYears(-InfoBase.YearOffset);
-                }
-                return dateTime;
-            }
-            else if (discriminator == 5) // Строка
-            {
-                return reader.GetString(StringOrdinal);
-            }
-            else if (discriminator == 8) // Ссылка
-            {
-                return GetObjectValue(reader);
-            }
-
-            return null; // unknown discriminator - this should not happen
         }
-        private object GetObjectValue(IDataReader reader)
+        private object? GetSingleValue(in IDataReader reader)
         {
-            // we are here from GetMultipleValue
+            if (_uuid > -1) { return GetUuid(in reader); } // УникальныйИдентификатор
+            else if (_binary > -1) { return GetBinary(in reader); } // ХранилищеЗначения, ВерсияДанных, КлючСтроки
+            else if (_boolean > -1) { return GetBoolean(in reader); }
+            else if (_numeric > -1) { return GetNumeric(in reader); }
+            else if (_date_time > -1) { return GetDateTime(in reader); }
+            else if (_string > -1) { return GetString(in reader); }
+            else if (_object > -1) { return GetEntityRef(in reader); }
 
-            if (reader.IsDBNull(ObjectOrdinal))
+            return null;
+        }
+        private object? GetMultipleValue(in IDataReader reader)
+        {
+            if (_discriminator > -1)
             {
-                // Такое может быть, например, для реквизитов групп элементов справочников,
-                // которые используются только для групп
-                return null;
-            }
-
-            Guid uuid = new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(ObjectOrdinal)));
-
-            if (TypeCodeOrdinal > -1) // multiple reference value - TRef + RRef
-            {
-                if (reader.IsDBNull(TypeCodeOrdinal))
+                if (reader.IsDBNull(_discriminator))
                 {
-                    // Такое может быть, например, для реквизитов групп элементов справочников,
-                    // которые используются только для групп
+                    // Такое может быть, например, для реквизитов не групповых элементов
+                    // справочников или харакетристик, которые используются только для групп
                     return null;
                 }
 
-                int typeCode;
-                if (Provider == DatabaseProvider.SQLServer)
-                {
-                    typeCode = reader.GetInt32(TypeCodeOrdinal);
-                }
-                else
-                {
-                    typeCode = DbUtilities.GetInt32((byte[])reader.GetValue(TypeCodeOrdinal));
-                }
+                int discriminator = reader.GetInt32(_discriminator); // MS SQLServer
 
-                return GetEntityRef(typeCode, uuid);
-            }
-            else // single reference value - RRef only
-            {
-                return GetEntityRef(Property, uuid);
-            }
-        }
-        private EntityRef GetEntityRef(int typeCode, Guid uuid)
-        {
-            if (InfoBase.ReferenceTypeCodes.TryGetValue(typeCode, out ApplicationObject metaObject))
-            {
-                if (metaObject is Enumeration enumeration)
-                {
-                    return new EntityRef(typeCode, uuid, CONST_TYPE_ENUM + "." + enumeration.Name, GetEnumValue(enumeration, uuid));
-                }
-                else if (metaObject is Catalog)
-                {
-                    return new EntityRef(typeCode, uuid, CONST_TYPE_CATALOG + "." + metaObject.Name);
-                }
-                else if (metaObject is Document)
-                {
-                    return new EntityRef(typeCode, uuid, CONST_TYPE_DOCUMENT + "." + metaObject.Name);
-                }
-                else if (metaObject is Publication)
-                {
-                    return new EntityRef(typeCode, uuid, CONST_TYPE_EXCHANGE_PLAN + "." + metaObject.Name);
-                }
-                else if (metaObject is Characteristic)
-                {
-                    return new EntityRef(typeCode, uuid, CONST_TYPE_CHARACTERISTIC + "." + metaObject.Name);
-                }
+                // TODO: discriminator = ((byte[])reader.GetValue(DiscriminatorOrdinal))[0]; PostgreSQL
+
+                if (discriminator == 1) { return null; } // Неопределено
+                else if (discriminator == 2) { return GetBoolean(in reader); } // Булево
+                else if (discriminator == 3) { return GetNumeric(in reader); } // Число
+                else if (discriminator == 4) { return GetDateTime(in reader); } // Дата
+                else if (discriminator == 5) { return GetString(in reader); } // Строка
+                else if (discriminator == 8) { return GetEntityRef(in reader); } // Ссылка
+
+                return null; // unknown discriminator - this should not happen
             }
 
-            return null; // unknown type code - this should not happen
+            if (_type_code > -1) // multiple reference type value
+            {
+                return GetEntityRef(in reader);
+            }
+
+            return null;
         }
-        private EntityRef GetEntityRef(MetadataProperty property, Guid uuid)
+        private object? GetUuid(in IDataReader reader)
         {
-            if (!property.PropertyType.CanBeReference || property.PropertyType.ReferenceTypeUuid == Guid.Empty)
+            if (reader.IsDBNull(_uuid))
             {
                 return null;
             }
 
-            if (property.PropertyType.ReferenceTypeCode != 0)
-            {
-                return GetEntityRef(property.PropertyType.ReferenceTypeCode, uuid);
-            }
-
-            // TODO: ReferenceTypeCode == 0 this should be fixed in DaJet.Metadata library
-
-            if (InfoBase.ReferenceTypeUuids.TryGetValue(property.PropertyType.ReferenceTypeUuid, out ApplicationObject propertyType))
-            {
-                property.PropertyType.ReferenceTypeCode = propertyType.TypeCode; // patch metadata
-
-                if (propertyType is Enumeration enumeration)
-                {
-                    return new EntityRef(propertyType.TypeCode, uuid, CONST_TYPE_ENUM + "." + enumeration.Name, GetEnumValue(enumeration, uuid));
-                }
-                else if (propertyType is Catalog)
-                {
-                    return new EntityRef(propertyType.TypeCode, uuid, CONST_TYPE_CATALOG + "." + propertyType.Name);
-                }
-                else if (propertyType is Document)
-                {
-                    return new EntityRef(propertyType.TypeCode, uuid, CONST_TYPE_DOCUMENT + "." + propertyType.Name);
-                }
-                else if (propertyType is Publication)
-                {
-                    return new EntityRef(propertyType.TypeCode, uuid, CONST_TYPE_EXCHANGE_PLAN + "." + propertyType.Name);
-                }
-                else if (propertyType is Characteristic)
-                {
-                    return new EntityRef(propertyType.TypeCode, uuid, CONST_TYPE_CHARACTERISTIC + "." + propertyType.Name);
-                }
-            }
-
-            if (property.Name == "Владелец")
-            {
-                if (MetaObject is Catalog || MetaObject is Characteristic)
-                {
-                    // TODO: this issue should be fixed in DaJet.Metadata library
-                    // NOTE: file names lookup - Property.PropertyType.ReferenceTypeUuid for Owner property is a FileName, not metadata object Uuid !!!
-                    if (InfoBase.Catalogs.TryGetValue(property.PropertyType.ReferenceTypeUuid, out ApplicationObject catalog))
-                    {
-                        property.PropertyType.ReferenceTypeCode = catalog.TypeCode; // patch metadata
-                        return GetEntityRef(property.PropertyType.ReferenceTypeCode, uuid);
-                    }
-                    else if (InfoBase.Characteristics.TryGetValue(property.PropertyType.ReferenceTypeUuid, out ApplicationObject characteristic))
-                    {
-                        property.PropertyType.ReferenceTypeCode = characteristic.TypeCode; // patch metadata
-                        return GetEntityRef(property.PropertyType.ReferenceTypeCode, uuid);
-                    }
-                }
-            }
-
-            return new EntityRef(property.PropertyType.ReferenceTypeCode, uuid);
+            return new Guid(SQLHelper.Get1CUuid((byte[])reader.GetValue(_uuid)));
         }
-
-
-
-        private string GetEnumValue(Enumeration enumeration, Guid value)
+        private object? GetBinary(in IDataReader reader)
         {
-            for (int i = 0; i < enumeration.Values.Count; i++)
+            if (reader.IsDBNull(_binary))
             {
-                if (enumeration.Values[i].Uuid == value)
-                {
-                    return enumeration.Values[i].Name;
-                }
+                return null;
             }
-            return string.Empty;
+
+            return ((byte[])reader.GetValue(_binary));
+        }
+        private object? GetBoolean(in IDataReader reader)
+        {
+            if (reader.IsDBNull(_boolean))
+            {
+                return null;
+            }
+
+            if (_invert)
+            {
+                return (((byte[])reader.GetValue(_boolean))[0] == 0); // _Folder ЭтоГруппа
+
+                // TODO: return !reader.GetBoolean(_boolean); // PostgreSQL
+            }
+            else
+            {
+                return (((byte[])reader.GetValue(_boolean))[0] != 0); // true
+
+                // TODO: return reader.GetBoolean(_boolean); // PostgreSQL
+            }
+        }
+        private object? GetNumeric(in IDataReader reader)
+        {
+            if (reader.IsDBNull(_numeric))
+            {
+                return null;
+            }
+
+            return reader.GetDecimal(_numeric);
+        }
+        private object? GetDateTime(in IDataReader reader)
+        {
+            if (reader.IsDBNull(_date_time))
+            {
+                return null;
+            }
+
+            return reader.GetDateTime(_date_time);
+        }
+        private object? GetString(in IDataReader reader)
+        {
+            if (reader.IsDBNull(_string))
+            {
+                return null;
+            }
+
+            return reader.GetString(_string);
+        }
+        private object? GetEntityRef(in IDataReader reader)
+        {
+            if (reader.IsDBNull(_object))
+            {
+                return null;
+            }
+
+            Guid uuid = new(SQLHelper.Get1CUuid((byte[])reader.GetValue(_object)));
+
+            if (_single) // single reference type value - RRef
+            {
+                return new EntityRef(_type_code, uuid);
+            }
+
+            if (_type_code > -1 && !reader.IsDBNull(_type_code)) // multiple reference type value - TRef + RRef
+            {
+                int typeCode = reader.GetInt32(_type_code);
+                
+                // TODO: typeCode = DbUtilities.GetInt32((byte[])reader.GetValue(TypeCodeOrdinal)); // PostgreSQL
+
+                return new EntityRef(typeCode, uuid);
+            }
+            
+            return null;
         }
     }
 }

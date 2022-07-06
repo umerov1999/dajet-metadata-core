@@ -221,6 +221,12 @@ namespace DaJet.Metadata.Model
         ///</br>
         ///</summary>
         public Guid Reference { get; set; } = Guid.Empty;
+        ///<summary>
+        ///Код типа объекта метаданных (дискриминатор)
+        ///<br>Используется для формирования имени таблицы СУБД, а также как</br>
+        ///<br>значение поля RTRef составного типа данных в записях таблиц СУБД.</br>
+        ///</summary>
+        public int TypeCode { get; set; } = 0;
 
         #endregion
 
@@ -237,6 +243,7 @@ namespace DaJet.Metadata.Model
 
             DateTimePart = source.DateTimePart;
             
+            TypeCode = source.TypeCode;
             Reference = source.Reference;
         }
 

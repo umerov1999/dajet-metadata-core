@@ -9,9 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-metadata-test", "daje
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-metadata-benchmark", "dajet-metadata-benchmark\dajet-metadata-benchmark.csproj", "{FB31B4DA-928B-4F98-B87F-6A8B7667920C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-data", "dajet-data\dajet-data.csproj", "{81D1D995-2564-42EF-916C-CE7CE61F01AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data", "dajet-data\dajet-data.csproj", "{81D1D995-2564-42EF-916C-CE7CE61F01AF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-data-mapping", "dajet-data-mapping\dajet-data-mapping.csproj", "{4C1344C6-7EA9-4E98-83B0-14DABC650406}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-data-mapping", "dajet-data-mapping\dajet-data-mapping.csproj", "{4C1344C6-7EA9-4E98-83B0-14DABC650406}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-mapping-test", "dajet-mapping-test\dajet-mapping-test.csproj", "{AFD971F6-A93B-4D66-9BE0-F293390E1BE1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{4C1344C6-7EA9-4E98-83B0-14DABC650406}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C1344C6-7EA9-4E98-83B0-14DABC650406}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C1344C6-7EA9-4E98-83B0-14DABC650406}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFD971F6-A93B-4D66-9BE0-F293390E1BE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFD971F6-A93B-4D66-9BE0-F293390E1BE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFD971F6-A93B-4D66-9BE0-F293390E1BE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFD971F6-A93B-4D66-9BE0-F293390E1BE1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

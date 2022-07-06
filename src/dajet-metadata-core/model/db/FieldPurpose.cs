@@ -2,7 +2,7 @@
 {
     public enum FieldPurpose
     {
-        /// <summary>Value of the property (default). _Fld</summary>
+        /// <summary>Single type value of the property (default). _Fld</summary>
         Value,
         ///<summary>Дискриминатор составного типа данных _Fld + _TYPE
         ///<br><b>0x01</b> - Неопределено = null</br>

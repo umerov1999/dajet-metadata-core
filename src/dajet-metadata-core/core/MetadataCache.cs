@@ -222,14 +222,21 @@ namespace DaJet.Metadata.Core
         internal void Initialize(out InfoBase infoBase)
         {
             InitializeRootFile();
-            InitializeMetadataCache(out infoBase);
             InitializeDbNameCache();
+            InitializeMetadataCache(out infoBase);
         }
         private void InitializeRootFile()
         {
             using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Config, ConfigFiles.Root))
             {
                 _root = new RootFileParser().Parse(in reader);
+            }
+        }
+        private void InitializeDbNameCache()
+        {
+            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, ConfigFiles.DbNames))
+            {
+                new DbNamesParser().Parse(in reader, out _database);
             }
         }
         private void InitializeMetadataCache(out InfoBase infoBase)
@@ -353,16 +360,7 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        private void InitializeDbNameCache()
-        {
-            //TODO: add option to load or not DbNames !?
-
-            using (ConfigFileReader reader = new(_provider, in _connectionString, ConfigTables.Params, ConfigFiles.DbNames))
-            {
-                new DbNamesParser().Parse(in reader, out _database);
-            }
-        }
-
+        
         internal int CountMetadataObjects(Guid type)
         {
             if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))

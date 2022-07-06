@@ -112,6 +112,7 @@ namespace DaJet.Metadata.Core
             if (count == 0) // zero reference types
             {
                 target.CanBeReference = false;
+                target.TypeCode = 0;
                 target.Reference = Guid.Empty;
                 return; 
             }
@@ -123,16 +124,23 @@ namespace DaJet.Metadata.Core
                 if (cache.TryGetReferenceInfo(reference, out MetadataEntry entry))
                 {
                     target.Reference = entry.MetadataUuid; // uuid объекта метаданных
+                    
+                    if (cache.TryGetDbName(entry.MetadataUuid, out DbName db))
+                    {
+                        target.TypeCode = db.Code;
+                    }
                 }
                 else
                 {
                     // unsupported reference type, например "БизнесПроцесс"
+                    target.TypeCode = 0;
                     target.Reference = reference;
                 }
             }
             else // multiple reference type
             {
                 target.CanBeReference = true;
+                target.TypeCode = 0;
                 target.Reference = Guid.Empty;
             }
         }
