@@ -569,5 +569,55 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
+
+        internal EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        {
+            if (!TryGetChngR(entity.Uuid, out _))
+            {
+                return null;
+            }
+
+            EntityChangeTable table = new(entity);
+
+            Configurator.ConfigureSystemProperties(this, table);
+
+            return table;
+        }
+        internal ApplicationObject GetApplicationObject(int typeCode)
+        {
+            if (!_database.TryGet(typeCode, out DbName dbn))
+            {
+                return null;
+            }
+
+            Guid type;
+
+            if (dbn.Name == MetadataTokens.Reference)
+            {
+                type = MetadataTypes.Catalog;
+            }
+            else if (dbn.Name == MetadataTokens.Document)
+            {
+                type = MetadataTypes.Document;
+            }
+            else if (dbn.Name == MetadataTokens.Enum)
+            {
+                type = MetadataTypes.Enumeration;
+            }
+            else if (dbn.Name == MetadataTokens.Chrc)
+            {
+                type = MetadataTypes.Characteristic;
+            }
+            else if (dbn.Name == MetadataTokens.Node)
+            {
+                type = MetadataTypes.Publication;
+            }
+            else
+            {
+                return null;
+            }
+
+            return GetMetadataObjectCached(type, dbn.Uuid) as ApplicationObject;
+        }
     }
 }

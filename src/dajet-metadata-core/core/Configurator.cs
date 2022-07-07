@@ -36,6 +36,10 @@ namespace DaJet.Metadata.Core
             {
                 ConfigureAccumulationRegister(in cache, in register2);
             }
+            else if (metadata is EntityChangeTable changeTable)
+            {
+                ConfigureEntityChangeTable(in cache, in changeTable);
+            }
         }
         internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
         {
@@ -114,7 +118,7 @@ namespace DaJet.Metadata.Core
                 target.CanBeReference = false;
                 target.TypeCode = 0;
                 target.Reference = Guid.Empty;
-                return; 
+                return;
             }
 
             if (count == 1) // single reference type
@@ -124,7 +128,7 @@ namespace DaJet.Metadata.Core
                 if (cache.TryGetReferenceInfo(reference, out MetadataEntry entry))
                 {
                     target.Reference = entry.MetadataUuid; // uuid объекта метаданных
-                    
+
                     if (cache.TryGetDbName(entry.MetadataUuid, out DbName db))
                     {
                         target.TypeCode = db.Code;
@@ -366,7 +370,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_EnumOrder"
             };
-            
+
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
             property.PropertyType.NumericPrecision = 10;
@@ -603,7 +607,7 @@ namespace DaJet.Metadata.Core
             };
             property.PropertyType.CanBeReference = true;
             property.PropertyType.Reference = metadata.Uuid; // single reference type
-            
+
             property.Fields.Add(new DatabaseField()
             {
                 Name = property.DbName,
@@ -647,7 +651,7 @@ namespace DaJet.Metadata.Core
             if (owners.Count == 1) // Single type value
             {
                 property.PropertyType.Reference = owners[0];
-                
+
                 property.Fields.Add(new DatabaseField()
                 {
                     Name = "_OwnerIDRRef",
@@ -794,7 +798,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_ReceivedNo"
             };
-            
+
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
             property.PropertyType.NumericPrecision = 10;
@@ -827,7 +831,7 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyСсылка(document);
             ConfigurePropertyВерсияДанных(document);
             ConfigurePropertyПометкаУдаления(document);
-            
+
             ConfigurePropertyДата(document);
 
             if (document.NumberLength > 0)
@@ -939,7 +943,7 @@ namespace DaJet.Metadata.Core
             });
             document.Properties.Add(property);
         }
-        
+
         #endregion
 
         #region "INFORMATION REGISTER"
@@ -977,7 +981,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_Period"
             };
-            
+
             property.PropertyType.CanBeDateTime = true;
 
             if (register is InformationRegister inforeg)
@@ -1020,7 +1024,7 @@ namespace DaJet.Metadata.Core
                 Precision = 9,
                 TypeName = "numeric"
             });
-            
+
             register.Properties.Add(property);
         }
         private static void ConfigurePropertyАктивность(in ApplicationObject register)
@@ -1089,7 +1093,7 @@ namespace DaJet.Metadata.Core
                     Purpose = FieldPurpose.TypeCode
                 });
             }
-            
+
             register.Properties.Add(property);
         }
 
@@ -1102,7 +1106,7 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyРегистратор(in cache, register);
             ConfigurePropertyПериод(register);
             ConfigurePropertyНомерЗаписи(register);
-            
+
             if (register.RegisterKind == RegisterKind.Balance)
             {
                 ConfigurePropertyВидДвижения(in register);
@@ -1120,7 +1124,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_RecordKind"
             };
-            
+
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
             property.PropertyType.NumericPrecision = 1;
@@ -1132,7 +1136,7 @@ namespace DaJet.Metadata.Core
                 Precision = 1,
                 TypeName = "numeric"
             });
-            
+
             register.Properties.Add(property);
         }
         ///<summary>
@@ -1148,7 +1152,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_DimHash"
             };
-            
+
             property.PropertyType.CanBeNumeric = true;
 
             property.Fields.Add(new DatabaseField()
@@ -1324,11 +1328,100 @@ namespace DaJet.Metadata.Core
             for (int i = 1; i <= count; i++)
             {
                 Guid uuid = configObject.GetUuid(new int[] { i * offset });
-                
+
                 AutoPublication setting = (AutoPublication)configObject.GetInt32(new int[] { (i * offset) + 1 });
 
                 publication.Articles.Add(uuid, setting);
             }
+        }
+
+        #endregion
+
+        #region "ENTITY CHANGE TABLE"
+
+        private static void ConfigureEntityChangeTable(in MetadataCache cache, in EntityChangeTable table)
+        {
+            if (!cache.TryGetChngR(table.Entity.Uuid, out DbName changeTable))
+            {
+                return;
+            }
+
+            //if (!cache.TryGetDbName(table.Entity.Uuid, out DbName entityTable))
+            //{
+            //    return;
+            //}
+
+            //table.TypeCode = entityTable.Code;
+
+            table.Uuid = table.Entity.Uuid;
+            table.Name = table.Entity.Name + ".Изменения";
+            table.Alias = "Таблица регистрации изменений";
+            table.TableName = $"_{changeTable.Name}{changeTable.Code}";
+
+            ConfigurePropertyСсылка(table); // TODO: только ссылочные типы данных
+            ConfigurePropertyУзелПланаОбмена(in table);
+            ConfigurePropertyНомерСообщения(in table);
+        }
+        private static void ConfigurePropertyУзелПланаОбмена(in EntityChangeTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Uuid = Guid.Empty,
+                Name = "УзелПланаОбмена",
+                Purpose = PropertyPurpose.System,
+                DbName = "_Node"
+            };
+
+            property.PropertyType.CanBeReference = true;
+            property.PropertyType.Reference = Guid.Empty;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = "_NodeTRef",
+                Length = 4,
+                TypeName = "binary",
+                KeyOrdinal = 2,
+                IsPrimaryKey = true,
+                Purpose = FieldPurpose.TypeCode
+            });
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = "_NodeRRef",
+                Length = 16,
+                TypeName = "binary",
+                KeyOrdinal = 3,
+                IsPrimaryKey = true,
+                Purpose = FieldPurpose.Object
+            });
+
+            table.Properties.Add(property);
+        }
+        private static void ConfigurePropertyНомерСообщения(in EntityChangeTable table)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "НомерСообщения",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_MessageNo"
+            };
+
+            property.PropertyType.CanBeNumeric = true;
+            property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
+            property.PropertyType.NumericScale = 0;
+            property.PropertyType.NumericPrecision = 10;
+
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 9,
+                Scale = 0,
+                Precision = 10,
+                TypeName = "numeric"
+            });
+
+            table.Properties.Add(property);
         }
 
         #endregion
@@ -1367,6 +1460,7 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
+            entity.TypeCode = entry.Code;
             entity.TableName = CreateDbName(entry.Name, entry.Code);
 
             ConfigureDatabaseProperties(in cache, in entity);

@@ -104,6 +104,10 @@ namespace DaJet.Metadata.Core
         {
             return _cache.GetMetadataObjects(type);
         }
+        public ApplicationObject GetApplicationObject(int typeCode)
+        {
+            return _cache.GetApplicationObject(typeCode);
+        }
         public MetadataEntity GetMetadataEntity(Guid uuid)
         {
             return _cache.GetMetadataEntity(uuid);
@@ -153,6 +157,10 @@ namespace DaJet.Metadata.Core
             mapper.Select(in publication);
 
             return publication;
+        }
+        public EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        {
+            return _cache.GetEntityChangeTable(entity);
         }
     }
 }

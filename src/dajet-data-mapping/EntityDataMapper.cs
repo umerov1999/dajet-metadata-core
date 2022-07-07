@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Core;
-using DaJet.Metadata.Model;
+﻿using DaJet.Metadata.Model;
 using System.Data;
 using System.Text;
 
@@ -7,80 +6,131 @@ namespace DaJet.Data.Mapping
 {
     public sealed class EntityDataMapper : IDaJetDataMapper
     {
-        private readonly int _yearOffset = 0;
-        private readonly MetadataService _metadataService;
-        private readonly ApplicationObject _entity;
-        private readonly Dictionary<MetadataProperty, PropertyDataMapper> _propertyMappers = new();
-        public EntityDataMapper(MetadataService metadata, int yearOffset, ApplicationObject entity)
+        private readonly IQueryExecutor _executor;
+        private readonly DataMapperOptions _options;
+        private readonly Dictionary<string, object> _parameters = new();
+        private readonly Dictionary<MetadataProperty, PropertyDataMapper> _mappers = new();
+        private string SELECT_SCRIPT = string.Empty;
+        public EntityDataMapper(DataMapperOptions options, IQueryExecutor executor)
         {
-            _entity = entity;
-            _yearOffset = yearOffset;
-            _metadataService = metadata;
+            _options = options;
+            _executor = executor;
 
+            Configure();
+        }
+        public DataMapperOptions Options { get { return _options; } }
+        public void Configure()
+        {
             ConfigurePropertyDataMappers();
+            
+            ConfigureSelectQueryScript();
+
+            ConfigureSelectQueryParameters();
         }
         private void ConfigurePropertyDataMappers()
         {
-            _propertyMappers.Clear();
+            _mappers.Clear();
 
             int ordinal = 0;
 
-            for (int i = 0; i < _entity.Properties.Count; i++)
+            for (int i = 0; i < _options.Entity.Properties.Count; i++)
             {
-                MetadataProperty property = _entity.Properties[i];
+                MetadataProperty property = _options.Entity.Properties[i];
 
-                //if (Options.IgnoreProperties.Contains(property.Name))
-                //{
-                //    continue;
-                //}
-
-                _propertyMappers.Add(property, new PropertyDataMapper(in property, ref ordinal));
-            }
-        }
-        public Dictionary<string, object> Select(Guid uuid_sql)
-        {
-            IQueryExecutor executor = _metadataService.CreateQueryExecutor();
-
-            string script = GetSelectEntityByUuidScript();
-
-            Dictionary<string, object> parameters = new()
-            {
-                { "identity", uuid_sql.ToByteArray() }
-            };
-
-            Dictionary<string, object> entity = new();
-
-            foreach (IDataReader reader in executor.ExecuteReader(script, 10, parameters))
-            {
-                for (int f = 0; f < reader.FieldCount; f++)
+                if (_options.IgnoreProperties.Contains(property.Name))
                 {
-                    entity.Add(reader.GetName(f), reader[f]);
+                    continue;
                 }
+
+                _mappers.Add(property, new PropertyDataMapper(in property, ref ordinal));
             }
-
-            return entity;
         }
-
-        #region "SELECT ENTITY BY REFERENCE (UUID)"
-
-        private string SELECT_ENTITY_BY_UUID_SCRIPT;
-        private string GetSelectEntityByUuidScript()
+        private void ConfigureSelectQueryScript()
         {
-            if (SELECT_ENTITY_BY_UUID_SCRIPT == null)
+            SELECT_SCRIPT = BuildSelectScript();
+
+            if (_options.Filter.Count > 0)
             {
-                SELECT_ENTITY_BY_UUID_SCRIPT = BuildSelectEntityScript() + " WHERE _IDRRef = @identity;";
+                SELECT_SCRIPT += (" " + BuildWhereClause());
             }
-            return SELECT_ENTITY_BY_UUID_SCRIPT;
+
+            SELECT_SCRIPT += ";";
         }
-        private string BuildSelectEntityScript(string tableAlias = null!)
+        private void ConfigureSelectQueryParameters()
+        {
+            _parameters.Clear();
+
+            for (int p = 0; p < _options.Filter.Count; p++)
+            {
+                FilterParameter parameter = _options.Filter[p];
+
+                object value = parameter.Value;
+
+                if (value == null)
+                {
+                    value = DBNull.Value;
+                }
+                if (value is DateTime dateTime)
+                {
+                    value = dateTime.AddYears(_options.InfoBase.YearOffset);
+                }
+                else if (value is Guid uuid)
+                {
+                    value = SQLHelper.GetSqlUuid(uuid.ToByteArray());
+                }
+
+                _parameters.Add($"p{p}", value);
+            }
+        }
+
+        public List<Dictionary<string, object>> Select()
+        {
+            List<Dictionary<string, object>> result = new();
+
+            foreach (IDataReader reader in _executor.ExecuteReader(SELECT_SCRIPT, 10, _parameters))
+            {
+                Dictionary<string, object> entity = new();
+
+                for (int i = 0; i < _options.Entity.Properties.Count; i++)
+                {
+                    MetadataProperty property = _options.Entity.Properties[i];
+
+                    if (!_mappers.TryGetValue(property, out PropertyDataMapper mapper))
+                    {
+                        continue;
+                    }
+
+                    object? value = mapper.GetValue(in reader);
+
+                    if (value is DateTime dateTime)
+                    {
+                        dateTime = dateTime.AddYears(-_options.InfoBase.YearOffset);
+                        
+                        entity.Add(property.Name, dateTime);
+                    }
+                    else
+                    {
+                        entity.Add(property.Name, value!);
+                    }
+                }
+
+                result.Add(entity);
+            }
+
+            return result;
+        }
+
+        #region "BUILD DATABASE QUERY SCRIPTS"
+
+        private string BuildSelectScript()
         {
             StringBuilder script = new("SELECT ");
 
             bool first = true;
 
-            foreach (var item in _propertyMappers)
+            foreach (var item in _mappers)
             {
-                string propertyScript = item.Value.BuildSelectScript(item.Key, in tableAlias);
+                string propertyScript = item.Value.BuildSelectScript(item.Key);
 
                 if (string.IsNullOrWhiteSpace(propertyScript))
                 {
@@ -94,47 +144,208 @@ namespace DaJet.Data.Mapping
                 first = false;
             }
 
-            script.Append($" FROM {_entity.TableName}");
-
-            if (!string.IsNullOrEmpty(tableAlias))
-            {
-                script.Append($" AS {tableAlias}");
-            }
+            script.Append($" FROM {_options.Entity.TableName}");
 
             return script.ToString();
         }
+        private string BuildWhereClause()
+        {
+            if (_options.Filter != null && _options.Filter.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder where = new("WHERE ");
+
+            bool first = true;
+
+            for (int p = 0; p < _options.Filter.Count; p++)
+            {
+                FilterParameter parameter = _options.Filter[p];
+
+                string fieldName = GetFieldName(parameter.Name);
+                string _operator = GetComparisonSymbol(parameter.Operator);
+
+                if (!first) { where.Append(" AND "); }
+
+                if (parameter.Value == null)
+                {
+                    if (parameter.Operator == ComparisonOperator.NotEqual)
+                    {
+                        where.Append($"{fieldName} IS NOT NULL");
+                    }
+                    else
+                    {
+                        where.Append($"{fieldName} IS NULL");
+                    }
+                }
+                else
+                {
+                    where.Append($"{fieldName} {_operator} @p{p}");
+                }
+
+                first = false;
+            }
+
+            return where.ToString();
+        }
+        private string GetFieldName(string propertyName)
+        {
+            foreach (MetadataProperty property in _options.Entity.Properties)
+            {
+                if (property.Name == propertyName)
+                {
+                    if (property.Fields.Count == 1) // TODO: multiple fields property
+                    {
+                        return property.Fields[0].Name;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+        private string GetComparisonSymbol(ComparisonOperator comparisonOperator)
+        {
+            //typeof(ComparisonOperator).GetCustomAttributes()
+
+            if (comparisonOperator == ComparisonOperator.Equal) return "=";
+            else if (comparisonOperator == ComparisonOperator.NotEqual) return "<>";
+            else if (comparisonOperator == ComparisonOperator.Less) return "<";
+            else if (comparisonOperator == ComparisonOperator.LessOrEqual) return "<=";
+            else if (comparisonOperator == ComparisonOperator.Greater) return ">";
+            else if (comparisonOperator == ComparisonOperator.GreaterOrEqual) return ">=";
+            else if (comparisonOperator == ComparisonOperator.Contains) return "IN";
+            else if (comparisonOperator == ComparisonOperator.Between) return "BETWEEN";
+
+            throw new ArgumentOutOfRangeException(nameof(comparisonOperator));
+        }
+        
+        #endregion
+
+        #region "SELECT TABLE PART BY NAME AND ENTITY (UUID)"
+
+        private string SELECT_ENTITY_TABLE_PART_SCRIPT = string.Empty;
+        //public string GetSelectTablePartScript()
+        //{
+        //    if (string.IsNullOrEmpty(SELECT_ENTITY_TABLE_PART_SCRIPT))
+        //    {
+        //        MetadataProperty? property = _entity.Properties
+        //            .Where(p => p.Name == "Ссылка")
+        //            .FirstOrDefault();
+
+        //        if (property != null)
+        //        {
+        //            StringBuilder script = new();
+
+        //            DatabaseField field = property.Fields[0];
+
+        //            script.Append(BuildSelectEntityScript());
+
+        //            script.Append($" WHERE {field.Name} = @entity ");
+
+        //            script.Append($"ORDER BY {field.Name} ASC, _KeyField ASC;"); // MS SQLServer
+
+        //            // TODO: script.Append($"ORDER BY {field.Name} ASC, _keyfield ASC;"); PostgreSQL
+
+        //            SELECT_ENTITY_TABLE_PART_SCRIPT = script.ToString();
+        //        }
+        //    }
+
+        //    return SELECT_ENTITY_TABLE_PART_SCRIPT;
+        //}
 
         #endregion
 
-        //private void ConfigureTablePartDataMappers()
+        #region "JSON SERIALIZER"
+
+        //else if (value is byte[] byteArray)
         //{
-        //    Options.TablePartMappers.Clear();
-
-        //    foreach (TablePart table in Options.MetaObject.TableParts)
-        //    {
-        //        if (Options.IgnoreProperties.Contains(table.Name))
-        //        {
-        //            continue;
-        //        }
-
-        //        EntityDataMapper mapper = new EntityDataMapper();
-        //        mapper.Configure(new DataMapperOptions()
-        //        {
-        //            InfoBase = Options.InfoBase,
-        //            MetaObject = table,
-        //            Provider = Options.Provider,
-        //            ConnectionString = Options.ConnectionString,
-        //            IgnoreProperties = new List<string>()
-        //            {
-        //                "Ссылка",
-        //                "КлючСтроки",
-        //                "НомерСтроки"
-        //            }
-        //        });
-
-        //        Options.TablePartMappers.Add(mapper);
-        //    }
+        //    entity.Add(property.Name, Convert.ToBase64String(byteArray));
         //}
+
+        private const string CONST_TYPE_ENUM = "jcfg:EnumRef";
+        private const string CONST_TYPE_CATALOG = "jcfg:CatalogRef";
+        private const string CONST_TYPE_DOCUMENT = "jcfg:DocumentRef";
+        private const string CONST_TYPE_EXCHANGE_PLAN = "jcfg:ExchangePlanRef";
+        private const string CONST_TYPE_CHARACTERISTIC = "jcfg:ChartOfCharacteristicTypesRef";
+
+        private const string CONST_REF = "Ref";
+        private const string CONST_TYPE = "#type";
+        private const string CONST_VALUE = "#value";
+        private const string CONST_TYPE_STRING = "jxs:string";
+        private const string CONST_TYPE_DECIMAL = "jxs:decimal";
+        private const string CONST_TYPE_BOOLEAN = "jxs:boolean";
+        private const string CONST_TYPE_DATETIME = "jxs:dateTime";
+        private const string CONST_TYPE_CATALOG_REF = "jcfg:CatalogRef";
+        private const string CONST_TYPE_CATALOG_OBJ = "jcfg:CatalogObject";
+        private const string CONST_TYPE_DOCUMENT_REF = "jcfg:DocumentRef";
+        private const string CONST_TYPE_DOCUMENT_OBJ = "jcfg:DocumentObject";
+        private const string CONST_TYPE_OBJECT_DELETION = "jent:ObjectDeletion";
+        private const string CONST_TYPE_INFO_REGISTER_SET = "jcfg:InformationRegisterRecordSet";
+        private const string CONST_TYPE_ACCUM_REGISTER_SET = "jcfg:AccumulationRegisterRecordSet";
+
+        //if (register.RegisterKind == RegisterKind.Balance && DataMapper.PropertyMappers[i].Property.Name == "ВидДвижения")
+        //{
+        //    value = (decimal) value == 0 ? "Receipt" : "Expense";
+        //}
+
+        //private string GetEnumValueName(Enumeration enumeration, Guid value)
+        //{
+        //    for (int i = 0; i < enumeration.Values.Count; i++)
+        //    {
+        //        if (enumeration.Values[i].Uuid == value)
+        //        {
+        //            return enumeration.Values[i].Name;
+        //        }
+        //    }
+        //    return string.Empty;
+        //}
+
+        //public string GetPredefinedDataName(IDataReader reader, Guid uuid)
+        //{
+        //    if (Options.MetaObject is IPredefinedValues predefined)
+        //    {
+        //        foreach (PredefinedValue value in predefined.PredefinedValues)
+        //        {
+        //            if (value.Uuid == uuid)
+        //            {
+        //                return value.Name;
+        //            }
+        //        }
+        //    }
+        //    return null;
+        //}
+
+        //private string GetEntityTypeName(int typeCode, Guid uuid)
+        //{
+        //    if (InfoBase.ReferenceTypeCodes.TryGetValue(typeCode, out ApplicationObject metaObject))
+        //    {
+        //        if (metaObject is Enumeration enumeration)
+        //        {
+        //            return new EntityRef(typeCode, uuid, CONST_TYPE_ENUM + "." + enumeration.Name, GetEnumValue(enumeration, uuid));
+        //        }
+        //        else if (metaObject is Catalog)
+        //        {
+        //            return new EntityRef(typeCode, uuid, CONST_TYPE_CATALOG + "." + metaObject.Name);
+        //        }
+        //        else if (metaObject is Document)
+        //        {
+        //            return new EntityRef(typeCode, uuid, CONST_TYPE_DOCUMENT + "." + metaObject.Name);
+        //        }
+        //        else if (metaObject is Publication)
+        //        {
+        //            return new EntityRef(typeCode, uuid, CONST_TYPE_EXCHANGE_PLAN + "." + metaObject.Name);
+        //        }
+        //        else if (metaObject is Characteristic)
+        //        {
+        //            return new EntityRef(typeCode, uuid, CONST_TYPE_CHARACTERISTIC + "." + metaObject.Name);
+        //        }
+        //    }
+
+        //    return null; // unknown type code - this should not happen
+        //}
+
+        #endregion
 
         #region "OLD CODE"
 
@@ -194,34 +405,7 @@ namespace DaJet.Data.Mapping
         //            CONST_TYPE_ENUM + "." + Enumeration.Name, GetEnumValue(Enumeration, uuid));
         //    }
         //}
-        //private EntityRef GetEntityRef(int typeCode, Guid uuid)
-        //{
-        //    if (InfoBase.ReferenceTypeCodes.TryGetValue(typeCode, out ApplicationObject metaObject))
-        //    {
-        //        if (metaObject is Enumeration enumeration)
-        //        {
-        //            return new EntityRef(typeCode, uuid, CONST_TYPE_ENUM + "." + enumeration.Name, GetEnumValue(enumeration, uuid));
-        //        }
-        //        else if (metaObject is Catalog)
-        //        {
-        //            return new EntityRef(typeCode, uuid, CONST_TYPE_CATALOG + "." + metaObject.Name);
-        //        }
-        //        else if (metaObject is Document)
-        //        {
-        //            return new EntityRef(typeCode, uuid, CONST_TYPE_DOCUMENT + "." + metaObject.Name);
-        //        }
-        //        else if (metaObject is Publication)
-        //        {
-        //            return new EntityRef(typeCode, uuid, CONST_TYPE_EXCHANGE_PLAN + "." + metaObject.Name);
-        //        }
-        //        else if (metaObject is Characteristic)
-        //        {
-        //            return new EntityRef(typeCode, uuid, CONST_TYPE_CHARACTERISTIC + "." + metaObject.Name);
-        //        }
-        //    }
 
-        //    return null; // unknown type code - this should not happen
-        //}
         //private EntityRef GetEntityRef(MetadataProperty property, Guid uuid)
         //{
         //    if (!property.PropertyType.CanBeReference || property.PropertyType.ReferenceTypeUuid == Guid.Empty)
@@ -283,17 +467,7 @@ namespace DaJet.Data.Mapping
 
         //    return new EntityRef(property.PropertyType.ReferenceTypeCode, uuid);
         //}
-        //private string GetEnumValue(Enumeration enumeration, Guid value)
-        //{
-        //    for (int i = 0; i < enumeration.Values.Count; i++)
-        //    {
-        //        if (enumeration.Values[i].Uuid == value)
-        //        {
-        //            return enumeration.Values[i].Name;
-        //        }
-        //    }
-        //    return string.Empty;
-        //}
+
 
         //private void ConfigureDataMapper()
         //{
@@ -449,20 +623,7 @@ namespace DaJet.Data.Mapping
         //    }
         //    return false;
         //}
-        //public string GetPredefinedDataName(IDataReader reader, Guid uuid)
-        //{
-        //    if (Options.MetaObject is IPredefinedValues predefined)
-        //    {
-        //        foreach (PredefinedValue value in predefined.PredefinedValues)
-        //        {
-        //            if (value.Uuid == uuid)
-        //            {
-        //                return value.Name;
-        //            }
-        //        }
-        //    }
-        //    return null;
-        //}
+
         //public long TestGetPageDataRows(int size, int page)
         //{
         //    Stopwatch watcher = new Stopwatch();
@@ -525,63 +686,9 @@ namespace DaJet.Data.Mapping
         //        }
         //    }
         //}
-        //public IEnumerable<IDataReader> GetTablePartDataRows(EntityRef entity)
-        //{
-        //    using (DbConnection connection = GetDbConnection())
-        //    {
-        //        connection.Open();
 
-        //        using (DbCommand command = connection.CreateCommand())
-        //        {
-        //            command.CommandType = CommandType.Text;
-        //            command.CommandText = GetSelectTablePartScript();
-        //            command.CommandTimeout = Options.CommandTimeout; // seconds
-
-        //            if (command is SqlCommand ms_command)
-        //            {
-        //                ms_command.Parameters.AddWithValue("entity", SQLHelper.GetSqlUuid(entity.Identity));
-        //            }
-        //            else if (command is NpgsqlCommand pg_command)
-        //            {
-        //                pg_command.Parameters.AddWithValue("entity", SQLHelper.GetSqlUuid(entity.Identity));
-        //            }
-
-        //            using (DbDataReader reader = command.ExecuteReader())
-        //            {
-        //                while (reader.Read())
-        //                {
-        //                    yield return reader;
-        //                }
-        //                reader.Close();
-        //            }
-        //        }
-        //    }
-        //}
         /////<summary>The method is correlated with this one <see cref="BuildWhereClause"/></summary>
-        //private void ConfigureQueryParameters(SqlCommand command, List<FilterParameter> filter)
-        //{
-        //    if (Options.Filter == null || Options.Filter.Count == 0)
-        //    {
-        //        return;
-        //    }
-
-        //    for (int p = 0; p < Options.Filter.Count; p++)
-        //    {
-        //        FilterParameter parameter = Options.Filter[p];
-
-        //        object value = parameter.Value;
-
-        //        if (value is DateTime dateTime)
-        //        {
-        //            value = dateTime.AddYears(Options.InfoBase.YearOffset);
-        //        }
-
-        //        command.Parameters.AddWithValue($"p{p}", value);
-        //    }
-        //}
-
-
-
+        
         //public string GetTotalRowCountScript()
         //{
         //    if (string.IsNullOrEmpty(SELECT_ENTITY_COUNT_SCRIPT))
@@ -674,88 +781,7 @@ namespace DaJet.Data.Mapping
         //{
         //    return "t._IDRRef = cte._IDRRef"; // TODO: use clustered index info
         //}
-        //private string BuildWhereClause(List<FilterParameter> filter)
-        //{
-        //    if (filter != null && filter.Count == 0)
-        //    {
-        //        return string.Empty;
-        //    }
-
-        //    StringBuilder clause = new StringBuilder();
-
-        //    for (int p = 0; p < filter.Count; p++)
-        //    {
-        //        FilterParameter parameter = filter[p];
-
-        //        string fieldName = GetDatabaseFieldByPath(parameter.Path);
-        //        string _operator = GetComparisonOperatorSymbol(parameter.Operator);
-
-        //        if (clause.Length > 0)
-        //        {
-        //            clause.Append(" AND ");
-        //        }
-
-        //        clause.Append($"{fieldName} {_operator} @p{p}");
-        //    }
-
-        //    return clause.ToString();
-        //}
-        //private string GetDatabaseFieldByPath(string path)
-        //{
-        //    // TODO: multi-part path (example: Регистратор.Дата)
-        //    foreach (MetadataProperty property in Options.MetaObject.Properties)
-        //    {
-        //        if (property.Name == path)
-        //        {
-        //            if (property.Fields.Count > 0)
-        //            {
-        //                return property.Fields[0].Name;
-        //            }
-        //        }
-        //    }
-        //    return string.Empty;
-        //}
-        //private string GetComparisonOperatorSymbol(ComparisonOperator comparisonOperator)
-        //{
-        //    if (comparisonOperator == ComparisonOperator.Equal) return "=";
-        //    else if (comparisonOperator == ComparisonOperator.NotEqual) return "<>";
-        //    else if (comparisonOperator == ComparisonOperator.Less) return "<";
-        //    else if (comparisonOperator == ComparisonOperator.LessOrEqual) return "<=";
-        //    else if (comparisonOperator == ComparisonOperator.Greater) return ">";
-        //    else if (comparisonOperator == ComparisonOperator.GreaterOrEqual) return ">=";
-        //    else if (comparisonOperator == ComparisonOperator.Contains) return "IN";
-        //    else if (comparisonOperator == ComparisonOperator.Between) return "BETWEEN";
-
-        //    throw new ArgumentOutOfRangeException(nameof(comparisonOperator));
-        //}
-
-        //public string GetSelectTablePartScript()
-        //{
-        //    if (string.IsNullOrEmpty(SELECT_ENTITY_TABLE_PART_SCRIPT))
-        //    {
-        //        StringBuilder script = new StringBuilder();
-
-        //        MetadataProperty property = Options.MetaObject.Properties.Where(p => p.Name == "Ссылка").FirstOrDefault();
-        //        DatabaseField field = property.Fields[0];
-
-        //        script.Append(BuildSelectEntityScript(null));
-        //        script.Append($" WHERE {field.Name} = @entity ");
-
-        //        if (Options.Provider == DatabaseProvider.SQLServer)
-        //        {
-        //            script.Append($"ORDER BY {field.Name} ASC, _KeyField ASC;");
-        //        }
-        //        else
-        //        {
-        //            script.Append($"ORDER BY {field.Name} ASC, _keyfield ASC;");
-        //        }
-
-        //        SELECT_ENTITY_TABLE_PART_SCRIPT = script.ToString();
-        //    }
-
-        //    return SELECT_ENTITY_TABLE_PART_SCRIPT;
-        //}
-
+        
         #endregion
     }
 }
