@@ -521,13 +521,22 @@ namespace DaJet.Metadata.Core
                 parser.Parse(in reader, out metadata);
             }
 
+            // Конфигурирование DBNames в том числе устанавливает
+            // числовой код типа (type code) объекта метаданных.
+            // Важно!
+            // Этот код типа используется для дальнейшего конфигурирования
+            // основных реквизитов (system properties) объектов метаданных в тех случаях,
+            // когда соответствующие свойства имеют одиночный (single) ссылочный тип данных:
+            // - Справочник.Родитель;
+            // - Справочник.Владелец;
+            // - Регистр.Регистратор.
+            Configurator.ConfigureDatabaseNames(this, in metadata);
+
             // Shared properties are always in the bottom.
             // They have default property purpose - Property.
             Configurator.ConfigureSharedProperties(this, in metadata);
 
             Configurator.ConfigureSystemProperties(this, in metadata);
-
-            Configurator.ConfigureDatabaseNames(this, in metadata);
 
             if (metadata is ApplicationObject owner && metadata is IAggregate)
             {

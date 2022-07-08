@@ -418,7 +418,7 @@ namespace DaJet.Metadata.Core
 
             if (owners != null && owners.Count > 0)
             {
-                ConfigurePropertyВладелец(in catalog, in owners);
+                ConfigurePropertyВладелец(in cache, in catalog, in owners);
             }
 
             if (catalog.IsHierarchical)
@@ -598,15 +598,19 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyРодитель(in ApplicationObject metadata)
         {
-            MetadataProperty property = new MetadataProperty()
+            // This hierarchy property always has the single reference type (adjacency list)
+
+            MetadataProperty property = new()
             {
                 Name = "Родитель",
                 Uuid = Guid.Empty,
-                Purpose = PropertyPurpose.System,
+                Purpose = PropertyPurpose.System, // Define as PropertyPurpose.Hierarchy ???
                 DbName = "_ParentIDRRef"
             };
+
             property.PropertyType.CanBeReference = true;
-            property.PropertyType.Reference = metadata.Uuid; // single reference type
+            property.PropertyType.TypeCode = metadata.TypeCode;
+            property.PropertyType.Reference = metadata.Uuid;
 
             property.Fields.Add(new DatabaseField()
             {
@@ -637,9 +641,9 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyВладелец(in Catalog catalog, in List<Guid> owners)
+        private static void ConfigurePropertyВладелец(in MetadataCache cache, in Catalog catalog, in List<Guid> owners)
         {
-            MetadataProperty property = new MetadataProperty
+            MetadataProperty property = new()
             {
                 Name = "Владелец",
                 Uuid = Guid.Empty,
@@ -651,6 +655,11 @@ namespace DaJet.Metadata.Core
             if (owners.Count == 1) // Single type value
             {
                 property.PropertyType.Reference = owners[0];
+
+                if (cache.TryGetDbName(owners[0], out DbName dbn))
+                {
+                    property.PropertyType.TypeCode = dbn.Code;
+                }
 
                 property.Fields.Add(new DatabaseField()
                 {
@@ -1077,6 +1086,11 @@ namespace DaJet.Metadata.Core
             if (recorders.Count == 1) // Single type value
             {
                 property.PropertyType.Reference = recorders[0];
+
+                if (cache.TryGetDbName(recorders[0], out DbName dbn))
+                {
+                    property.PropertyType.TypeCode = dbn.Code;
+                }
             }
             else // Multiple type value
             {
@@ -1117,6 +1131,9 @@ namespace DaJet.Metadata.Core
         ///<summary>Вид движения <see cref="RecordType"/> регистра накопления остатков</summary>
         private static void ConfigurePropertyВидДвижения(in AccumulationRegister register)
         {
+            // Приход = Receipt = 0 
+            // Расход = Expense = 1 
+
             MetadataProperty property = new()
             {
                 Name = "ВидДвижения",
@@ -1364,6 +1381,9 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyУзелПланаОбмена(in EntityChangeTable table)
         {
+            // This property always has the multiple refrence type,
+            // even if there is only one exchange plan configured.
+
             MetadataProperty property = new()
             {
                 Uuid = Guid.Empty,

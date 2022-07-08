@@ -78,6 +78,10 @@ namespace DaJet.Data.Mapping
                 {
                     value = SQLHelper.GetSqlUuid(uuid.ToByteArray());
                 }
+                else if (value is EntityRef entity)
+                {
+                    value = SQLHelper.GetSqlUuid(entity.Identity.ToByteArray());
+                }
 
                 _parameters.Add($"p{p}", value);
             }
@@ -163,6 +167,15 @@ namespace DaJet.Data.Mapping
             {
                 FilterParameter parameter = _options.Filter[p];
 
+                if (parameter.Value is EntityRef entity)
+                {
+                    if (!first) { where.Append(" AND "); }
+                    string filter = BuildFilterEntityRef(parameter.Name, entity, p);
+                    where.Append(filter);
+                    first = false;
+                    continue;
+                }
+
                 string fieldName = GetFieldName(parameter.Name);
                 string _operator = GetComparisonSymbol(parameter.Operator);
 
@@ -188,6 +201,83 @@ namespace DaJet.Data.Mapping
             }
 
             return where.ToString();
+        }
+        private string BuildFilterEntityRef(string propertyName, EntityRef entity, int ordinal)
+        {
+            StringBuilder filter = new();
+
+            MetadataProperty property = GetPropertyByName(propertyName);
+            
+            if (property == null ||
+                !(property.PropertyType.CanBeReference // Свойство ссылочного типа
+                || property.PropertyType.IsUuid)) // Основное свойство "Ссылка"
+            {
+                return string.Empty;
+            }
+
+            if (property.PropertyType.Reference == Guid.Empty && !property.PropertyType.IsUuid) // multiple
+            {
+                //TODO: filter by discriminator field _TYPE ?
+                DatabaseField tref = GetTypeCodeField(property);
+                DatabaseField rref = GetObjectField(property);
+
+                filter.Append($"{tref.Name} = CAST({entity.TypeCode.ToString()} AS binary(4))");
+                filter.Append(" AND ");
+                filter.Append($"{rref.Name} = @p{ordinal}");
+            }
+            else // single
+            {
+                DatabaseField rref = GetValueField(property);
+
+                filter.Append($"{rref.Name} = @p{ordinal}");
+            }
+
+            return filter.ToString();
+        }
+        private DatabaseField GetValueField(MetadataProperty property)
+        {
+            foreach (DatabaseField field in property.Fields)
+            {
+                if (field.Purpose == FieldPurpose.Value)
+                {
+                    return field;
+                }
+            }
+            return null!;
+        }
+        private DatabaseField GetTypeCodeField(MetadataProperty property)
+        {
+            foreach (DatabaseField field in property.Fields)
+            {
+                if (field.Purpose == FieldPurpose.TypeCode)
+                {
+                    return field;
+                }
+            }
+            return null!;
+        }
+        private DatabaseField GetObjectField(MetadataProperty property)
+        {
+            foreach (DatabaseField field in property.Fields)
+            {
+                if (field.Purpose == FieldPurpose.Object)
+                {
+                    return field;
+                }
+            }
+            return null!;
+        }
+        private MetadataProperty GetPropertyByName(string propertyName)
+        {
+            foreach (MetadataProperty property in _options.Entity.Properties)
+            {
+                if (property.Name == propertyName)
+                {
+                    return property;
+                }
+            }
+
+            return null!;
         }
         private string GetFieldName(string propertyName)
         {

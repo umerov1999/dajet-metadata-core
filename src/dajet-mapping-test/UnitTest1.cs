@@ -25,6 +25,33 @@ namespace DaJet.Data.Mapping.Test
                 throw new InvalidOperationException($"Failed to open info base: {error}");
             }
         }
+        private void ExecuteAndShow(DataMapperOptions options)
+        {
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            Console.WriteLine();
+            Console.WriteLine(options.Entity.Name);
+
+            if (list.Count == 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Выбрано 0 записей.");
+            }
+
+            foreach (var record in list)
+            {
+                Console.WriteLine();
+
+                foreach (var property in record)
+                {
+                    Console.WriteLine($"{property.Key} = {property.Value} [{(property.Value == null ? "Неопределено" : property.Value.GetType())}]");
+                }
+            }
+        }
         [TestMethod] public void Test_Select_Entity()
         {
             string metadataName = "Справочник.СправочникИерархическийГруппы";
@@ -138,6 +165,65 @@ namespace DaJet.Data.Mapping.Test
                 }
             }
         }
+        [TestMethod] public void Test_Select_InfoRegister()
+        {
+            string metadataName = "РегистрСведений.ПериодическийМногоРегистраторов"; // ОбычныйРегистрСведений
+
+            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+
+            if (@object == null)
+            {
+                Console.WriteLine($"Metadata object \"{metadataName}\" is not found.");
+                return;
+            }
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = @object
+            };
+            //options.Filter.Add(new FilterParameter("Измерение1", 20));
+            options.Filter.Add(new FilterParameter("Период", new DateTime(2022, 7, 2), ComparisonOperator.GreaterOrEqual));
+
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            foreach (var entity in list)
+            {
+                Console.WriteLine();
+                foreach (var property in entity)
+                {
+                    Console.WriteLine($"{property.Key} = {property.Value} [{(property.Value == null ? "Неопределено" : property.Value.GetType())}]");
+                }
+            }
+        }
+        [TestMethod] public void Test_Select_AccumRegister()
+        {
+            string metadataName = "РегистрНакопления.РегистрНакопленияОстатки"; // РегистрНакопленияОбороты
+
+            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+
+            if (@object == null)
+            {
+                Console.WriteLine($"Metadata object \"{metadataName}\" is not found.");
+                return;
+            }
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = @object
+            };
+            //options.Filter.Add(new FilterParameter("Активность", true));
+            //options.Filter.Add(new FilterParameter("Измерение1", 20));
+            //options.Filter.Add(new FilterParameter("ВидДвижения", 1)); // Расход
+            //options.Filter.Add(new FilterParameter("Период", new DateTime(2022, 7, 2), ComparisonOperator.GreaterOrEqual));
+
+            ExecuteAndShow(options);
+        }
         [TestMethod] public void Test_Entity_Change_Table()
         {
             string metadataName = "Справочник.ПростойСправочник";
@@ -168,9 +254,6 @@ namespace DaJet.Data.Mapping.Test
                 InfoBase = _infoBase,
                 Entity = changeTable
             };
-            
-            // TODO: отбор по узлу плана обмена !!!
-
             //options.Filter.Add(new FilterParameter("Ссылка", new Guid("e403d57f-fe02-11ec-9ccf-408d5c93cc8e")));
 
             IQueryExecutor executor = service.CreateQueryExecutor();
@@ -192,6 +275,142 @@ namespace DaJet.Data.Mapping.Test
                     ApplicationObject _node = service.GetApplicationObject(node.TypeCode);
                 }
             }
+        }
+        [TestMethod] public void Test_Filter_By_EntityRef()
+        {
+            string nodeCode = "N002";
+
+            EntityChangeTable changeTable = GetChangeTable("Справочник.ПростойСправочник");
+
+            EntityRef exchangeNode = GetExchangeNode("ПланОбмена.ПланОбмена", nodeCode);
+
+            if (exchangeNode == EntityRef.Empty)
+            {
+                Console.WriteLine("Узел плана обмена не найден.");
+            }
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = changeTable
+            };
+            options.Filter.Add(new FilterParameter("УзелПланаОбмена", exchangeNode));
+
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            if (list.Count == 0)
+            {
+                Console.WriteLine($"Регистрации изменений по узлу {nodeCode} нет.");
+            }
+
+            foreach (var record in list)
+            {
+                Console.WriteLine();
+                foreach (var property in record)
+                {
+                    if (property.Key == "УзелПланаОбмена" && property.Value is EntityRef node)
+                    {
+                        string description = GetNodeDescription("ПланОбмена.ПланОбмена", node.Identity);
+                        Console.WriteLine($"{property.Key} = {description} [{(property.Value == null ? "Неопределено" : property.Value.GetType())}]");
+                    }
+                    else if (property.Key == "Ссылка" && property.Value is Guid identity)
+                    {
+                        string description = GetEntityDescription("Справочник.ПростойСправочник", identity);
+                        Console.WriteLine($"{property.Key} = {description} [{(property.Value == null ? "Неопределено" : property.Value.GetType())}]");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{property.Key} = {property.Value} [{(property.Value == null ? "Неопределено" : property.Value.GetType())}]");
+                    }
+                }
+            }
+        }
+        private EntityRef GetExchangeNode(string metadataName, string code)
+        {
+            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = @object
+            };
+            options.Filter.Add(new FilterParameter("Код", code));
+
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            if (list.Count > 0)
+            {
+                return new EntityRef(@object.TypeCode, (Guid)list[0]["Ссылка"]);
+            }
+
+            return EntityRef.Empty;
+        }
+        private EntityChangeTable GetChangeTable(string metadataName)
+        {
+            MetadataObject @object = service.GetMetadataObject(metadataName);
+
+            if (@object is ApplicationObject entity)
+            {
+                return service.GetEntityChangeTable(entity);
+            }
+
+            return null!;
+        }
+        private string GetNodeDescription(string metadataName, Guid identity)
+        {
+            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = @object
+            };
+            options.Filter.Add(new FilterParameter("Ссылка", identity));
+
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            if (list.Count > 0)
+            {
+                return (string)list[0]["Наименование"];
+            }
+
+            return "NOT FOUND";
+        }
+        private string GetEntityDescription(string metadataName, Guid identity)
+        {
+            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+
+            DataMapperOptions options = new()
+            {
+                InfoBase = _infoBase,
+                Entity = @object
+            };
+            options.Filter.Add(new FilterParameter("Ссылка", new EntityRef(@object.TypeCode, identity)));
+
+            IQueryExecutor executor = service.CreateQueryExecutor();
+
+            EntityDataMapper mapper = new(options, executor);
+
+            var list = mapper.Select();
+
+            if (list.Count > 0)
+            {
+                return (string)list[0]["Наименование"];
+            }
+
+            return "NOT FOUND";
         }
     }
 }
