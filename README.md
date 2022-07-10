@@ -1,5 +1,5 @@
 # dajet-metadata-core
-Read 1C:Enterprise 8 metadata with C#. [Telegram group](https://t.me/dajet_studio_group)
+Read 1C:Enterprise 8 metadata with C#. [Чат для друзей DaJet](https://t.me/dajet_studio_group)
 
 Microsoft SQL Server and PostgreSQL databases are supported.
 
