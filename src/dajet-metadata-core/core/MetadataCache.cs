@@ -14,7 +14,7 @@ namespace DaJet.Metadata.Core
     {
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
-        private readonly Dictionary<Guid, IMetadataObjectParser> _parsers;
+        private readonly MetadataObjectParserFactory _parsers;
 
         #region "PRIVATE CACHE VALUES"
 
@@ -191,18 +191,7 @@ namespace DaJet.Metadata.Core
             _provider = provider;
             _connectionString = connectionString;
 
-            _parsers = new() // supported metadata object parsers
-            {
-                { MetadataTypes.Catalog, new CatalogParser(this) },
-                { MetadataTypes.Document, new DocumentParser(this) },
-                { MetadataTypes.Enumeration, new EnumerationParser(this) },
-                { MetadataTypes.Publication, new PublicationParser(this) },
-                { MetadataTypes.Characteristic, new CharacteristicParser(this) },
-                { MetadataTypes.InformationRegister, new InformationRegisterParser(this) },
-                { MetadataTypes.AccumulationRegister, new AccumulationRegisterParser(this) },
-                { MetadataTypes.SharedProperty, new SharedPropertyParser(this) },
-                { MetadataTypes.NamedDataTypeSet, new NamedDataTypeSetParser(this) } // since 1C:Enterprise 8.3.3 version
-            };
+            _parsers = new MetadataObjectParserFactory(this);
         }
         internal string ConnectionString { get { return _connectionString; } }
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
@@ -306,7 +295,7 @@ namespace DaJet.Metadata.Core
         {
             Guid type = cache.Key; // общий тип объектов метаданных, например, "Справочник"
 
-            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
+            if (!_parsers.TryCreateParser(type, out IMetadataObjectParser parser))
             {
                 return; // Unsupported metadata type
             }
@@ -487,7 +476,7 @@ namespace DaJet.Metadata.Core
 
         internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
         {
-            if (!_parsers.TryGetValue(type, out IMetadataObjectParser parser))
+            if (!_parsers.TryCreateParser(type, out IMetadataObjectParser parser))
             {
                 throw new InvalidOperationException($"Unsupported metadata type {{{type}}}");
             }

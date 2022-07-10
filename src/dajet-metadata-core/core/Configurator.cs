@@ -43,6 +43,11 @@ namespace DaJet.Metadata.Core
         }
         internal static void ConfigureSharedProperties(in MetadataCache cache, in MetadataObject metadata)
         {
+            if (metadata is Enumeration)
+            {
+                return;
+            }
+
             if (metadata is not ApplicationObject target)
             {
                 return;
@@ -72,6 +77,11 @@ namespace DaJet.Metadata.Core
         }
         internal static void ConfigureSharedPropertiesForTableParts(ApplicationObject owner, SharedProperty property)
         {
+            if (owner is Publication)
+            {
+                return;
+            }
+
             if (property.DataSeparationUsage != DataSeparationUsage.Use)
             {
                 return;
