@@ -323,25 +323,6 @@ namespace DaJet.Metadata.Core
         public int Offset { get { return _offset; } }
         public int Level { get { return _level; } }
         public int[] Path { get { return _path; } }
-        public string PathAsString()
-        {
-            string path = string.Empty;
-
-            for (int i = 0; i <= Level; i++)
-            {
-                if (i > 0 && Path[i] > -1)
-                {
-                    path += ".";
-                }
-
-                if (Path[i] > -1)
-                {
-                    path += Path[i].ToString();
-                }
-            }
-
-            return path;
-        }
         public int ValuePointer
         {
             get
@@ -582,65 +563,5 @@ namespace DaJet.Metadata.Core
         }
 
         #endregion
-
-        // TODO: move this method to ConfigFileWriter class
-        public string Format(bool skipStartEnd = true, bool skipStartEndPath = true)
-        {
-            StringBuilder format = new StringBuilder();
-
-            while (Read())
-            {
-                if (Token == TokenType.StartFile || Token == TokenType.StartObject)
-                {
-                    if (!skipStartEnd)
-                    {
-                        if (Level == 0)
-                        {
-                            format.AppendLine($"[+]{(skipStartEndPath ? string.Empty : $"({PathAsString()})")}{Char}");
-                        }
-                        else
-                        {
-                            format.AppendLine($"{"-".PadLeft(Level * 3, '-')}[+]{(skipStartEndPath ? string.Empty : $"({PathAsString()})")}{Char}");
-                        }
-                    }
-                }
-                else if (Token == TokenType.EndObject)
-                {
-                    if (!skipStartEnd)
-                    {
-                        format.AppendLine($"{"-".PadLeft((Level + 1) * 3, '-')}[-]{(skipStartEndPath ? string.Empty : $"({PathAsString()})")}{Char}");
-                    }
-                }
-                else if (Token == TokenType.EndFile)
-                {
-                    if (!skipStartEnd)
-                    {
-                        format.AppendLine($"[-]{(skipStartEndPath ? string.Empty : $"({PathAsString()})")}{Char}");
-                    }
-                }
-                else
-                {
-                    //string path = string.Empty;
-                    //for (int i = 0; i <= Level; i++)
-                    //{
-                    //    if (i > 0) { path += "."; }
-                    //    path += Path[i].ToString();
-                    //}
-
-                    string value = (Value == null ? "null" : Value);
-
-                    if (Level == 0)
-                    {
-                        format.AppendLine($"[{Level}]({PathAsString()}) {value}");
-                    }
-                    else
-                    {
-                        format.AppendLine($"{"-".PadLeft(Level * 3, '-')}[{Level}]({PathAsString()}) {value}");
-                    }
-                }
-            }
-
-            return format.ToString();
-        }
     }
 }

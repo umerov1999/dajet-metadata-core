@@ -12,6 +12,8 @@ namespace DaJet.Metadata.Core
 {
     public sealed class MetadataCache
     {
+        private int _yearOffset = 0;
+        private int _compatibilityVersion = 80303;
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
         private readonly MetadataObjectParserFactory _parsers;
@@ -193,6 +195,8 @@ namespace DaJet.Metadata.Core
 
             _parsers = new MetadataObjectParserFactory(this);
         }
+        internal int YearOffset { get { return _yearOffset; } }
+        internal int CompatibilityVersion { get { return _compatibilityVersion; } }
         internal string ConnectionString { get { return _connectionString; } }
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
         internal IQueryExecutor CreateQueryExecutor()
@@ -213,6 +217,9 @@ namespace DaJet.Metadata.Core
             InitializeRootFile();
             InitializeDbNameCache();
             InitializeMetadataCache(out infoBase);
+
+            _yearOffset = infoBase.YearOffset;
+            _compatibilityVersion = infoBase.СompatibilityVersion;
         }
         private void InitializeRootFile()
         {
@@ -529,7 +536,6 @@ namespace DaJet.Metadata.Core
 
             if (metadata is ApplicationObject owner && metadata is IAggregate)
             {
-                // FIXME:
                 // ConfigureDatabaseNames should be called for the owner first:
                 // the name of table part reference field is dependent on table name of the owner
                 // Owner table name: _Reference1008
@@ -545,14 +551,14 @@ namespace DaJet.Metadata.Core
                 }
                 catch (Exception error)
                 {
-                    if (error.Message == "Zero length file") // FIXME !
+                    if (error.Message == "Zero length file") // TODO
                     {
                         // Publication has no articles file in Config table
                     }
                 }
             }
 
-            if (metadata is IPredefinedValues) //TODO: option to load predefined values
+            if (metadata is IPredefinedValues)
             {
                 try
                 {
@@ -560,7 +566,7 @@ namespace DaJet.Metadata.Core
                 }
                 catch (Exception error)
                 {
-                    if (error.Message == "Zero length file") // FIXME !
+                    if (error.Message == "Zero length file") // TODO
                     {
                         // Metadata object has no predefined values file in Config table
                     }

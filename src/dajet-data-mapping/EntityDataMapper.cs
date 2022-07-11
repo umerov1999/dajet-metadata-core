@@ -204,6 +204,8 @@ namespace DaJet.Data.Mapping
         }
         private string BuildFilterEntityRef(string propertyName, EntityRef entity, int ordinal)
         {
+            //TODO: multiple type value properties filter
+
             StringBuilder filter = new();
 
             MetadataProperty property = GetPropertyByName(propertyName);

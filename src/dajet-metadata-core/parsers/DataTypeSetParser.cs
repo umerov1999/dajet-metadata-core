@@ -65,7 +65,7 @@ namespace DaJet.Metadata.Parsers
                         }
                         else if (source.Value == MetadataTokens.S) // {"S"} | {"S",10,0} | {"S",10,1}
                         {
-                            //FIXME: строки неограниченной длины не поддерживают составной тип данных !
+                            // NOTE: Строки неограниченной длины не поддерживают составной тип данных.
                             ReadString(in source, in target);
                         }
                         else if (source.Value == MetadataTokens.N) // {"N",10,2,0} | {"N",10,2,1}

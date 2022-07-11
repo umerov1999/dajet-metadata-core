@@ -22,11 +22,11 @@ namespace DaJet.Metadata.Core
             }
             else if (metadata is Publication publication)
             {
-                ConfigurePublication(in publication);
+                ConfigurePublication(in cache, in publication);
             }
             else if (metadata is Characteristic characteristic)
             {
-                ConfigureCharacteristic(in characteristic);
+                ConfigureCharacteristic(in cache, in characteristic);
             }
             else if (metadata is InformationRegister register1)
             {
@@ -171,8 +171,7 @@ namespace DaJet.Metadata.Core
 
             if (cache.TryResolveCharacteristic(reference, out Guid uuid))
             {
-                // Lazy-load of Characteristic: recursion is avoided because of rule #2.
-                // THINK: Option to pre-load Characteristics !?
+                // NOTE: Lazy-load of Characteristic: recursion is avoided because of rule #2.
                 MetadataObject metadata = cache.GetMetadataObjectCached(MetadataTypes.Characteristic, uuid);
 
                 if (metadata is not Characteristic characteristic)
@@ -201,8 +200,7 @@ namespace DaJet.Metadata.Core
             {
                 if (info.MetadataType == MetadataTypes.NamedDataTypeSet)
                 {
-                    // Lazy-load of NamedDataTypeSet: recursion is avoided because of rule #2.
-                    // THINK: Option to pre-load NamedDataTypeSets !?
+                    // NOTE: Lazy-load of NamedDataTypeSet: recursion is avoided because of rule #2.
                     MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
 
                     if (metadata is not NamedDataTypeSet namedSet)
@@ -265,8 +263,7 @@ namespace DaJet.Metadata.Core
             }
             else
             {
-                // Это не общий ссылочный тип
-                // TODO: ПланСчетовСсылка не учитывается
+                // Неподдерживаемый общий ссылочный тип
                 return 1; // single reference type 
             }
 
@@ -446,7 +443,7 @@ namespace DaJet.Metadata.Core
                 ConfigurePropertyНаименование(catalog);
             }
 
-            ConfigurePropertyПредопределённый(catalog);
+            ConfigurePropertyПредопределённый(in cache, catalog);
 
             ConfigurePropertyВерсияДанных(catalog);
         }
@@ -513,18 +510,52 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyПредопределённый(in ApplicationObject metadata)
+        private static void ConfigurePropertyПредопределённый(in MetadataCache cache, in ApplicationObject metadata)
         {
-            //FIXME: version 8.2 (?) used _IsMetadata property of boolean type instead of this one !!!
-            // Свойство "ИмяПредопределенныхДанных" доступно, начиная с версии 8.3.3
+            if (cache.CompatibilityVersion >= 80303)
+            {
+                ConfigurePropertyPredefinedID(metadata);
+            }
+            else if (metadata is not Publication)
+            {
+                ConfigurePropertyIsMetadata(metadata);
+            }
+            else if (cache.CompatibilityVersion >= 80216)
+            {
+                ConfigurePropertyPredefinedID(metadata);
+            }
+        }
+        private static void ConfigurePropertyIsMetadata(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new()
+            {
+                Name = "Предопределённый",
+                Uuid = Guid.Empty,
+                Purpose = PropertyPurpose.System,
+                DbName = "_IsMetadata"
+            };
+            
+            property.PropertyType.CanBeBoolean = true;
 
-            MetadataProperty property = new MetadataProperty()
+            property.Fields.Add(new DatabaseField()
+            {
+                Name = property.DbName,
+                Length = 1,
+                TypeName = "binary"
+            });
+
+            metadata.Properties.Add(property);
+        }
+        private static void ConfigurePropertyPredefinedID(in ApplicationObject metadata)
+        {
+            MetadataProperty property = new()
             {
                 Name = "Предопределённый",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
                 DbName = "_PredefinedID"
             };
+            
             property.PropertyType.IsUuid = true;
 
             property.Fields.Add(new DatabaseField()
@@ -712,7 +743,7 @@ namespace DaJet.Metadata.Core
 
         #region "CHARACTERISTIC"
 
-        private static void ConfigureCharacteristic(in Characteristic characteristic)
+        private static void ConfigureCharacteristic(in MetadataCache cache, in Characteristic characteristic)
         {
             if (characteristic.IsHierarchical)
             {
@@ -740,7 +771,7 @@ namespace DaJet.Metadata.Core
                 ConfigurePropertyНаименование(characteristic);
             }
 
-            ConfigurePropertyПредопределённый(characteristic);
+            ConfigurePropertyПредопределённый(in cache, characteristic);
 
             ConfigurePropertyТипЗначения(in characteristic);
 
@@ -772,7 +803,7 @@ namespace DaJet.Metadata.Core
 
         #region "PUBLICATION"
 
-        private static void ConfigurePublication(in Publication publication)
+        private static void ConfigurePublication(in MetadataCache cache, in Publication publication)
         {
             ConfigurePropertyСсылка(publication);
             ConfigurePropertyВерсияДанных(publication);
@@ -781,7 +812,7 @@ namespace DaJet.Metadata.Core
             ConfigurePropertyНаименование(publication);
             ConfigurePropertyНомерОтправленного(in publication);
             ConfigurePropertyНомерПринятого(in publication);
-            ConfigurePropertyПредопределённый(publication);
+            ConfigurePropertyПредопределённый(in cache, publication);
         }
         private static void ConfigurePropertyНомерОтправленного(in Publication publication)
         {
@@ -1385,7 +1416,9 @@ namespace DaJet.Metadata.Core
             table.Alias = "Таблица регистрации изменений";
             table.TableName = $"_{changeTable.Name}{changeTable.Code}";
 
-            ConfigurePropertyСсылка(table); // TODO: только ссылочные типы данных
+            // TODO: Поддерживаются только ссылочные типы данных
+            // TODO: Добавить поддержку для регистров (составные ключи)
+            ConfigurePropertyСсылка(table);
             ConfigurePropertyУзелПланаОбмена(in table);
             ConfigurePropertyНомерСообщения(in table);
         }
@@ -1559,8 +1592,8 @@ namespace DaJet.Metadata.Core
             }
             else if (property.PropertyType.IsBinary)
             {
+                // This should not happen (_B):
                 // is used only for system properties of system types
-                // TODO: log if it happens eventually
             }
             else if (property.PropertyType.IsValueStorage)
             {
