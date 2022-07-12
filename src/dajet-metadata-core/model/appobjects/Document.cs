@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata.Model
 {
-    public sealed class Document : ApplicationObject, IAggregate
+    public sealed class Document : ApplicationObject, ITablePartOwner
     {
         public int NumberLength { get; set; } = 8;
         public NumberType NumberType { get; set; } = NumberType.String;

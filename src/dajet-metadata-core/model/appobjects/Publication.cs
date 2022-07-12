@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace DaJet.Metadata.Model
 {
     public sealed class Publication : ApplicationObject,
-        IReferenceCode, IDescription, IAggregate
+        IEntityCode, IEntityDescription, ITablePartOwner
     {
         public int CodeLength { get; set; } = 9; // min 1
         public CodeType CodeType { get; set; } = CodeType.String; // always

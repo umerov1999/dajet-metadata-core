@@ -62,7 +62,7 @@ namespace DaJet.Data
 
             if (postfix == TYPE)
             {
-                return FieldPurpose.Discriminator;
+                return FieldPurpose.Pointer;
             }
             else if (postfix == TRef)
             {
@@ -198,7 +198,7 @@ namespace DaJet.Data
             {
                 return string.Empty;
             }
-            else if (field.TypeName == "binary" && field.Purpose == FieldPurpose.Discriminator)
+            else if (field.TypeName == "binary" && field.Purpose == FieldPurpose.Pointer)
             {
                 return "01"; // byte
             }

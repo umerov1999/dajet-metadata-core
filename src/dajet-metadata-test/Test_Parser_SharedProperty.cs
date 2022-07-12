@@ -19,10 +19,10 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TEST()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             service.Configure(options);
@@ -37,10 +37,10 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void PG_TEST()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = PG_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.PostgreSQL
+                DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
             service.Configure(options);
@@ -151,10 +151,10 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void DumpToFile()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             service.Configure(options);
@@ -178,7 +178,7 @@ namespace DaJet.Metadata.Test
             string fileName = @object.Uuid.ToString();
             string outputFile = $"C:\\temp\\1c-dumps\\{@object.Name}.dump";
 
-            using (ConfigFileReader reader = new(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
+            using (ConfigFileReader reader = new(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, fileName))
             {
                 ConfigObject config = new ConfigFileParser().Parse(reader);
 

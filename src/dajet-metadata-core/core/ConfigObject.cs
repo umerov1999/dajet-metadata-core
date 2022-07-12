@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace DaJet.Metadata.Model
+namespace DaJet.Metadata.Core
 {
     public sealed class ConfigObject
     {

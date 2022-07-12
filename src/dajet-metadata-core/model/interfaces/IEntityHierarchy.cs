@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Metadata.Model
 {
-    public interface IReferenceHierarchy
+    public interface IEntityHierarchy
     {
         bool IsHierarchical { get; set; }
         HierarchyType HierarchyType { get; set; }

@@ -13,10 +13,10 @@ namespace DaJet.Metadata.Test
         private readonly MetadataService _metadata = new();
         public PG_Publication()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = PG_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.PostgreSQL
+                DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
             _metadata.Configure(options);

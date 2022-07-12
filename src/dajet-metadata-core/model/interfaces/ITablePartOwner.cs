@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata.Model
 {
-    public interface IAggregate
+    public interface ITablePartOwner
     {
         List<TablePart> TableParts { get; set; }
     }

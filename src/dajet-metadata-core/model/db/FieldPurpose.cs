@@ -4,7 +4,7 @@
     {
         /// <summary>Single type value of the property (default). _Fld</summary>
         Value,
-        ///<summary>Дискриминатор составного типа данных _Fld + _TYPE
+        ///<summary>Указатель на тип составного типа данных _Fld + _TYPE
         ///<br><b>0x01</b> - Неопределено = null</br>
         ///<br><b>0x02</b> - Булево = boolean</br>
         ///<br><b>0x03</b> - Число = decimal</br>
@@ -12,7 +12,7 @@
         ///<br><b>0x05</b> - Строка = string</br>
         ///<br><b>0x08</b> - Ссылка = EntityRef</br>
         ///</summary>
-        Discriminator,
+        Pointer,
         /// <summary>Boolean value. _Fld + _L</summary>
         Boolean,
         /// <summary>String value. _Fld + _S</summary>

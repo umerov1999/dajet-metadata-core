@@ -92,7 +92,7 @@ namespace DaJet.Metadata.Core
                 return;
             }
 
-            if (owner is not IAggregate aggregate)
+            if (owner is not ITablePartOwner aggregate)
             {
                 return;
             }
@@ -135,11 +135,11 @@ namespace DaJet.Metadata.Core
             {
                 target.CanBeReference = true;
 
-                if (cache.TryGetReferenceInfo(reference, out MetadataEntry entry))
+                if (cache.TryGetReferenceInfo(reference, out MetadataItem entry))
                 {
-                    target.Reference = entry.MetadataUuid; // uuid объекта метаданных
+                    target.Reference = entry.Uuid; // uuid объекта метаданных
 
-                    if (cache.TryGetDbName(entry.MetadataUuid, out DbName db))
+                    if (cache.TryGetDbName(entry.Uuid, out DbName db))
                     {
                         target.TypeCode = db.Code;
                     }
@@ -196,12 +196,12 @@ namespace DaJet.Metadata.Core
                 }
             }
 
-            if (cache.TryGetReferenceInfo(reference, out MetadataEntry info))
+            if (cache.TryGetReferenceInfo(reference, out MetadataItem info))
             {
-                if (info.MetadataType == MetadataTypes.NamedDataTypeSet)
+                if (info.Type == MetadataTypes.NamedDataTypeSet)
                 {
                     // NOTE: Lazy-load of NamedDataTypeSet: recursion is avoided because of rule #2.
-                    MetadataObject metadata = cache.GetMetadataObjectCached(info.MetadataType, info.MetadataUuid);
+                    MetadataObject metadata = cache.GetMetadataObjectCached(info.Type, info.Uuid);
 
                     if (metadata is not NamedDataTypeSet namedSet)
                     {
@@ -274,7 +274,7 @@ namespace DaJet.Metadata.Core
 
         internal static void ConfigureTableParts(in MetadataCache cache, in ApplicationObject owner)
         {
-            if (owner is not IAggregate aggregate)
+            if (owner is not ITablePartOwner aggregate)
             {
                 return;
             }
@@ -569,7 +569,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyКод(in ApplicationObject metadata)
         {
-            if (metadata is not IReferenceCode code)
+            if (metadata is not IEntityCode code)
             {
                 throw new InvalidOperationException($"Metadata object \"{metadata.Name}\" does not implement IReferenceCode interface.");
             }
@@ -613,7 +613,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyНаименование(in ApplicationObject metadata)
         {
-            if (metadata is not IDescription description)
+            if (metadata is not IEntityDescription description)
             {
                 throw new InvalidOperationException($"Metadata object \"{metadata.Name}\" does not implement IDescription interface.");
             }
@@ -645,7 +645,7 @@ namespace DaJet.Metadata.Core
             {
                 Name = "Родитель",
                 Uuid = Guid.Empty,
-                Purpose = PropertyPurpose.System, // Define as PropertyPurpose.Hierarchy ???
+                Purpose = PropertyPurpose.System,
                 DbName = "_ParentIDRRef"
             };
 
@@ -718,7 +718,7 @@ namespace DaJet.Metadata.Core
                     Name = "_OwnerID_TYPE",
                     Length = 1,
                     TypeName = "binary",
-                    Purpose = FieldPurpose.Discriminator
+                    Purpose = FieldPurpose.Pointer
                 });
                 property.Fields.Add(new DatabaseField()
                 {
@@ -1230,7 +1230,7 @@ namespace DaJet.Metadata.Core
 
         public static void ConfigurePredefinedValues(in MetadataCache cache, in MetadataObject metadata)
         {
-            if (metadata is not IPredefinedValues owner) return;
+            if (metadata is not IPredefinedValueOwner owner) return;
 
             int predefinedValueUuid = 3;
             int predefinedIsFolder = 4;
@@ -1247,7 +1247,7 @@ namespace DaJet.Metadata.Core
                 predefinedDescription = 7;
             }
 
-            IReferenceCode codeInfo = (metadata as IReferenceCode);
+            IEntityCode codeInfo = (metadata as IEntityCode);
 
             ConfigObject configObject;
 
@@ -1323,7 +1323,7 @@ namespace DaJet.Metadata.Core
                 predefinedDescription = 7;
             }
 
-            IReferenceCode codeInfo = (owner as IReferenceCode);
+            IEntityCode codeInfo = (owner as IEntityCode);
 
             int valueOffset = 2;
             for (int v = 0; v < valuesCount; v++)
@@ -1495,7 +1495,7 @@ namespace DaJet.Metadata.Core
         {
             return $"_{token}{code}";
 
-            //if (_provider == DatabaseProvider.SQLServer)
+            //if (_provider == DatabaseProvider.SqlServer)
             //{
             //    return $"_{token}{code}";
             //}
@@ -1556,7 +1556,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigureDatabaseTableParts(in MetadataCache cache, in ApplicationObject entity)
         {
-            if (entity is not IAggregate aggregate)
+            if (entity is not ITablePartOwner aggregate)
             {
                 return;
             }
@@ -1637,7 +1637,7 @@ namespace DaJet.Metadata.Core
         {
             property.Fields.Add(new DatabaseField(property.DbName + "_" + MetadataTokens.TYPE, "binary", 1)
             {
-                Purpose = FieldPurpose.Discriminator
+                Purpose = FieldPurpose.Pointer
             });
 
             if (property.PropertyType.CanBeBoolean)

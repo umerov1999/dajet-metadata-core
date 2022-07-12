@@ -8,7 +8,7 @@ namespace DaJet.Data.Mapping
     {
         private readonly int _uuid = -1;   // binary(16)
         private readonly int _binary = -1; // BASE64
-        private readonly int _discriminator = -1; // _TYPE
+        private readonly int _Pointer = -1; // _TYPE
         private readonly int _boolean = -1;       // _L
         private readonly int _numeric = -1;       // _N
         private readonly int _date_time = -1;     // _T
@@ -63,9 +63,9 @@ namespace DaJet.Data.Mapping
                 {
                     _binary = ordinal; // Ссылка.ВерсияДанных : timestamp | rowversion -> binary(8)
                 }
-                else if (purpose == FieldPurpose.Discriminator) // multiple type value
+                else if (purpose == FieldPurpose.Pointer) // multiple type value
                 {
-                    _discriminator = ordinal; // binary(1) -> byte
+                    _Pointer = ordinal; // binary(1) -> byte
                 }
                 else if (purpose == FieldPurpose.Boolean) // multiple type value
                 {
@@ -121,7 +121,7 @@ namespace DaJet.Data.Mapping
 
                 bool cast_to_int =
                     field.Purpose == FieldPurpose.TypeCode ||
-                    field.Purpose == FieldPurpose.Discriminator;
+                    field.Purpose == FieldPurpose.Pointer;
 
                 if (cast_to_int)
                 {
@@ -171,27 +171,27 @@ namespace DaJet.Data.Mapping
         }
         private object? GetMultipleValue(in IDataReader reader)
         {
-            if (_discriminator > -1)
+            if (_Pointer > -1)
             {
-                if (reader.IsDBNull(_discriminator))
+                if (reader.IsDBNull(_Pointer))
                 {
                     // Такое может быть, например, для реквизитов не групповых элементов
                     // справочников или харакетристик, которые используются только для групп
                     return null;
                 }
 
-                int discriminator = reader.GetInt32(_discriminator); // MS SQLServer
+                int Pointer = reader.GetInt32(_Pointer); // MS SqlServer
 
-                // TODO: discriminator = ((byte[])reader.GetValue(DiscriminatorOrdinal))[0]; PostgreSQL
+                // TODO: Pointer = ((byte[])reader.GetValue(PointerOrdinal))[0]; PostgreSql
 
-                if (discriminator == 1) { return null; } // Неопределено
-                else if (discriminator == 2) { return GetBoolean(in reader); } // Булево
-                else if (discriminator == 3) { return GetNumeric(in reader); } // Число
-                else if (discriminator == 4) { return GetDateTime(in reader); } // Дата
-                else if (discriminator == 5) { return GetString(in reader); } // Строка
-                else if (discriminator == 8) { return GetEntityRef(in reader); } // Ссылка
+                if (Pointer == 1) { return null; } // Неопределено
+                else if (Pointer == 2) { return GetBoolean(in reader); } // Булево
+                else if (Pointer == 3) { return GetNumeric(in reader); } // Число
+                else if (Pointer == 4) { return GetDateTime(in reader); } // Дата
+                else if (Pointer == 5) { return GetString(in reader); } // Строка
+                else if (Pointer == 8) { return GetEntityRef(in reader); } // Ссылка
 
-                return null; // unknown discriminator - this should not happen
+                return null; // unknown Pointer - this should not happen
             }
 
             if (_type_code > -1) // multiple reference type value
@@ -230,13 +230,13 @@ namespace DaJet.Data.Mapping
             {
                 return (((byte[])reader.GetValue(_boolean))[0] == 0); // _Folder ЭтоГруппа
 
-                // TODO: return !reader.GetBoolean(_boolean); // PostgreSQL
+                // TODO: return !reader.GetBoolean(_boolean); // PostgreSql
             }
             else
             {
                 return (((byte[])reader.GetValue(_boolean))[0] != 0); // true
 
-                // TODO: return reader.GetBoolean(_boolean); // PostgreSQL
+                // TODO: return reader.GetBoolean(_boolean); // PostgreSql
             }
         }
         private object? GetNumeric(in IDataReader reader)
@@ -284,7 +284,7 @@ namespace DaJet.Data.Mapping
             {
                 int typeCode = reader.GetInt32(_type_code);
                 
-                // TODO: typeCode = DbUtilities.GetInt32((byte[])reader.GetValue(TypeCodeOrdinal)); // PostgreSQL
+                // TODO: typeCode = DbUtilities.GetInt32((byte[])reader.GetValue(TypeCodeOrdinal)); // PostgreSql
 
                 return new EntityRef(typeCode, uuid);
             }

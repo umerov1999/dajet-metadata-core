@@ -24,10 +24,10 @@ namespace DaJet.Database.Test
         IMetadataCompareAndMergeService _comparator = new MetadataCompareAndMergeService(); // comparator
         [TestMethod] public void MS_Test()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             _service.Configure(options);
@@ -45,10 +45,10 @@ namespace DaJet.Database.Test
         }
         [TestMethod] public void PG_Test()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = PG_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.PostgreSQL
+                DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
             _service.Configure(options);
@@ -108,7 +108,7 @@ namespace DaJet.Database.Test
                         WriteToLogFile(stream, @object, delete, insert);
                     }
 
-                    if (@object is not IAggregate aggregate)
+                    if (@object is not ITablePartOwner aggregate)
                     {
                         continue; // should not happen
                     }

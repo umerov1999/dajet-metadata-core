@@ -53,7 +53,7 @@ namespace DaJet.Metadata.Parsers
                 }
                 else if (source.Token == TokenType.Value || source.Token == TokenType.String)
                 {
-                    if (source.Path[source.Level] == 0) // 0 - discriminator
+                    if (source.Path[source.Level] == 0) // 0 - Pointer
                     {
                         if (source.Value == MetadataTokens.B) // {"B"}
                         {

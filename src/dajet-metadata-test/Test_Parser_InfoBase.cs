@@ -72,7 +72,7 @@ namespace DaJet.Metadata.Test
             Guid root;
             
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 root = new RootFileParser().Parse(in reader);
             }
@@ -80,7 +80,7 @@ namespace DaJet.Metadata.Test
             ConfigObject config;
 
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, root))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, root))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -91,7 +91,7 @@ namespace DaJet.Metadata.Test
         {
             ConfigObject config;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.DBSchema))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.DBSchema))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -102,7 +102,7 @@ namespace DaJet.Metadata.Test
         {
             ConfigObject config;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.DBSchema))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.DBSchema))
             {
                 config = new ConfigFileParser().Parse(in reader);
             }
@@ -114,7 +114,7 @@ namespace DaJet.Metadata.Test
         {
             Guid rootFile;
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = new RootFileParser().Parse(in reader);
             }
@@ -122,7 +122,7 @@ namespace DaJet.Metadata.Test
             InfoBase infoBase;
 
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase);
             }
@@ -132,14 +132,14 @@ namespace DaJet.Metadata.Test
         [TestMethod] public void PG_InfoBase_Only()
         {
             string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase);
             }
@@ -151,7 +151,7 @@ namespace DaJet.Metadata.Test
         {
             Guid rootFile;
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = new RootFileParser().Parse(in reader);
             }
@@ -159,7 +159,7 @@ namespace DaJet.Metadata.Test
             InfoBase infoBase;
 
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase, in _metadata);
             }
@@ -170,14 +170,14 @@ namespace DaJet.Metadata.Test
         [TestMethod] public void PG_InfoBase_And_Metadata()
         {
             string rootFile = null;
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = _parser.Parse(in reader).GetString(1);
             }
 
             InfoBase infoBase;
 
-            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSQL, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
+            using (ConfigFileReader reader = new ConfigFileReader(DatabaseProvider.PostgreSql, PG_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase, in _metadata);
             }
@@ -190,7 +190,7 @@ namespace DaJet.Metadata.Test
         {
             Guid rootFile;
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, ConfigFiles.Root))
             {
                 rootFile = new RootFileParser().Parse(in reader);
             }
@@ -198,7 +198,7 @@ namespace DaJet.Metadata.Test
             InfoBase infoBase;
 
             using (ConfigFileReader reader = new ConfigFileReader(
-                DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
+                DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, rootFile))
             {
                 InfoBaseParser.Parse(in reader, out infoBase, in _metadata);
             }
@@ -216,7 +216,7 @@ namespace DaJet.Metadata.Test
                 foreach (Guid uuid in item.Value)
                 {
                     using (ConfigFileReader reader = new ConfigFileReader(
-                        DatabaseProvider.SQLServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
+                        DatabaseProvider.SqlServer, MS_CONNECTION_STRING, ConfigTables.Config, uuid))
                     {
                         parser.Parse(in reader, out MetadataInfo info);
 

@@ -5,13 +5,9 @@
     /// </summary>
     public enum DatabaseProvider
     {
-        /// <summary>
-        /// Microsoft SQL Server
-        /// </summary>
-        SQLServer,
-        /// <summary>
-        /// PostgreSQL
-        /// </summary>
-        PostgreSQL
+        ///<summary>Microsoft SQL Server database provider</summary>
+        SqlServer,
+        ///<summary>PostgreSQL database provider</summary>
+        PostgreSql
     }
 }

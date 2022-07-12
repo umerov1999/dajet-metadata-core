@@ -13,10 +13,10 @@ namespace DaJet.Metadata.Test
         private readonly MetadataService _metadata = new();
         public MS_Publication()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             _metadata.Configure(options);

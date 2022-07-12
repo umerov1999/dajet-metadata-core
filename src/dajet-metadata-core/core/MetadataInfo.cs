@@ -9,7 +9,7 @@ namespace DaJet.Metadata.Core
     ///<br>Используется специализированными парсерами файлов конфигурации</br>
     ///<br>для загрузки первичных данных объектов метаданных и заполнения кэша.</br>
     ///</summary>
-    public sealed class MetadataInfo
+    internal sealed class MetadataInfo
     {
         public MetadataInfo() { }
         ///<summary>Имя объекта метаданных</summary>

@@ -1,6 +1,7 @@
 ﻿using DaJet.Data;
 using DaJet.Data.PostgreSql;
 using DaJet.Data.SqlServer;
+using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
 using System;
@@ -8,9 +9,27 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace DaJet.Metadata.Core
+namespace DaJet.Metadata
 {
-    public sealed class MetadataCache
+    public interface IMetadataCache
+    {
+        MetadataItem GetMetadataItem(Guid uuid);
+        MetadataItem GetMetadataItem(int typeCode);
+        IEnumerable<MetadataItem> GetMetadataItems(Guid type);
+
+        MetadataObject GetMetadataObject(Guid uuid);
+        MetadataObject GetMetadataObject(int typeCode);
+        MetadataObject GetMetadataObject(MetadataItem item);
+        MetadataObject GetMetadataObject(string metadataName);
+        MetadataObject GetMetadataObject(Guid type, Guid uuid);
+
+        T GetMetadataObject<T>(Guid uuid) where T : MetadataObject;
+        T GetMetadataObject<T>(int typeCode) where T : MetadataObject;
+        T GetMetadataObject<T>(MetadataItem item) where T : MetadataObject;
+        T GetMetadataObject<T>(string metadataName) where T : MetadataObject;
+        T GetMetadataObject<T>(Guid type, Guid uuid) where T : MetadataObject;
+    }
+    public sealed class MetadataCache : IMetadataCache
     {
         private int _yearOffset = 0;
         private int _compatibilityVersion = 80303;
@@ -48,7 +67,7 @@ namespace DaJet.Metadata.Core
         ///<br></br>
         ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
         ///</summary>
-        private readonly ConcurrentDictionary<Guid, MetadataEntry> _references = new();
+        private readonly ConcurrentDictionary<Guid, MetadataItem> _references = new();
 
         ///<summary>
         ///<br><b>Ключ:</b> UUID типа данных "Характеристика" - исключительный случай для <see cref="_references"/>,</br>
@@ -136,7 +155,7 @@ namespace DaJet.Metadata.Core
                 });
             }
         }
-        private void AddReference(Guid reference, MetadataEntry metadata)
+        private void AddReference(Guid reference, MetadataItem metadata)
         {
             _ = _references.TryAdd(reference, metadata);
         }
@@ -201,22 +220,25 @@ namespace DaJet.Metadata.Core
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
         internal IQueryExecutor CreateQueryExecutor()
         {
-            if (_provider == DatabaseProvider.SQLServer)
+            if (_provider == DatabaseProvider.SqlServer)
             {
                 return new MsQueryExecutor(_connectionString);
             }
-            else if (_provider == DatabaseProvider.PostgreSQL)
+            else if (_provider == DatabaseProvider.PostgreSql)
             {
                 return new PgQueryExecutor(_connectionString);
             }
 
             throw new InvalidOperationException($"Unsupported database provider: {_provider}");
         }
-        internal void Initialize(out InfoBase infoBase)
+
+        #region "INITIALIZE CACHE BEFORE USE"
+
+        internal void Initialize()
         {
             InitializeRootFile();
             InitializeDbNameCache();
-            InitializeMetadataCache(out infoBase);
+            InitializeMetadataCache(out InfoBase infoBase);
 
             _yearOffset = infoBase.YearOffset;
             _compatibilityVersion = infoBase.СompatibilityVersion;
@@ -244,12 +266,12 @@ namespace DaJet.Metadata.Core
             _references.Clear();
             _characteristics.Clear();
 
-            _references.TryAdd(ReferenceTypes.AnyReference, new MetadataEntry(Guid.Empty, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Catalog, new MetadataEntry(MetadataTypes.Catalog, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Document, new MetadataEntry(MetadataTypes.Document, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Enumeration, new MetadataEntry(MetadataTypes.Enumeration, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Publication, new MetadataEntry(MetadataTypes.Publication, Guid.Empty));
-            _references.TryAdd(ReferenceTypes.Characteristic, new MetadataEntry(MetadataTypes.Characteristic, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.AnyReference, new MetadataItem(Guid.Empty, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Catalog, new MetadataItem(MetadataTypes.Catalog, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Document, new MetadataItem(MetadataTypes.Document, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Enumeration, new MetadataItem(MetadataTypes.Enumeration, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Publication, new MetadataItem(MetadataTypes.Publication, Guid.Empty));
+            _references.TryAdd(ReferenceTypes.Characteristic, new MetadataItem(MetadataTypes.Characteristic, Guid.Empty));
 
             Dictionary<Guid, List<Guid>> metadata = new()
             {
@@ -330,7 +352,7 @@ namespace DaJet.Metadata.Core
 
                     if (metadata.ReferenceUuid != Guid.Empty)
                     {
-                        AddReference(metadata.ReferenceUuid, new MetadataEntry(metadata.MetadataType, metadata.MetadataUuid));
+                        AddReference(metadata.ReferenceUuid, new MetadataItem(metadata.MetadataType, metadata.MetadataUuid));
                     }
 
                     if (metadata.CharacteristicUuid != Guid.Empty)
@@ -356,7 +378,11 @@ namespace DaJet.Metadata.Core
                 }
             }
         }
-        
+
+        #endregion
+
+        #region "INTERNAL METHODS USED BY CONFIGURATOR"
+
         internal int CountMetadataObjects(Guid type)
         {
             if (!_cache.TryGetValue(type, out Dictionary<Guid, WeakReference<MetadataObject>> entry))
@@ -366,7 +392,7 @@ namespace DaJet.Metadata.Core
 
             return entry.Count;
         }
-        internal bool TryGetReferenceInfo(Guid reference, out MetadataEntry info)
+        internal bool TryGetReferenceInfo(Guid reference, out MetadataItem info)
         {
             return _references.TryGetValue(reference, out info);
         }
@@ -447,7 +473,9 @@ namespace DaJet.Metadata.Core
             reference.SetTarget(metadata);
         }
 
-        internal MetadataEntity GetMetadataEntity(Guid uuid)
+        #endregion
+
+        internal MetadataItem GetMetadataItem(Guid uuid)
         {
             List<Guid> entityTypes = new()
             {
@@ -467,18 +495,13 @@ namespace DaJet.Metadata.Core
                     {
                         if (entity.Value == uuid)
                         {
-                            return new MetadataEntity()
-                            {
-                                Type = type,
-                                Uuid = entity.Value,
-                                Name = entity.Key
-                            };
+                            return new MetadataItem(type, entity.Value, entity.Key);
                         }
                     }
                 }
             }
 
-            return null;
+            return MetadataItem.Empty;
         }
 
         internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
@@ -534,7 +557,7 @@ namespace DaJet.Metadata.Core
 
             Configurator.ConfigureSystemProperties(this, in metadata);
 
-            if (metadata is ApplicationObject owner && metadata is IAggregate)
+            if (metadata is ApplicationObject owner && metadata is ITablePartOwner)
             {
                 // ConfigureDatabaseNames should be called for the owner first:
                 // the name of table part reference field is dependent on table name of the owner
@@ -558,7 +581,7 @@ namespace DaJet.Metadata.Core
                 }
             }
 
-            if (metadata is IPredefinedValues)
+            if (metadata is IPredefinedValueOwner)
             {
                 try
                 {

@@ -3,7 +3,7 @@
 namespace DaJet.Metadata.Model
 {
     public sealed class Characteristic : ApplicationObject,
-        IReferenceCode, IDescription, IReferenceHierarchy, IPredefinedValues, IAggregate
+        IEntityCode, IEntityDescription, IEntityHierarchy, IPredefinedValueOwner, ITablePartOwner
     {
         ///<summary>Описание типов значений характеристики, свойство "ТипЗначения".</summary>
         public DataTypeSet DataTypeSet { get; set; }

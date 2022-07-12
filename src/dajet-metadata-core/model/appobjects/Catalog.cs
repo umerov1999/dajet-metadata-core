@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace DaJet.Metadata.Model
 {
     public sealed class Catalog : ApplicationObject,
-        IReferenceCode, IDescription, IReferenceHierarchy, IPredefinedValues, IAggregate
+        IEntityCode, IEntityDescription, IEntityHierarchy, IPredefinedValueOwner, ITablePartOwner
     {
         public int CodeLength { get; set; } = 9;
         public CodeType CodeType { get; set; } = CodeType.String;

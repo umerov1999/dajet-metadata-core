@@ -72,7 +72,7 @@ namespace DaJet.Metadata.Services
             public bool IS_NULLABLE;
         }
         public string ConnectionString { get; private set; } = string.Empty;
-        public DatabaseProvider DatabaseProvider { get; private set; } = DatabaseProvider.SQLServer;
+        public DatabaseProvider DatabaseProvider { get; private set; } = DatabaseProvider.SqlServer;
         public void UseDatabaseProvider(DatabaseProvider databaseProvider)
         {
             DatabaseProvider = databaseProvider;
@@ -83,16 +83,16 @@ namespace DaJet.Metadata.Services
         }
         public void ConfigureConnectionString(string server, string database, string userName, string password)
         {
-            if (DatabaseProvider == DatabaseProvider.SQLServer)
+            if (DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                ConfigureConnectionStringForSQLServer(server, database, userName, password);
+                ConfigureConnectionStringForSqlServer(server, database, userName, password);
             }
             else
             {
-                ConfigureConnectionStringForPostgreSQL(server, database, userName, password);
+                ConfigureConnectionStringForPostgreSql(server, database, userName, password);
             }
         }
-        private void ConfigureConnectionStringForSQLServer(string server, string database, string userName, string password)
+        private void ConfigureConnectionStringForSqlServer(string server, string database, string userName, string password)
         {
             SqlConnectionStringBuilder connectionString = new SqlConnectionStringBuilder()
             {
@@ -107,9 +107,9 @@ namespace DaJet.Metadata.Services
             connectionString.IntegratedSecurity = string.IsNullOrWhiteSpace(userName);
             ConnectionString = connectionString.ToString();
         }
-        private void ConfigureConnectionStringForPostgreSQL(string server, string database, string userName, string password)
+        private void ConfigureConnectionStringForPostgreSql(string server, string database, string userName, string password)
         {
-            // Default values for PostgreSQL
+            // Default values for PostgreSql
             int serverPort = 5432;
             string serverName = "127.0.0.1";
 
@@ -247,7 +247,7 @@ namespace DaJet.Metadata.Services
 
         private string SelectSqlFieldsOrderedByNameScript()
         {
-            if (DatabaseProvider == DatabaseProvider.SQLServer)
+            if (DatabaseProvider == DatabaseProvider.SqlServer)
             {
                 return MS_SelectSqlFieldsOrderedByNameScript();
             }
@@ -295,7 +295,7 @@ namespace DaJet.Metadata.Services
 
         public List<SqlFieldInfo> GetSqlFieldsOrderedByName(string tableName)
         {
-            if (DatabaseProvider == DatabaseProvider.SQLServer)
+            if (DatabaseProvider == DatabaseProvider.SqlServer)
             {
                 return MS_GetSqlFieldsOrderedByName(tableName);
             }

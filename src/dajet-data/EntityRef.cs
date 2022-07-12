@@ -2,14 +2,14 @@
 {
     public readonly struct EntityRef
     {
-        public static EntityRef Empty { get; } = new EntityRef(0, Guid.Empty);
+        public static EntityRef Empty { get; } = new();
         public EntityRef(int typeCode, Guid identity)
         {
             TypeCode = typeCode;
             Identity = identity;
         }
-        public int TypeCode { get; }
-        public Guid Identity { get; }
+        public int TypeCode { get; } = 0;
+        public Guid Identity { get; } = Guid.Empty;
         public override string ToString()
         {
             return $"{{{TypeCode}:{Identity}}}";

@@ -2,15 +2,25 @@
 {
     public enum PropertyPurpose
     {
-        /// <summary>The property is being used by system.</summary>
+        /// <summary>
+        /// <b>Стандартный реквизит</b>
+        /// <br>Состав стандартных реквизитов зависит от вида объекта метаданных.</br>
+        /// </summary>
         System,
-        /// <summary>The property is being used as a property.</summary>
+        /// <summary>
+        /// <b>Реквизит</b>
+        /// <br>Определяемый пользователем реквизит объекта метаданных.</br>
+        /// </summary>
         Property,
-        /// <summary>The property is being used as a dimension.</summary>
+        /// <summary>
+        /// <b>Измерение</b>
+        /// <br>Определяемое пользователем для регистра измерение.</br>
+        /// </summary>
         Dimension,
-        /// <summary>The property is being used as a measure.</summary>
-        Measure,
-        /// <summary>This property is used to reference parent (adjacency list).</summary>
-        Hierarchy
+        /// <summary>
+        /// <b>Ресурс</b>
+        /// <br>Определяемый пользователем для регистра ресурс.</br>
+        /// </summary>
+        Measure
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace DaJet.Metadata
+﻿namespace DaJet.Metadata.Model
 {
     public static class MetadataTokens
     {

@@ -33,17 +33,17 @@ namespace DaJet.Metadata.Test
 
             foreach (var article in publication.Articles)
             {
-                MetadataEntity entity = metadata.GetMetadataEntity(article.Key);
+                MetadataItem entry = metadata.GetMetadataItem(article.Key);
 
-                if (entity == null)
+                if (entry == MetadataItem.Empty)
                 {
                     continue;
                 }
 
-                string mainTable = metadata.GetMainTableName(entity.Uuid);
-                string changeTable = metadata.GetChangeTableName(entity.Uuid);
+                string mainTable = metadata.GetMainTableName(entry.Uuid);
+                string changeTable = metadata.GetChangeTableName(entry.Uuid);
 
-                Console.WriteLine($" - {entity.Name} [{mainTable}] {{{article.Key}}} {article.Value} [{changeTable}]");
+                Console.WriteLine($" - {entry.Name} [{mainTable}] {{{article.Key}}} {article.Value} [{changeTable}]");
             }
         }
     }

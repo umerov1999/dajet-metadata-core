@@ -13,10 +13,10 @@ namespace DaJet.Metadata.Test
 
         [TestMethod] public void MS_TryOpenInfoBase()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             MetadataService service = new(options);
@@ -42,10 +42,10 @@ namespace DaJet.Metadata.Test
         }
         [TestMethod] public void PG_TryOpenInfoBase()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = PG_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.PostgreSQL
+                DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
             MetadataService service = new(options);

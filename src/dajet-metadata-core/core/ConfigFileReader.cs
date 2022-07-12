@@ -86,7 +86,7 @@ namespace DaJet.Metadata.Core
             PlatformVersion = GetPlatformVersion();
 
             long bytes = ExecuteReader(
-                (provider == DatabaseProvider.SQLServer
+                (provider == DatabaseProvider.SqlServer
                 ? MS_DBSCHEMA_QUERY_SCRIPT
                 : PG_DBSCHEMA_QUERY_SCRIPT)
                 , null);
@@ -158,7 +158,7 @@ namespace DaJet.Metadata.Core
         {
             if (tableName == ConfigTables.Config)
             {
-                if (_provider == DatabaseProvider.SQLServer)
+                if (_provider == DatabaseProvider.SqlServer)
                 {
                     return MS_CONFIG_SCRIPT;
                 }
@@ -166,7 +166,7 @@ namespace DaJet.Metadata.Core
             }
             else if (tableName == ConfigTables.Params)
             {
-                if (_provider == DatabaseProvider.SQLServer)
+                if (_provider == DatabaseProvider.SqlServer)
                 {
                     return MS_PARAMS_SCRIPT;
                 }
@@ -177,7 +177,7 @@ namespace DaJet.Metadata.Core
 
         private DbConnection CreateDbConnection()
         {
-            if (_provider == DatabaseProvider.SQLServer)
+            if (_provider == DatabaseProvider.SqlServer)
             {
                 return new SqlConnection(_connectionString);
             }
@@ -187,7 +187,7 @@ namespace DaJet.Metadata.Core
         {
             if (string.IsNullOrWhiteSpace(fileName)) return;
 
-            if (_provider == DatabaseProvider.SQLServer)
+            if (_provider == DatabaseProvider.SqlServer)
             {
                 ((SqlCommand)command).Parameters.AddWithValue("FileName", fileName);
             }
@@ -262,7 +262,7 @@ namespace DaJet.Metadata.Core
 
         private int GetYearOffset()
         {
-            if (_provider == DatabaseProvider.SQLServer)
+            if (_provider == DatabaseProvider.SqlServer)
             {
                 return ExecuteScalar<int>(MS_YEAROFFSET_QUERY_SCRIPT, null);
             }
@@ -270,7 +270,7 @@ namespace DaJet.Metadata.Core
         }
         private int GetPlatformVersion()
         {
-            if (_provider == DatabaseProvider.SQLServer)
+            if (_provider == DatabaseProvider.SqlServer)
             {
                 return ExecuteScalar<int>(MS_IBVERSION_QUERY_SCRIPT, null);
             }

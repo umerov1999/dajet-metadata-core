@@ -12,10 +12,10 @@ namespace DaJet.Data.Mapping.Test
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         public UnitTest1()
         {
-            MetadataServiceOptions options = new()
+            InfoBaseOptions options = new()
             {
                 ConnectionString = MS_CONNECTION_STRING,
-                DatabaseProvider = DatabaseProvider.SQLServer
+                DatabaseProvider = DatabaseProvider.SqlServer
             };
 
             service.Configure(options);
@@ -118,7 +118,7 @@ namespace DaJet.Data.Mapping.Test
                 return;
             }
 
-            if (@object is not IAggregate aggregate)
+            if (@object is not ITablePartOwner aggregate)
             {
                 return;
             }

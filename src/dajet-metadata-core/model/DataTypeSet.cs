@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata.Model
 {
-    ///<summary>Смотри также <see cref="DataTypes"/></summary>
+    ///<summary>Типы данных реквизитов объектов метаданных 1С</summary>
     [Flags] internal enum DataTypeFlags : byte
     {
         None = 0x00,

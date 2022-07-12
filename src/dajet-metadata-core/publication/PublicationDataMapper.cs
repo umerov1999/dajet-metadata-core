@@ -21,13 +21,13 @@ namespace DaJet.Metadata.Services
         }
         private string CreateSelectSubscribersScript(Publication publication)
         {
-            if (_cache.DatabaseProvider == DatabaseProvider.SQLServer)
+            if (_cache.DatabaseProvider == DatabaseProvider.SqlServer)
             {
                 return string.Format(
                     MS_SELECT_SUBSCRIBERS_QUERY_TEMPLATE,
                     publication.TableName);
             }
-            else if (_cache.DatabaseProvider == DatabaseProvider.PostgreSQL)
+            else if (_cache.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
                 return string.Format(
                     PG_SELECT_SUBSCRIBERS_QUERY_TEMPLATE,

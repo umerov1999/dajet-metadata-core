@@ -1,9 +1,7 @@
-﻿using DaJet.Metadata.Core;
-using DaJet.Metadata.Model;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 
-namespace DaJet.Metadata.Services
+namespace DaJet.Metadata.Core
 {
     public sealed class ConfigFileWriter
     {

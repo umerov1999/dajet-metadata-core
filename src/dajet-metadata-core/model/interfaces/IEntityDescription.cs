@@ -1,6 +1,6 @@
 ﻿namespace DaJet.Metadata.Model
 {
-    public interface IDescription
+    public interface IEntityDescription
     {
         int DescriptionLength { get; set; }
     }

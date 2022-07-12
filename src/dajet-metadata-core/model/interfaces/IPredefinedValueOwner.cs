@@ -2,7 +2,7 @@
 
 namespace DaJet.Metadata.Model
 {
-    public interface IPredefinedValues
+    public interface IPredefinedValueOwner
     {
         List<PredefinedValue> PredefinedValues { get; set; }
     }

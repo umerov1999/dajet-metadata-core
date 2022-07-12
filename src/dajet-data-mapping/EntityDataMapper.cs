@@ -219,7 +219,7 @@ namespace DaJet.Data.Mapping
 
             if (property.PropertyType.Reference == Guid.Empty && !property.PropertyType.IsUuid) // multiple
             {
-                //TODO: filter by discriminator field _TYPE ?
+                //TODO: filter by Pointer field _TYPE ?
                 DatabaseField tref = GetTypeCodeField(property);
                 DatabaseField rref = GetObjectField(property);
 
@@ -335,9 +335,9 @@ namespace DaJet.Data.Mapping
 
         //            script.Append($" WHERE {field.Name} = @entity ");
 
-        //            script.Append($"ORDER BY {field.Name} ASC, _KeyField ASC;"); // MS SQLServer
+        //            script.Append($"ORDER BY {field.Name} ASC, _KeyField ASC;"); // MS SqlServer
 
-        //            // TODO: script.Append($"ORDER BY {field.Name} ASC, _keyfield ASC;"); PostgreSQL
+        //            // TODO: script.Append($"ORDER BY {field.Name} ASC, _keyfield ASC;"); PostgreSql
 
         //            SELECT_ENTITY_TABLE_PART_SCRIPT = script.ToString();
         //        }
@@ -395,7 +395,7 @@ namespace DaJet.Data.Mapping
 
         //public string GetPredefinedDataName(IDataReader reader, Guid uuid)
         //{
-        //    if (Options.MetaObject is IPredefinedValues predefined)
+        //    if (Options.MetaObject is IPredefinedValueOwner predefined)
         //    {
         //        foreach (PredefinedValue value in predefined.PredefinedValues)
         //        {
