@@ -4,6 +4,7 @@ using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
+using DaJet.Metadata.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -435,7 +436,7 @@ namespace DaJet.Metadata
 
             return metadata;
         }        
-        internal MetadataObject GetMetadataObjectCached(in string typeName, in string objectName)
+        private MetadataObject GetMetadataObjectCached(in string typeName, in string objectName)
         {
             Guid type = MetadataTypes.ResolveName(typeName);
 
@@ -472,39 +473,7 @@ namespace DaJet.Metadata
 
             reference.SetTarget(metadata);
         }
-
-        #endregion
-
-        internal MetadataItem GetMetadataItem(Guid uuid)
-        {
-            List<Guid> entityTypes = new()
-            {
-                MetadataTypes.Catalog,
-                MetadataTypes.Document,
-                MetadataTypes.Publication,
-                MetadataTypes.Characteristic,
-                MetadataTypes.InformationRegister,
-                MetadataTypes.AccumulationRegister
-            };
-
-            foreach (Guid type in entityTypes)
-            {
-                if (_names.TryGetValue(type, out Dictionary<string, Guid> entities))
-                {
-                    foreach (var entity in entities)
-                    {
-                        if (entity.Value == uuid)
-                        {
-                            return new MetadataItem(type, entity.Value, entity.Key);
-                        }
-                    }
-                }
-            }
-
-            return MetadataItem.Empty;
-        }
-
-        internal void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
+        private void GetMetadataObject(Guid type, Guid uuid, out MetadataObject metadata)
         {
             if (!_parsers.TryCreateParser(type, out IMetadataObjectParser parser))
             {
@@ -596,25 +565,58 @@ namespace DaJet.Metadata
                 }
             }
         }
+        
+        #endregion
 
-        internal EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        private string[] GetIdentifiers(string metadataName)
         {
-            if (!TryGetChngR(entity.Uuid, out _))
+            if (string.IsNullOrWhiteSpace(metadataName))
             {
-                return null;
+                throw new ArgumentNullException(nameof(metadataName));
             }
 
-            EntityChangeTable table = new(entity);
+            string[] identifiers = metadataName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            Configurator.ConfigureSystemProperties(this, table);
+            if (identifiers.Length < 2)
+            {
+                throw new FormatException(nameof(metadataName));
+            }
 
-            return table;
+            //string typeName = identifiers[0];
+            //string objectName = identifiers[1];
+            //
+            //string tablePartName = null;
+            //if (names.Length == 3)
+            //{
+            //    tablePartName = names[2];
+            //}
+
+            return identifiers;
         }
-        internal ApplicationObject GetApplicationObject(int typeCode)
+
+        public MetadataItem GetMetadataItem(Guid uuid)
+        {
+            foreach (Guid type in MetadataTypes.ReferenceObjectTypes)
+            {
+                if (_names.TryGetValue(type, out Dictionary<string, Guid> items))
+                {
+                    foreach (var item in items)
+                    {
+                        if (item.Value == uuid)
+                        {
+                            return new MetadataItem(type, item.Value, item.Key);
+                        }
+                    }
+                }
+            }
+
+            return MetadataItem.Empty;
+        }
+        public MetadataItem GetMetadataItem(int typeCode)
         {
             if (!_database.TryGet(typeCode, out DbName dbn))
             {
-                return null;
+                return MetadataItem.Empty;
             }
 
             Guid type;
@@ -641,10 +643,158 @@ namespace DaJet.Metadata
             }
             else
             {
+                return MetadataItem.Empty;
+            }
+
+            if (!_names.TryGetValue(type, out Dictionary<string, Guid> items))
+            {
+                return MetadataItem.Empty;
+            }
+
+            foreach (var item in items)
+            {
+                if (item.Value == dbn.Uuid)
+                {
+                    return new MetadataItem(type, dbn.Uuid, item.Key);
+                }
+            }
+
+            return MetadataItem.Empty;
+        }
+        public IEnumerable<MetadataItem> GetMetadataItems(Guid type)
+        {
+            if (!_names.TryGetValue(type, out Dictionary<string, Guid> items))
+            {
+                yield break;
+            }
+
+            foreach (var item in items)
+            {
+                yield return new MetadataItem(type, item.Value, item.Key);
+            }
+        }
+
+        public MetadataObject GetMetadataObject(Guid uuid)
+        {
+            MetadataItem item = GetMetadataItem(uuid);
+
+            if (item == MetadataItem.Empty)
+            {
                 return null;
             }
 
-            return GetMetadataObjectCached(type, dbn.Uuid) as ApplicationObject;
+            return GetMetadataObject(item);
         }
+        public MetadataObject GetMetadataObject(int typeCode)
+        {
+            MetadataItem item = GetMetadataItem(typeCode);
+
+            if (item == MetadataItem.Empty)
+            {
+                return null;
+            }
+
+            return GetMetadataObject(item);
+        }
+        public MetadataObject GetMetadataObject(MetadataItem item)
+        {
+            return GetMetadataObjectCached(item.Type, item.Uuid);
+        }
+        public MetadataObject GetMetadataObject(string metadataName)
+        {
+            string[] identifiers = GetIdentifiers(metadataName);
+
+            return GetMetadataObjectCached(identifiers[0], identifiers[1]);
+        }
+        public MetadataObject GetMetadataObject(Guid type, Guid uuid)
+        {
+            return GetMetadataObjectCached(type, uuid);
+        }
+
+        public T GetMetadataObject<T>(Guid uuid) where T : MetadataObject
+        {
+            return GetMetadataObject(uuid) as T;
+        }
+        public T GetMetadataObject<T>(int typeCode) where T : MetadataObject
+        {
+            return GetMetadataObject(typeCode) as T;
+        }
+        public T GetMetadataObject<T>(MetadataItem item) where T : MetadataObject
+        {
+            return GetMetadataObject(item) as T;
+        }
+        public T GetMetadataObject<T>(string metadataName) where T : MetadataObject
+        {
+            return GetMetadataObject(metadataName) as T;
+        }
+        public T GetMetadataObject<T>(Guid type, Guid uuid) where T : MetadataObject
+        {
+            return GetMetadataObject(type, uuid) as T;
+        }
+
+        #region "PUBLICATION AND CHANGE TABLE UTILITY METHODS"
+
+        internal string GetMainTableName(Guid uuid)
+        {
+            if (!TryGetDbName(uuid, out DbName entry))
+            {
+                return string.Empty;
+            }
+
+            if (_provider == DatabaseProvider.PostgreSql)
+            {
+                return $"_{entry.Name}{entry.Code}".ToLowerInvariant();
+            }
+
+            return $"_{entry.Name}{entry.Code}";
+        }
+        internal string GetChangeTableName(Guid uuid)
+        {
+            if (!TryGetChngR(uuid, out DbName entry))
+            {
+                return string.Empty;
+            }
+
+            if (_provider == DatabaseProvider.PostgreSql)
+            {
+                return $"_{entry.Name}{entry.Code}".ToLowerInvariant();
+            }
+
+            return $"_{entry.Name}{entry.Code}";
+        }
+        internal Publication GetPublication(string name)
+        {
+            string metadataName = "ПланОбмена." + name;
+
+            string[] identifiers = GetIdentifiers(metadataName);
+
+            Publication publication = GetMetadataObjectCached(identifiers[0], identifiers[1]) as Publication;
+
+            if (publication == null)
+            {
+                return null;
+            }
+
+            PublicationDataMapper mapper = new(this);
+
+            mapper.Select(in publication);
+
+            return publication;
+        }
+        internal EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        {
+            if (!TryGetChngR(entity.Uuid, out _))
+            {
+                return null;
+            }
+
+            EntityChangeTable table = new(entity);
+
+            Configurator.ConfigureSystemProperties(this, table);
+
+            return table;
+        }
+
+        #endregion
     }
 }
