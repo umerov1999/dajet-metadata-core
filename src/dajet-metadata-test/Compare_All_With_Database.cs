@@ -14,28 +14,28 @@ namespace DaJet.Database.Test
     {
         //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=trade_11_2_3_159_demo;Integrated Security=True;Encrypt=False;";
         //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=accounting_3_0_72_72_demo;Integrated Security=True;Encrypt=False;";
-        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True;Encrypt=False;";
-        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
-        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
-        //private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
+        private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=test_node_1;Integrated Security=True;Encrypt=False;";
+        private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=test_node_2;Username=postgres;Password=postgres;";
+        //private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
+        //private const string PG_CONNECTION_STRING = "Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;";
         private InfoBase _infoBase;
         private readonly MetadataService _service = new();
         ISqlMetadataReader _database = new SqlMetadataReader();
         IMetadataCompareAndMergeService _comparator = new MetadataCompareAndMergeService(); // comparator
         [TestMethod] public void MS_Test()
         {
-            InfoBaseOptions options = new()
+            InfoBaseOptions options = new("test")
             {
                 ConnectionString = MS_CONNECTION_STRING,
                 DatabaseProvider = DatabaseProvider.SqlServer
             };
 
-            _service.Configure(options);
+            _service.Add(options);
             
             _database.UseDatabaseProvider(options.DatabaseProvider);
             _database.UseConnectionString(options.ConnectionString);
 
-            if (!_service.TryOpenInfoBase(out _infoBase, out string error))
+            if (!_service.TryGetInfoBase("test", out _infoBase, out string error))
             {
                 Console.WriteLine($"Failed to open info base: {error}");
                 return;
@@ -45,18 +45,18 @@ namespace DaJet.Database.Test
         }
         [TestMethod] public void PG_Test()
         {
-            InfoBaseOptions options = new()
+            InfoBaseOptions options = new("test")
             {
                 ConnectionString = PG_CONNECTION_STRING,
                 DatabaseProvider = DatabaseProvider.PostgreSql
             };
 
-            _service.Configure(options);
+            _service.Add(options);
 
             _database.UseDatabaseProvider(options.DatabaseProvider);
             _database.UseConnectionString(options.ConnectionString);
 
-            if (!_service.TryOpenInfoBase(out _infoBase, out string error))
+            if (!_service.TryGetInfoBase("test", out _infoBase, out string error))
             {
                 Console.WriteLine($"Failed to open info base: {error}");
                 return;
@@ -86,17 +86,26 @@ namespace DaJet.Database.Test
         }
         private void Run_Test(Guid metadataType, string outputFile)
         {
+            if (!_service.TryGetMetadataCache("test", out MetadataCache cache, out string error))
+            {
+                Console.WriteLine($"Failed to get cache: {error}");
+                return;
+            }
+
             int count = 0;
             List<string> delete;
             List<string> insert;
 
             using (StreamWriter stream = new(outputFile, false, Encoding.UTF8))
             {
-                foreach (MetadataObject metadata in _service.GetMetadataObjects(metadataType))
+                foreach (MetadataItem item in cache.GetMetadataItems(metadataType))
                 {
+                    MetadataObject metadata = cache.GetMetadataObject(item);
+
                     if (metadata is not ApplicationObject @object)
                     {
-                        continue; // should not happen
+                        stream.WriteLine($"NOT FOUND: {item}");
+                        continue;
                     }
 
                     count++;
@@ -110,7 +119,7 @@ namespace DaJet.Database.Test
 
                     if (@object is not ITablePartOwner aggregate)
                     {
-                        continue; // should not happen
+                        continue;
                     }
 
                     foreach (TablePart tablePart in aggregate.TableParts)

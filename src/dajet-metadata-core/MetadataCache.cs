@@ -60,11 +60,14 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names = new();
 
         ///<summary>
-        ///<br><b>Ключ:</b> UUID типа данных "Ссылка", например, "ОпределяемыйТип", "ЛюбаяСсылка",</br>
+        ///<br><b>Ключ:</b> UUID типа данных "Ссылка" <see cref="ReferenceTypes"/>, например, "ОпределяемыйТип", "ЛюбаяСсылка",</br>
         ///<br>"СправочникСсылка", "СправочникСсылка.Номенклатура"  и т.п. (общие и конкретные типы данных).</br>
         ///<br></br>
-        ///<br><b>Значение:</b> UUID общего и конкретного типов объекта метаданных.</br>
-        ///<br>Для ссылок на общие типы данных - значение <see cref="MetadataTypes"/>.</br>
+        ///<br><b>Значение: </b>Описание ссылочного объекта метаданных,</br>
+        ///<br>кроме ссылок на Характеристики <see cref="_characteristics"/>:</br>
+        ///<br> - Type = одно из значений <see cref="MetadataTypes"/></br>
+        ///<br> - Uuid = <see cref="Guid"/> объекта метаданных</br>
+        ///<br> - Name = <see cref="string.Empty"/> (для экономии памяти кэша)</br>
         ///<br></br>
         ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
         ///</summary>
@@ -75,7 +78,7 @@ namespace DaJet.Metadata
         ///<br>так как невозможно сопоставить одновременно общий тип, конкретный тип</br>
         ///<br>и тип "Характеристика" (для последнего нет UUID).</br>
         ///<br></br>
-        ///<br><b>Значение:</b> UUID объекта метаданных типа "ПланВидовХарактеристик".</br>
+        ///<br><b>Значение:</b> UUID объекта метаданных типа "ПланВидовХарактеристик" <see cref="MetadataTypes"/>.</br>
         ///<br></br>
         ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
         ///</summary>
@@ -565,7 +568,114 @@ namespace DaJet.Metadata
                 }
             }
         }
-        
+
+        #endregion
+
+        #region "RESOLVE REFERENCES FOR DATA TYPE SET"
+
+        //TODO: оптимизировать получение имени объекта метаданных по его UUID !?
+        public string GetMetadataObjectNameCached(Guid type, Guid uuid)
+        {
+            if (_names.TryGetValue(type, out Dictionary<string, Guid> items))
+            {
+                foreach (var item in items)
+                {
+                    if (item.Value == uuid)
+                    {
+                        return item.Key;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+        internal List<MetadataItem> ResolveReferences(in List<Guid> references)
+        {
+            List<MetadataItem> metadata = new();
+
+            for (int i = 0; i < references.Count; i++)
+            {
+                Guid reference = references[i];
+
+                if (reference == Guid.Empty) { continue; }
+
+                MetadataItem item = ResolveReferenceType(reference);
+
+                if (item != MetadataItem.Empty)
+                {
+                    metadata.Add(item);
+                }
+            }
+
+            return metadata;
+        }
+        internal MetadataItem ResolveReferenceType(Guid reference)
+        {
+            // RULES (правила разрешения ссылочных типов данных для объекта "ОписаниеТипов"):
+            // 1. DataTypeSet (описание типа данных свойства объекта) может ссылаться только на
+            //    один экземпляр определяемого типа или плана видов характеристик (характеристику).
+            //    В таком случае указание дополнительных типов данных для данного свойства невозможно.
+            // 2. Определяемый тип или характеристика не могут ссылаться на другие определяемые типы или характеристики.
+            // 3. Если ссылочный тип имеет значение, например, "СправочникСсылка", то есть любой справочник,
+            //    то в таком случае необходимо вычислить количество справочников в составе конфигурации:
+            //    если возможным справочником будет только один, то это будет single reference type.
+            // 4. То же самое, что и для пункта #3, касается значения типа "ЛюбаяСсылка":
+            //    если в составе конфигурации имеется только один ссылочный тип данных, например,
+            //    только один справочник или документ, то это будет single reference type.
+            // 5. К специальным ссылочным типам данных относятся "УникальныйИдентификатор" и "ХранилищеЗначения".
+            //    Согласно алгоритму парсера DataTypeSetParser, они в качестве значения параметра reference отсутствуют.
+
+            if (reference == SingleTypes.ValueStorage)
+            {
+                return new MetadataItem(SingleTypes.ValueStorage, Guid.Empty, "ХранилищеЗначения");
+            }
+            else if (reference == SingleTypes.Uniqueidentifier)
+            {
+                return new MetadataItem(SingleTypes.Uniqueidentifier, Guid.Empty, "УникальныйИдентификатор");
+            }
+            else if (reference == ReferenceTypes.AnyReference)
+            {
+                return new MetadataItem(ReferenceTypes.AnyReference, Guid.Empty, "ЛюбаяСсылка");
+            }
+            else if (reference == ReferenceTypes.Catalog)
+            {
+                return new MetadataItem(ReferenceTypes.Catalog, Guid.Empty, "СправочникСсылка");
+            }
+            else if (reference == ReferenceTypes.Document)
+            {
+                return new MetadataItem(ReferenceTypes.Document, Guid.Empty, "ДокументСсылка");
+            }
+            else if (reference == ReferenceTypes.Enumeration)
+            {
+                return new MetadataItem(ReferenceTypes.Enumeration, Guid.Empty, "ПеречислениеСсылка");
+            }
+            else if (reference == ReferenceTypes.Publication)
+            {
+                return new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка");
+            }
+            else if (reference == ReferenceTypes.Characteristic)
+            {
+                return new MetadataItem(ReferenceTypes.Characteristic, Guid.Empty, "ПланВидовХарактеристикСсылка");
+            }
+            else if (_characteristics.TryGetValue(reference, out Guid uuid))
+            {
+                string name = GetMetadataObjectNameCached(MetadataTypes.Characteristic, uuid);
+
+                ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="MetadataItem.ToString()"/>
+                return new MetadataItem(ReferenceTypes.Characteristic, uuid, name); // Характеристика
+                // Но не ... return new MetadataItem(MetadataTypes.Characteristic, uuid, name); // ПланВидовХарактеристикСсылка
+            }
+            else if (_references.TryGetValue(reference, out MetadataItem info))
+            {
+                //NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных !
+                string name = GetMetadataObjectNameCached(info.Type, info.Uuid);
+                
+                return new MetadataItem(info.Type, info.Uuid, name);
+            }
+
+            return new MetadataItem(Guid.Empty, reference); // Неподдерживаемый общий или конкретный ссылочный тип
+        }
+
         #endregion
 
         private string[] GetIdentifiers(string metadataName)
@@ -593,6 +703,8 @@ namespace DaJet.Metadata
 
             return identifiers;
         }
+
+        #region "GETTING METADATA OBJECT/S INTERFACE IMPLEMENTATION"
 
         public MetadataItem GetMetadataItem(Guid uuid)
         {
@@ -731,6 +843,8 @@ namespace DaJet.Metadata
         {
             return GetMetadataObject(type, uuid) as T;
         }
+
+        #endregion
 
         #region "PUBLICATION AND CHANGE TABLE UTILITY METHODS"
 

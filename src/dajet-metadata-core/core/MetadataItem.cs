@@ -17,6 +17,44 @@ namespace DaJet.Metadata.Core
         public Guid Type { get; } = Guid.Empty;
         public Guid Uuid { get; } = Guid.Empty;
         public string Name { get; } = string.Empty;
+        public override string ToString()
+        {
+            if (this == Empty)
+            {
+                return "Неопределено";
+            }
+
+            if (Type == SingleTypes.ValueStorage) { return "ХранилищеЗначения"; }
+            if (Type == SingleTypes.Uniqueidentifier) { return "УникальныйИдентификатор"; }
+            if (Type == ReferenceTypes.AnyReference) { return "ЛюбаяСсылка"; }
+            if (Type == ReferenceTypes.Catalog) { return "СправочникСсылка"; }
+            if (Type == ReferenceTypes.Document) { return "ДокументСсылка"; }
+            if (Type == ReferenceTypes.Enumeration) { return "ПеречислениеСсылка"; }
+            if (Type == ReferenceTypes.Publication) { return "ПланОбменаСсылка"; }
+            if (Type == ReferenceTypes.Characteristic)
+            {
+                ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="MetadataCache.ResolveReferenceType"/>
+                if (Uuid == Guid.Empty)
+                {
+                    return "ПланВидовХарактеристикСсылка";
+                }
+                else
+                {
+                    return string.Format("Характеристика.{0}", Name);
+                }
+            }
+            
+            string typeName = MetadataTypes.ResolveNameRu(Type);
+
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return "???";
+            }
+            else
+            {
+                return string.Format("{0}.{1}", typeName, Name);
+            }
+        }
 
         #region " Переопределение методов сравнения "
 
@@ -24,7 +62,7 @@ namespace DaJet.Metadata.Core
         {
             return Uuid.GetHashCode();
         }
-        public override bool Equals(object? obj)
+        public override bool Equals(object obj)
         {
             if (obj == null) { return false; }
 

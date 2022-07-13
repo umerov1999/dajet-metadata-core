@@ -53,28 +53,28 @@ namespace DaJet.Metadata.Parsers
                 }
                 else if (source.Token == TokenType.Value || source.Token == TokenType.String)
                 {
-                    if (source.Path[source.Level] == 0) // 0 - Pointer
+                    if (source.Path[source.Level] == 0) // 0 - Pointer _Fld + _TYPE
                     {
                         if (source.Value == MetadataTokens.B) // {"B"}
                         {
-                            ReadBoolean(in source, in target);
+                            ReadBoolean(in source, in target); // _Fld + _L
+                        }
+                        else if (source.Value == MetadataTokens.N) // {"N",10,2,0} | {"N",10,2,1}
+                        {
+                            ReadNumeric(in source, in target); // _Fld + _N
                         }
                         else if (source.Value == MetadataTokens.D) // {"D"} | {"D","D"} | {"D","T"}
                         {
-                            ReadDateTime(in source, in target);
+                            ReadDateTime(in source, in target); // _Fld + _T
                         }
                         else if (source.Value == MetadataTokens.S) // {"S"} | {"S",10,0} | {"S",10,1}
                         {
                             // NOTE: Строки неограниченной длины не поддерживают составной тип данных.
-                            ReadString(in source, in target);
-                        }
-                        else if (source.Value == MetadataTokens.N) // {"N",10,2,0} | {"N",10,2,1}
-                        {
-                            ReadNumeric(in source, in target);
+                            ReadString(in source, in target); // _Fld + _S
                         }
                         else if (source.Value == MetadataTokens.R) // {"#",70497451-981e-43b8-af46-fae8d65d16f2}
                         {
-                            ReadReference(in source, in target, in references);
+                            ReadReference(in source, in target, in references); // _Fld + _RTRef + _RRRef
                         }
                     }
                 }
@@ -187,3 +187,20 @@ namespace DaJet.Metadata.Parsers
         }
     }
 }
+
+//{"Pattern",
+//{"S",10,1},
+//{"N",10,2,0}
+//}
+
+//[1](1.4) DaJet.Metadata.Model.ConfigObject - корень объекта "ОписаниеТипов"
+//---[2](1.4.0) "Pattern"
+//---[2](1.4.1) DaJet.Metadata.Model.ConfigObject - корень объекта описания одного типа данных
+//------[3](1.4.1.0) "S"
+//------[3](1.4.1.1) "10"
+//------[3](1.4.1.2) "1"
+//---[2](1.4.2) DaJet.Metadata.Model.ConfigObject - корень объекта описания одного типа данных
+//------[3](1.4.2.0) "N"
+//------[3](1.4.2.1) "10"
+//------[3](1.4.2.2) "2"
+//------[3](1.4.2.3) "0"
