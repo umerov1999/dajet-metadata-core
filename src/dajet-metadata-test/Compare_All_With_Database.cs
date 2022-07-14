@@ -5,6 +5,7 @@ using DaJet.Metadata.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -24,8 +25,9 @@ namespace DaJet.Database.Test
         IMetadataCompareAndMergeService _comparator = new MetadataCompareAndMergeService(); // comparator
         [TestMethod] public void MS_Test()
         {
-            InfoBaseOptions options = new("test")
+            InfoBaseOptions options = new()
             {
+                Key = "test",
                 ConnectionString = MS_CONNECTION_STRING,
                 DatabaseProvider = DatabaseProvider.SqlServer
             };
@@ -45,8 +47,9 @@ namespace DaJet.Database.Test
         }
         [TestMethod] public void PG_Test()
         {
-            InfoBaseOptions options = new("test")
+            InfoBaseOptions options = new()
             {
+                Key = "test",
                 ConnectionString = PG_CONNECTION_STRING,
                 DatabaseProvider = DatabaseProvider.PostgreSql
             };
@@ -176,6 +179,43 @@ namespace DaJet.Database.Test
                     stream.WriteLine("   - " + field);
                 }
             }
+        }
+
+        [TestMethod] public void Test_Generics()
+        {
+            string IB_KEY = "test";
+
+            _service.Add(new InfoBaseOptions()
+            {
+                Key = IB_KEY,
+                ConnectionString = MS_CONNECTION_STRING,
+                DatabaseProvider = DatabaseProvider.SqlServer
+            });
+
+            Stopwatch watch = new();
+            watch.Start();
+
+            if (!_service.TryGetMetadataCache(IB_KEY, out MetadataCache cache, out string error))
+            {
+                Console.WriteLine($"Failed to get cache: {error}");
+                return;
+            }
+
+            watch.Stop();
+            Console.WriteLine($"Initialize cache: elapsed in {watch.ElapsedMilliseconds} ms");
+
+            watch.Restart();
+
+            int count = 0;
+            foreach (var item in cache.GetMetadataItems(MetadataTypes.Catalog))
+            {
+                count++;
+                Catalog catalog = cache.GetMetadataObject<Catalog>(item.Uuid);
+                //Console.WriteLine($"{catalog.Name} : {catalog.Alias} [{catalog.TableName}]");
+            }
+
+            watch.Stop();
+            Console.WriteLine($"Read {count} catalogs: elapsed in {watch.ElapsedMilliseconds} ms");
         }
     }
 }

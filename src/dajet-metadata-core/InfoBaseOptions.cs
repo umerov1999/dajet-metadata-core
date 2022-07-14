@@ -2,11 +2,7 @@
 {
     public sealed class InfoBaseOptions
     {
-        public InfoBaseOptions(string key)
-        {
-            Key = key;
-        }
-        public string Key { get; } = string.Empty;
+        public string Key { get; set; } = string.Empty;
         ///<summary>Cache expiration period in seconds.</summary>
         public int Expiration { get; set; } = 600; // seconds
         public string ConnectionString { get; set; } = string.Empty;
