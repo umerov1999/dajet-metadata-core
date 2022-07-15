@@ -116,7 +116,12 @@ namespace DaJet.Metadata.Core
             {
                 reference = references[i];
 
-                if (reference == Guid.Empty) { continue; }
+                if (reference == Guid.Empty ||
+                    reference == SingleTypes.ValueStorage ||
+                    reference == SingleTypes.Uniqueidentifier)
+                {
+                    continue;
+                }
 
                 count += ResolveAndCountReferenceTypes(in cache, in target, reference);
 
@@ -335,14 +340,17 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyНомерСтроки(in MetadataCache cache, in TablePart tablePart)
         {
-            DbName db = cache.GetLineNo(tablePart.Uuid);
+            if (!cache.TryGetLineNo(tablePart.Uuid, out DbName dbn))
+            {
+                return;
+            }
 
             MetadataProperty property = new MetadataProperty()
             {
                 Name = "НомерСтроки",
                 Uuid = Guid.Empty,
                 Purpose = PropertyPurpose.System,
-                DbName = CreateDbName(db.Name, db.Code)
+                DbName = CreateDbName(dbn.Name, dbn.Code)
             };
             property.PropertyType.CanBeNumeric = true;
             property.PropertyType.NumericKind = NumericKind.AlwaysPositive;
@@ -430,7 +438,7 @@ namespace DaJet.Metadata.Core
 
             if (catalog.IsHierarchical)
             {
-                ConfigurePropertyРодитель(catalog);
+                ConfigurePropertyРодитель(in cache, catalog);
             }
 
             if (catalog.CodeLength > 0)
@@ -512,7 +520,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyПредопределённый(in MetadataCache cache, in ApplicationObject metadata)
         {
-            if (cache.CompatibilityVersion >= 80303)
+            if (cache.InfoBase.СompatibilityVersion >= 80303)
             {
                 ConfigurePropertyPredefinedID(metadata);
             }
@@ -520,7 +528,7 @@ namespace DaJet.Metadata.Core
             {
                 ConfigurePropertyIsMetadata(metadata);
             }
-            else if (cache.CompatibilityVersion >= 80216)
+            else if (cache.InfoBase.СompatibilityVersion >= 80216)
             {
                 ConfigurePropertyPredefinedID(metadata);
             }
@@ -534,7 +542,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_IsMetadata"
             };
-            
+
             property.PropertyType.CanBeBoolean = true;
 
             property.Fields.Add(new DatabaseField()
@@ -555,7 +563,7 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_PredefinedID"
             };
-            
+
             property.PropertyType.IsUuid = true;
 
             property.Fields.Add(new DatabaseField()
@@ -637,7 +645,7 @@ namespace DaJet.Metadata.Core
 
             metadata.Properties.Add(property);
         }
-        private static void ConfigurePropertyРодитель(in ApplicationObject metadata)
+        private static void ConfigurePropertyРодитель(in MetadataCache cache, in ApplicationObject metadata)
         {
             // This hierarchy property always has the single reference type (adjacency list)
 
@@ -652,6 +660,22 @@ namespace DaJet.Metadata.Core
             property.PropertyType.CanBeReference = true;
             property.PropertyType.TypeCode = metadata.TypeCode;
             property.PropertyType.Reference = metadata.Uuid;
+
+            Guid type = Guid.Empty;
+
+            if (metadata is Catalog)
+            {
+                type = MetadataTypes.Catalog;
+            }
+            else if (metadata is Characteristic)
+            {
+                type = MetadataTypes.Characteristic;
+            }
+
+            if (type != Guid.Empty)
+            {
+                property.PropertyType.References.Add(new MetadataItem(type, metadata.Uuid, metadata.Name));
+            }
 
             property.Fields.Add(new DatabaseField()
             {
@@ -692,6 +716,16 @@ namespace DaJet.Metadata.Core
                 DbName = "_OwnerID"
             };
             property.PropertyType.CanBeReference = true;
+
+            foreach (Guid owner in owners)
+            {
+                MetadataItem item = cache.GetCatalogOwner(owner);
+                
+                if (item != MetadataItem.Empty)
+                {
+                    property.PropertyType.References.Add(item);
+                }
+            }
 
             if (owners.Count == 1) // Single type value
             {
@@ -758,7 +792,7 @@ namespace DaJet.Metadata.Core
 
             if (characteristic.IsHierarchical)
             {
-                ConfigurePropertyРодитель(characteristic);
+                ConfigurePropertyРодитель(in cache, characteristic);
             }
 
             if (characteristic.CodeLength > 0)
@@ -1101,7 +1135,10 @@ namespace DaJet.Metadata.Core
         {
             List<Guid> recorders = cache.GetRegisterRecorders(register.Uuid);
 
-            if (recorders == null || recorders.Count == 0) { return; }
+            if (recorders == null || recorders.Count == 0)
+            {
+                return;
+            }
 
             MetadataProperty property = new()
             {
@@ -1110,6 +1147,16 @@ namespace DaJet.Metadata.Core
                 Purpose = PropertyPurpose.System,
                 DbName = "_Recorder"
             };
+
+            foreach (Guid recorder in recorders)
+            {
+                MetadataItem item = cache.GetRegisterRecorder(recorder);
+
+                if (item != MetadataItem.Empty)
+                {
+                    property.PropertyType.References.Add(item);
+                }
+            }
 
             DatabaseField field = new()
             {
@@ -1256,7 +1303,10 @@ namespace DaJet.Metadata.Core
                 configObject = new ConfigFileParser().Parse(reader);
             }
 
-            if (configObject == null) return;
+            if (configObject == null || configObject.Count == 0)
+            {
+                return; // Metadata object has no predefined values file in Config table
+            }
 
             ConfigObject parentObject = configObject.GetObject(new int[] { 1, 2, 14, 2 });
 
@@ -1369,9 +1419,9 @@ namespace DaJet.Metadata.Core
                 configObject = new ConfigFileParser().Parse(reader);
             }
 
-            if (configObject == null)
+            if (configObject == null || configObject.Count == 0)
             {
-                return;
+                return; // Publication has no articles file in Config table
             }
 
             int count = configObject.GetInt32(new int[] { 1 }); // количество объектов в составе плана обмена
@@ -1437,6 +1487,7 @@ namespace DaJet.Metadata.Core
 
             property.PropertyType.CanBeReference = true;
             property.PropertyType.Reference = Guid.Empty;
+            property.PropertyType.References.Add(new MetadataItem(ReferenceTypes.Publication, Guid.Empty, "ПланОбменаСсылка"));
 
             property.Fields.Add(new DatabaseField()
             {

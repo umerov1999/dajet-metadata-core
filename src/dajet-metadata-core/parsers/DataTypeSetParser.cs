@@ -88,6 +88,11 @@ namespace DaJet.Metadata.Parsers
                 // которые не являются или не содержат в своём составе ссылочные типы данных,
                 // то в таком случае описание типов будет содержать только примитивные типы данных.
                 Configurator.ConfigureDataTypeSet(in _cache, in target, in references);
+
+                //TODO: add setting to MetadataCache to resolve references optionally !?
+                List<MetadataItem> list = _cache.ResolveReferences(in references);
+
+                target.References.AddRange(list);
             }
         }
         private void ReadQualifiers(in ConfigFileReader reader)
@@ -174,13 +179,10 @@ namespace DaJet.Metadata.Parsers
             if (type == SingleTypes.ValueStorage) // ХранилищеЗначения - varbinary(max)
             {
                 target.IsValueStorage = true; // Не может быть составным типом !
-                return;
             }
-            
-            if (type == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
+            else if (type == SingleTypes.Uniqueidentifier) // УникальныйИдентификатор - binary(16)
             {
                 target.IsUuid = true; // Не может быть составным типом !
-                return;
             }
             
             references.Add(type);

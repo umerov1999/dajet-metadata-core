@@ -1,4 +1,6 @@
-﻿using System;
+﻿using DaJet.Metadata.Core;
+using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Model
 {
@@ -230,6 +232,19 @@ namespace DaJet.Metadata.Model
 
         #endregion
 
+        ///<summary>
+        ///Список ссылочных типов данных объекта "ОписаниеТипов".
+        ///<br><b>Назначение использования:</b></br>
+        ///<br>1. Отображение информации в интерфейсе пользователя.</br>
+        ///<br>2. Анализ логических связей между объектами метаданных.</br>
+        ///<br>Список заполняется функцией <see cref="MetadataCache.ResolveReferences(in List{Guid})"/></br>
+        ///</summary>
+        public List<MetadataItem> References { get; } = new();
+
+        ///<summary>
+        ///Применяет описание типов определяемого типа или характеристики к свойству объекта метаданных.
+        ///</summary>
+        ///<param name="source">Описание типов определяемого типа или характеристики.</param>
         internal void Apply(in DataTypeSet source)
         {
             _flags = source._flags;

@@ -113,7 +113,11 @@ namespace DaJet.Metadata
                     return true;
                 }
 
-                cache = new MetadataCache(entry.Options.DatabaseProvider, entry.Options.ConnectionString);
+                cache = new MetadataCache(new MetadataCacheOptions()
+                {
+                    DatabaseProvider = entry.Options.DatabaseProvider,
+                    ConnectionString = entry.Options.ConnectionString
+                });
 
                 try
                 {

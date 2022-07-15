@@ -211,7 +211,7 @@ namespace DaJet.Database.Test
             {
                 count++;
                 Catalog catalog = cache.GetMetadataObject<Catalog>(item.Uuid);
-                //Console.WriteLine($"{catalog.Name} : {catalog.Alias} [{catalog.TableName}]");
+                //Console.WriteLine($"[{catalog.TableName}] {catalog.Name} : {catalog.Alias}");
             }
 
             watch.Stop();

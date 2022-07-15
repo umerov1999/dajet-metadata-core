@@ -14,8 +14,10 @@ namespace DaJet.Metadata
 {
     public interface IMetadataCache
     {
+        InfoBase InfoBase { get; }
         MetadataItem GetMetadataItem(Guid uuid);
         MetadataItem GetMetadataItem(int typeCode);
+        string GetMetadataName(Guid type, Guid uuid);
         IEnumerable<MetadataItem> GetMetadataItems(Guid type);
 
         MetadataObject GetMetadataObject(Guid uuid);
@@ -32,8 +34,7 @@ namespace DaJet.Metadata
     }
     public sealed class MetadataCache : IMetadataCache
     {
-        private int _yearOffset = 0;
-        private int _compatibilityVersion = 80303;
+        private InfoBase _infoBase;
         private readonly string _connectionString;
         private readonly DatabaseProvider _provider;
         private readonly MetadataObjectParserFactory _parsers;
@@ -52,10 +53,20 @@ namespace DaJet.Metadata
         private readonly ConcurrentDictionary<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> _cache = new();
 
         ///<summary>
-        ///<b>Имена объектов метаданных:</b>
+        ///<b>Имена объектов метаданных (первичный индекс для поиска имён):</b>
+        ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
+        ///<br><b>Ключ 2:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///<br><b>Значение:</b> имя объекта метаданных, например, "Номенклатура"</br>
+        ///<br><b>Использование:</b> поиск имени объекта метаданных по его UUID.</br>
+        ///</summary>
+        private readonly ConcurrentDictionary<Guid, Dictionary<Guid, string>> _items = new();
+
+        ///<summary>
+        ///<b>Имена объектов метаданных (вспомогательный индекс для поиска):</b>
         ///<br><b>Ключ 1:</b> UUID общего типа метаданных, например, "Справочник"</br>
         ///<br><b>Ключ 2:</b> имя объекта метаданных, например, "Номенклатура"</br>
         ///<br><b>Значение:</b> UUID объекта метаданных, например, "Справочник.Номенклатура"</br>
+        ///<br><b>Использование:</b> поиск UUID объекта метаданных по его имени.</br>
         ///</summary>
         private readonly ConcurrentDictionary<Guid, Dictionary<string, Guid>> _names = new();
 
@@ -70,6 +81,7 @@ namespace DaJet.Metadata
         ///<br> - Name = <see cref="string.Empty"/> (для экономии памяти кэша)</br>
         ///<br></br>
         ///<br><b>Использование:</b> расшифровка <see cref="DataTypeSet"/> при чтении файлов конфигурации.</br>
+        ///<br>NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных!</br>
         ///</summary>
         private readonly ConcurrentDictionary<Guid, MetadataItem> _references = new();
 
@@ -107,22 +119,24 @@ namespace DaJet.Metadata
         {
             return _database.TryGet(uuid, out entry);
         }
-        internal DbName GetLineNo(Guid uuid)
+        internal bool TryGetLineNo(Guid uuid, out DbName entry)
         {
-            if (!_database.TryGet(uuid, out DbName entry))
+            if (!_database.TryGet(uuid, out entry))
             {
-                throw new InvalidOperationException(nameof(GetLineNo));
+                return false;
             }
 
             foreach (DbName child in entry.Children)
             {
                 if (child.Name == MetadataTokens.LineNo)
                 {
-                    return child;
+                    entry = child;
+
+                    return true;
                 }
             }
 
-            throw new InvalidOperationException(nameof(GetLineNo));
+            return false;
         }
         internal bool TryGetChngR(Guid uuid, out DbName entry)
         {
@@ -144,18 +158,31 @@ namespace DaJet.Metadata
             return false;
         }
 
-        private void AddName(Guid type, Guid metadata, string name)
+        private void AddName(Guid type, Guid uuid, string name)
         {
+            // metadata object uuid to name mapping
+            if (_items.TryGetValue(type, out Dictionary<Guid, string> items))
+            {
+                items.Add(uuid, name);
+            }
+            else
+            {
+                _ = _items.TryAdd(type, new Dictionary<Guid, string>()
+                {
+                    { uuid, name }
+                });
+            }
+
             // metadata object name to uuid mapping
             if (_names.TryGetValue(type, out Dictionary<string, Guid> names))
             {
-                names.Add(name, metadata);
+                names.Add(name, uuid);
             }
             else
             {
                 _ = _names.TryAdd(type, new Dictionary<string, Guid>()
                 {
-                    { name, metadata }
+                    { name, uuid }
                 });
             }
         }
@@ -209,17 +236,46 @@ namespace DaJet.Metadata
             return null;
         }
 
+        internal MetadataItem GetCatalogOwner(Guid uuid)
+        {
+            foreach (Guid type in MetadataTypes.CatalogOwnerTypes)
+            {
+                if (_items.TryGetValue(type, out Dictionary<Guid, string> items))
+                {
+                    if (items.TryGetValue(uuid, out string name))
+                    {
+                        return new MetadataItem(type, uuid, name);
+                    }
+                }
+            }
+
+            return MetadataItem.Empty;
+        }
+        internal MetadataItem GetRegisterRecorder(Guid uuid)
+        {
+            if (_items.TryGetValue(MetadataTypes.Document, out Dictionary<Guid, string> items))
+            {
+                if (items.TryGetValue(uuid, out string name))
+                {
+                    return new MetadataItem(MetadataTypes.Document, uuid, name);
+                }
+            }
+
+            return MetadataItem.Empty;
+        }
+
         #endregion
 
-        internal MetadataCache(DatabaseProvider provider, in string connectionString)
+        internal MetadataCache(MetadataCacheOptions options)
         {
-            _provider = provider;
-            _connectionString = connectionString;
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            _provider = options.DatabaseProvider;
+            _connectionString = options.ConnectionString;
 
             _parsers = new MetadataObjectParserFactory(this);
         }
-        internal int YearOffset { get { return _yearOffset; } }
-        internal int CompatibilityVersion { get { return _compatibilityVersion; } }
+        public InfoBase InfoBase { get { return _infoBase; } }
         internal string ConnectionString { get { return _connectionString; } }
         internal DatabaseProvider DatabaseProvider { get { return _provider; } }
         internal IQueryExecutor CreateQueryExecutor()
@@ -244,8 +300,7 @@ namespace DaJet.Metadata
             InitializeDbNameCache();
             InitializeMetadataCache(out InfoBase infoBase);
 
-            _yearOffset = infoBase.YearOffset;
-            _compatibilityVersion = infoBase.СompatibilityVersion;
+            _infoBase = infoBase;
         }
         private void InitializeRootFile()
         {
@@ -264,6 +319,7 @@ namespace DaJet.Metadata
         private void InitializeMetadataCache(out InfoBase infoBase)
         {
             _cache.Clear();
+            _items.Clear();
             _names.Clear();
             _owners.Clear();
             _registers.Clear();
@@ -322,9 +378,9 @@ namespace DaJet.Metadata
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
-            ParallelLoopResult result = Parallel.ForEach(_cache, options, InitializeMetadata);
+            ParallelLoopResult result = Parallel.ForEach(_cache, options, InitializeMetadataItems);
         }
-        private void InitializeMetadata(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
+        private void InitializeMetadataItems(KeyValuePair<Guid, Dictionary<Guid, WeakReference<MetadataObject>>> cache)
         {
             Guid type = cache.Key; // общий тип объектов метаданных, например, "Справочник"
 
@@ -540,55 +596,25 @@ namespace DaJet.Metadata
 
             if (metadata is Publication publication)
             {
-                try
-                {
-                    Configurator.ConfigureArticles(this, in publication);
-                }
-                catch (Exception error)
-                {
-                    if (error.Message == "Zero length file") // TODO
-                    {
-                        // Publication has no articles file in Config table
-                    }
-                }
+                Configurator.ConfigureArticles(this, in publication);
             }
 
             if (metadata is IPredefinedValueOwner)
             {
-                try
-                {
-                    Configurator.ConfigurePredefinedValues(this, in metadata);
-                }
-                catch (Exception error)
-                {
-                    if (error.Message == "Zero length file") // TODO
-                    {
-                        // Metadata object has no predefined values file in Config table
-                    }
-                }
+                Configurator.ConfigurePredefinedValues(this, in metadata);
             }
         }
 
         #endregion
 
-        #region "RESOLVE REFERENCES FOR DATA TYPE SET"
+        #region "RESOLVE DATA TYPE SET REFERENCES"
 
-        //TODO: оптимизировать получение имени объекта метаданных по его UUID !?
-        public string GetMetadataObjectNameCached(Guid type, Guid uuid)
-        {
-            if (_names.TryGetValue(type, out Dictionary<string, Guid> items))
-            {
-                foreach (var item in items)
-                {
-                    if (item.Value == uuid)
-                    {
-                        return item.Key;
-                    }
-                }
-            }
-
-            return string.Empty;
-        }
+        /// <summary>
+        /// Функция сопоставления ссылочных типов данных объекта "ОписаниеТипов" объектам метаданных.
+        /// <br>Список ссылочных типов объекта <see cref="DataTypeSet"/> получает парсер <see cref="DataTypeSetParser"/>.</br>
+        /// </summary>
+        /// <param name="references">Список ссылочных типов данных объекта "ОписаниеТипов".</param>
+        /// <returns></returns>
         internal List<MetadataItem> ResolveReferences(in List<Guid> references)
         {
             List<MetadataItem> metadata = new();
@@ -659,7 +685,7 @@ namespace DaJet.Metadata
             }
             else if (_characteristics.TryGetValue(reference, out Guid uuid))
             {
-                string name = GetMetadataObjectNameCached(MetadataTypes.Characteristic, uuid);
+                string name = GetMetadataName(MetadataTypes.Characteristic, uuid);
 
                 ///NOTE: Небольшой хак ¯\_(ツ)_/¯ <see cref="MetadataItem.ToString()"/>
                 return new MetadataItem(ReferenceTypes.Characteristic, uuid, name); // Характеристика
@@ -668,7 +694,7 @@ namespace DaJet.Metadata
             else if (_references.TryGetValue(reference, out MetadataItem info))
             {
                 //NOTE: MetadataItem коллекции _references не содержит имени объекта метаданных !
-                string name = GetMetadataObjectNameCached(info.Type, info.Uuid);
+                string name = GetMetadataName(info.Type, info.Uuid);
                 
                 return new MetadataItem(info.Type, info.Uuid, name);
             }
@@ -677,6 +703,8 @@ namespace DaJet.Metadata
         }
 
         #endregion
+
+        #region "GETTING METADATA OBJECT/S INTERFACE IMPLEMENTATION"
 
         private string[] GetIdentifiers(string metadataName)
         {
@@ -704,20 +732,27 @@ namespace DaJet.Metadata
             return identifiers;
         }
 
-        #region "GETTING METADATA OBJECT/S INTERFACE IMPLEMENTATION"
+        public string GetMetadataName(Guid type, Guid uuid)
+        {
+            if (_items.TryGetValue(type, out Dictionary<Guid, string> items))
+            {
+                if (items.TryGetValue(uuid, out string name))
+                {
+                    return name;
+                }
+            }
 
+            return string.Empty;
+        }
         public MetadataItem GetMetadataItem(Guid uuid)
         {
             foreach (Guid type in MetadataTypes.ReferenceObjectTypes)
             {
-                if (_names.TryGetValue(type, out Dictionary<string, Guid> items))
+                if (_items.TryGetValue(type, out Dictionary<Guid, string> items))
                 {
-                    foreach (var item in items)
+                    if (items.TryGetValue(uuid, out string name))
                     {
-                        if (item.Value == uuid)
-                        {
-                            return new MetadataItem(type, item.Value, item.Key);
-                        }
+                        return new MetadataItem(type, uuid, name);
                     }
                 }
             }
@@ -758,31 +793,28 @@ namespace DaJet.Metadata
                 return MetadataItem.Empty;
             }
 
-            if (!_names.TryGetValue(type, out Dictionary<string, Guid> items))
+            if (!_items.TryGetValue(type, out Dictionary<Guid, string> items))
             {
                 return MetadataItem.Empty;
             }
 
-            foreach (var item in items)
+            if (!items.TryGetValue(dbn.Uuid, out string name))
             {
-                if (item.Value == dbn.Uuid)
-                {
-                    return new MetadataItem(type, dbn.Uuid, item.Key);
-                }
+                return MetadataItem.Empty;
             }
 
-            return MetadataItem.Empty;
+            return new MetadataItem(type, dbn.Uuid, name);
         }
         public IEnumerable<MetadataItem> GetMetadataItems(Guid type)
         {
-            if (!_names.TryGetValue(type, out Dictionary<string, Guid> items))
+            if (!_items.TryGetValue(type, out Dictionary<Guid, string> items))
             {
                 yield break;
             }
 
             foreach (var item in items)
             {
-                yield return new MetadataItem(type, item.Value, item.Key);
+                yield return new MetadataItem(type, item.Key, item.Value);
             }
         }
 
@@ -876,13 +908,19 @@ namespace DaJet.Metadata
 
             return $"_{entry.Name}{entry.Code}";
         }
-        internal Publication GetPublication(string name)
+        public Publication GetPublication(string name)
         {
-            string metadataName = "ПланОбмена." + name;
+            if (!_names.TryGetValue(MetadataTypes.Publication, out Dictionary<string, Guid> names))
+            {
+                return null;
+            }
 
-            string[] identifiers = GetIdentifiers(metadataName);
+            if (!names.TryGetValue(name, out Guid uuid))
+            {
+                return null;
+            }
 
-            Publication publication = GetMetadataObjectCached(identifiers[0], identifiers[1]) as Publication;
+            Publication publication = GetMetadataObject<Publication>(MetadataTypes.Publication, uuid);
 
             if (publication == null)
             {
@@ -895,8 +933,11 @@ namespace DaJet.Metadata
 
             return publication;
         }
-        internal EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
+        public EntityChangeTable GetEntityChangeTable(ApplicationObject entity)
         {
+            // TODO: Поддерживаются только ссылочные типы данных
+            // TODO: Добавить поддержку для регистров (составные ключи)
+
             if (!TryGetChngR(entity.Uuid, out _))
             {
                 return null;

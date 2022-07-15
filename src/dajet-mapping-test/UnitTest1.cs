@@ -1,5 +1,4 @@
 using DaJet.Metadata;
-using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -7,28 +6,38 @@ namespace DaJet.Data.Mapping.Test
 {
     [TestClass] public class UnitTest1
     {
+        private const string IB_KEY = "dajet-metadata-ms";
         private readonly InfoBase _infoBase;
-        private readonly MetadataService service = new();
+        private readonly MetadataCache _cache;
+        private readonly MetadataService _service = new();
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
         public UnitTest1()
         {
-            InfoBaseOptions options = new()
+            _service.Add(new InfoBaseOptions()
             {
+                Key = IB_KEY,
                 ConnectionString = MS_CONNECTION_STRING,
                 DatabaseProvider = DatabaseProvider.SqlServer
-            };
+            });
 
-            service.Configure(options);
-
-            if (!service.TryOpenInfoBase(out _infoBase, out string error))
+            if (!_service.TryGetInfoBase(IB_KEY, out _infoBase, out string error))
             {
                 throw new InvalidOperationException($"Failed to open info base: {error}");
+            }
+
+            if (!_service.TryGetMetadataCache(IB_KEY, out _cache, out error))
+            {
+                throw new InvalidOperationException($"Failed to get metadata cache: {error}");
             }
         }
         private void ExecuteAndShow(DataMapperOptions options)
         {
-            IQueryExecutor executor = service.CreateQueryExecutor();
-
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
+            
             EntityDataMapper mapper = new(options, executor);
 
             var list = mapper.Select();
@@ -56,7 +65,7 @@ namespace DaJet.Data.Mapping.Test
         {
             string metadataName = "—правочник.—правочник»ерархический√руппы";
 
-            MetadataObject @object = service.GetMetadataObject(metadataName);
+            MetadataObject @object = _cache.GetMetadataObject(metadataName);
 
             if (@object == null)
             {
@@ -67,11 +76,15 @@ namespace DaJet.Data.Mapping.Test
             DataMapperOptions options = new()
             {
                 InfoBase = _infoBase,
-                Entity = @object as ApplicationObject
+                Entity = (@object as ApplicationObject)!
             };
             //options.Filter.Add(new FilterParameter("—сылка", new Guid("e403d57f-fe02-11ec-9ccf-408d5c93cc8e")));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -110,7 +123,7 @@ namespace DaJet.Data.Mapping.Test
         {
             string metadataName = "—правочник.ѕростой—правочник";
 
-            MetadataObject @object = service.GetMetadataObject(metadataName);
+            MetadataObject @object = _cache.GetMetadataObject(metadataName);
 
             if (@object == null)
             {
@@ -126,11 +139,15 @@ namespace DaJet.Data.Mapping.Test
             DataMapperOptions options = new()
             {
                 InfoBase = _infoBase,
-                Entity = @object as ApplicationObject
+                Entity = (@object as ApplicationObject)!
             };
             options.Filter.Add(new FilterParameter(" од", 1));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -169,7 +186,7 @@ namespace DaJet.Data.Mapping.Test
         {
             string metadataName = "–егистр—ведений.ѕериодическийћного–егистраторов"; // ќбычный–егистр—ведений
 
-            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+            ApplicationObject @object = (_cache.GetMetadataObject(metadataName) as ApplicationObject)!;
 
             if (@object == null)
             {
@@ -185,7 +202,11 @@ namespace DaJet.Data.Mapping.Test
             //options.Filter.Add(new FilterParameter("»змерение1", 20));
             options.Filter.Add(new FilterParameter("ѕериод", new DateTime(2022, 7, 2), ComparisonOperator.GreaterOrEqual));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -204,7 +225,7 @@ namespace DaJet.Data.Mapping.Test
         {
             string metadataName = "–егистрЌакоплени€.–егистрЌакоплени€ќстатки"; // –егистрЌакоплени€ќбороты
 
-            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+            ApplicationObject @object = (_cache.GetMetadataObject(metadataName) as ApplicationObject)!;
 
             if (@object == null)
             {
@@ -228,7 +249,7 @@ namespace DaJet.Data.Mapping.Test
         {
             string metadataName = "—правочник.ѕростой—правочник";
 
-            MetadataObject @object = service.GetMetadataObject(metadataName);
+            MetadataObject @object = _cache.GetMetadataObject(metadataName);
 
             if (@object == null)
             {
@@ -241,7 +262,7 @@ namespace DaJet.Data.Mapping.Test
                 return;
             }
 
-            EntityChangeTable changeTable = service.GetEntityChangeTable(entity);
+            EntityChangeTable changeTable = _cache.GetEntityChangeTable(entity);
             
             if (changeTable == null)
             {
@@ -256,7 +277,11 @@ namespace DaJet.Data.Mapping.Test
             };
             //options.Filter.Add(new FilterParameter("—сылка", new Guid("e403d57f-fe02-11ec-9ccf-408d5c93cc8e")));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -272,7 +297,7 @@ namespace DaJet.Data.Mapping.Test
 
                 if (record["”зелѕланаќбмена"] is EntityRef node)
                 {
-                    ApplicationObject _node = service.GetApplicationObject(node.TypeCode);
+                    ApplicationObject _node = (_cache.GetMetadataObject(node.TypeCode) as ApplicationObject)!;
                 }
             }
         }
@@ -296,7 +321,11 @@ namespace DaJet.Data.Mapping.Test
             };
             options.Filter.Add(new FilterParameter("”зелѕланаќбмена", exchangeNode));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -331,7 +360,7 @@ namespace DaJet.Data.Mapping.Test
         }
         private EntityRef GetExchangeNode(string metadataName, string code)
         {
-            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+            ApplicationObject @object = (_cache.GetMetadataObject(metadataName) as ApplicationObject)!;
 
             DataMapperOptions options = new()
             {
@@ -340,7 +369,11 @@ namespace DaJet.Data.Mapping.Test
             };
             options.Filter.Add(new FilterParameter(" од", code));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return EntityRef.Empty;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -355,18 +388,18 @@ namespace DaJet.Data.Mapping.Test
         }
         private EntityChangeTable GetChangeTable(string metadataName)
         {
-            MetadataObject @object = service.GetMetadataObject(metadataName);
+            MetadataObject @object = _cache.GetMetadataObject(metadataName);
 
             if (@object is ApplicationObject entity)
             {
-                return service.GetEntityChangeTable(entity);
+                return _cache.GetEntityChangeTable(entity);
             }
 
             return null!;
         }
         private string GetNodeDescription(string metadataName, Guid identity)
         {
-            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+            ApplicationObject @object = (_cache.GetMetadataObject(metadataName) as ApplicationObject)!;
 
             DataMapperOptions options = new()
             {
@@ -375,7 +408,11 @@ namespace DaJet.Data.Mapping.Test
             };
             options.Filter.Add(new FilterParameter("—сылка", identity));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                Console.WriteLine($"Failed to get QueryExecutor: {error}");
+                return error;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 
@@ -390,7 +427,7 @@ namespace DaJet.Data.Mapping.Test
         }
         private string GetEntityDescription(string metadataName, Guid identity)
         {
-            ApplicationObject @object = (service.GetMetadataObject(metadataName) as ApplicationObject)!;
+            ApplicationObject @object = (_cache.GetMetadataObject(metadataName) as ApplicationObject)!;
 
             DataMapperOptions options = new()
             {
@@ -399,7 +436,10 @@ namespace DaJet.Data.Mapping.Test
             };
             options.Filter.Add(new FilterParameter("—сылка", new EntityRef(@object.TypeCode, identity)));
 
-            IQueryExecutor executor = service.CreateQueryExecutor();
+            if (!_service.TryGetQueryExecutor(IB_KEY, out IQueryExecutor executor, out string error))
+            {
+                return error;
+            }
 
             EntityDataMapper mapper = new(options, executor);
 

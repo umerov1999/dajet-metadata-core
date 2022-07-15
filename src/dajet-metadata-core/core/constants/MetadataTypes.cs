@@ -66,6 +66,18 @@ namespace DaJet.Metadata.Core
                 };
             }
         }
+        public static List<Guid> CatalogOwnerTypes
+        {
+            get
+            {
+                return new List<Guid>()
+                {
+                    Catalog,
+                    Characteristic,
+                    Publication
+                };
+            }
+        }
         public static List<Guid> ValueObjectTypes
         {
             get

@@ -93,7 +93,7 @@ namespace DaJet.Metadata.Core
 
             if (bytes == 0)
             {
-                throw new Exception("Zero length file");
+                _buffer = Array.Empty<byte>();
             }
 
             _stream = CreateReader(in _buffer, _utf8);
@@ -120,7 +120,7 @@ namespace DaJet.Metadata.Core
 
             if (bytes == 0)
             {
-                throw new Exception("Zero length file");
+                _buffer = Array.Empty<byte>();
             }
 
             _stream = CreateReader(in _buffer, _utf8);
