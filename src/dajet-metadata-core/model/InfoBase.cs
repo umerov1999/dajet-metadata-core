@@ -13,7 +13,7 @@
         /// <summary>
         /// Режим совместимости платформы
         /// </summary>
-        public int СompatibilityVersion { get; set; }
+        public int CompatibilityVersion { get; set; }
         /// <summary>
         /// Версия прикладной конфигурации
         /// </summary>

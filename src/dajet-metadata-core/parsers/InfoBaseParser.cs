@@ -126,19 +126,19 @@ namespace DaJet.Metadata.Parsers
 
             if (version == 0)
             {
-                _infoBase.СompatibilityVersion = 80216;
+                _infoBase.CompatibilityVersion = 80216;
             }
             else if (version == 1)
             {
-                _infoBase.СompatibilityVersion = 80100;
+                _infoBase.CompatibilityVersion = 80100;
             }
             else if (version == 2)
             {
-                _infoBase.СompatibilityVersion = 80213;
+                _infoBase.CompatibilityVersion = 80213;
             }
             else
             {
-                _infoBase.СompatibilityVersion = version;
+                _infoBase.CompatibilityVersion = version;
             }
         }
         private void ConfigVersion(in ConfigFileReader source, in CancelEventArgs args)

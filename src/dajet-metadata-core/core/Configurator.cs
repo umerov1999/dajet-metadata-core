@@ -520,7 +520,7 @@ namespace DaJet.Metadata.Core
         }
         private static void ConfigurePropertyПредопределённый(in MetadataCache cache, in ApplicationObject metadata)
         {
-            if (cache.InfoBase.СompatibilityVersion >= 80303)
+            if (cache.InfoBase.CompatibilityVersion >= 80303)
             {
                 ConfigurePropertyPredefinedID(metadata);
             }
@@ -528,7 +528,7 @@ namespace DaJet.Metadata.Core
             {
                 ConfigurePropertyIsMetadata(metadata);
             }
-            else if (cache.InfoBase.СompatibilityVersion >= 80216)
+            else if (cache.InfoBase.CompatibilityVersion >= 80216)
             {
                 ConfigurePropertyPredefinedID(metadata);
             }

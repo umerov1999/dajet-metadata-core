@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>DaJet.Metadata.Core</RootNamespace>
-    <AssemblyName>DaJet.Metadata.Core</AssemblyName>
+    <RootNamespace>DaJet.Metadata</RootNamespace>
+    <AssemblyName>DaJet.Metadata</AssemblyName>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Version>4.0.0</Version>
     <Authors>Zhichkin</Authors>
