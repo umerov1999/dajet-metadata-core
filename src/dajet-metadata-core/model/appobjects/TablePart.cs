@@ -2,7 +2,7 @@
 {
     public sealed class TablePart : ApplicationObject
     {
-        public ApplicationObject Owner { get; set; }
+        //[JsonIgnore] public ApplicationObject Owner { get; set; }
     }
     
     // все реквизиты обязательные

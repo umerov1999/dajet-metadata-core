@@ -1,4 +1,6 @@
-﻿namespace DaJet.Metadata.Model
+﻿using System.Text.Json.Serialization;
+
+namespace DaJet.Metadata.Model
 {
     public sealed class EntityChangeTable : ApplicationObject
     {
@@ -6,6 +8,6 @@
         {
             Entity = entity;
         }
-        public ApplicationObject Entity { get; }
+        [JsonIgnore] public ApplicationObject Entity { get; }
     }
 }

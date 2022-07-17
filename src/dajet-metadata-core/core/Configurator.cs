@@ -286,7 +286,6 @@ namespace DaJet.Metadata.Core
 
             foreach (TablePart tablePart in aggregate.TableParts)
             {
-                tablePart.Owner = owner;
                 ConfigurePropertyСсылка(in owner, in tablePart);
                 ConfigurePropertyКлючСтроки(in tablePart);
                 ConfigurePropertyНомерСтроки(in cache, in tablePart);

@@ -7,42 +7,63 @@
 	},
 	"item": [
 		{
-			"name": "InfoBase",
+			"name": "Metadata",
 			"item": [
 				{
-					"name": "Show InfoBase list",
+					"name": "InfoBase list",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/infobase",
+							"raw": "http://localhost:5000/md",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "5000",
 							"path": [
-								"infobase"
+								"md"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Show InfoBase properties",
+					"name": "InfoBase properties",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/infobase/dajet-metadata-ms",
+							"raw": "http://localhost:5000/md/dajet-metadata-ms",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "5000",
 							"path": [
-								"infobase",
+								"md",
 								"dajet-metadata-ms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "InfoBase reset cache",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-ms/reset",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-ms",
+								"reset"
 							]
 						}
 					},
@@ -64,13 +85,14 @@
 							"raw": "{\r\n    \"Name\":\"dajet-metadata-pg\",\r\n    \"Description\":\"Тестовая база данных (pg)\",\r\n    \"DatabaseProvider\":\"PostgreSql\",\r\n    \"ConnectionString\":\"Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;\"\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:5000/infobase",
+							"raw": "http://localhost:5000/md/infobase",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "5000",
 							"path": [
+								"md",
 								"infobase"
 							]
 						}
@@ -90,16 +112,17 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"Name\":\"dajet-metadata-ms\",\r\n    \"Description\":\"Тестовая база данных (ms)\",\r\n    \"DatabaseProvider\":\"SqlServer\",\r\n    \"ConnectionString\":\"Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;\"\r\n}"
+							"raw": "{\r\n    \"Name\":\"dajet-metadata-ms\",\r\n    \"Description\":\"Тестовая база данных (ms)\",\r\n    \"DatabaseProvider\":\"SqlServer\",\r\n    \"ConnectionString\":\"Data Source=localhost;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;\"\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:5000/infobase",
+							"raw": "http://localhost:5000/md/infobase",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "5000",
 							"path": [
+								"md",
 								"infobase"
 							]
 						}
@@ -110,17 +133,70 @@
 					"name": "Unregister InfoBase",
 					"request": {
 						"method": "DELETE",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Name\":\"dajet-metadata-pg\"\r\n}"
+						},
 						"url": {
-							"raw": "http://localhost:5000/infobase/dajet-metadata-ms",
+							"raw": "http://localhost:5000/md/infobase",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "5000",
 							"path": [
-								"infobase",
-								"dajet-metadata-ms"
+								"md",
+								"infobase"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Metadata types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-pg/Catalog",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-pg",
+								"Catalog"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Metadata object",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-ms/Справочник/Номенклатура",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-ms",
+								"Справочник",
+								"Номенклатура"
 							]
 						}
 					},
@@ -129,19 +205,39 @@
 			]
 		},
 		{
-			"name": "ping",
+			"name": "swagger",
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/ping",
+					"raw": "https://localhost:5001/swagger/index.html",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"swagger",
+						"index.html"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Blazor UI",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/index.html",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "5000",
 					"path": [
-						"ping"
+						"index.html"
 					]
 				}
 			},

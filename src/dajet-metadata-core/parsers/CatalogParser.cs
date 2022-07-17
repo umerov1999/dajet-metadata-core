@@ -184,11 +184,6 @@ namespace DaJet.Metadata.Parsers
 
                 if (tables != null && tables.Count > 0)
                 {
-                    foreach (TablePart table in tables)
-                    {
-                        table.Owner = _target;
-                    }
-
                     _target.TableParts = tables;
                 }
             }
