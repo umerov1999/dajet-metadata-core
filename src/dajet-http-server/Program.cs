@@ -38,12 +38,29 @@ namespace DaJet.Http.Server
             }
 
             //app.UseHttpsRedirection();
-            app.UseAuthorization();
-            
             app.MapControllers();
 
-            app.UseStaticFiles();
-            app.UseBlazorFrameworkFiles();
+            //app.MapWhen(RouteToBlazor, builder =>
+            //{
+            //    builder.UseBlazorFrameworkFiles();
+            //    builder.UseStaticFiles();
+
+            //    builder.UseRouting();
+            //    builder.UseEndpoints(endpoints =>
+            //    {
+            //        endpoints.MapFallbackToFile("{*path:nonfile}", "index.html");
+            //    });
+            //});
+
+            //app.MapWhen(RouteToMetadataService, builder =>
+            //{
+            //    app.UseRouting();
+            //    app.UseAuthorization();
+            //    app.UseEndpoints(endpoints =>
+            //    {
+            //        endpoints.MapControllers();
+            //    });
+            //});
 
             app.Run();
         }
@@ -69,6 +86,15 @@ namespace DaJet.Http.Server
             }
 
             services.AddSingleton<IMetadataService>(metadataService);
+        }
+
+        private static bool RouteToBlazor(HttpContext context)
+        {
+            return !context.Request.Path.StartsWithSegments("/md");
+        }
+        private static bool RouteToMetadataService(HttpContext context)
+        {
+            return context.Request.Path.StartsWithSegments("/md");
         }
     }
 }

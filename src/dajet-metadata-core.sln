@@ -17,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-mapping-test", "dajet
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-server", "dajet-http-server\dajet-http-server.csproj", "{E8C0BB34-6554-45DF-97A5-32A177E97671}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-blazor", "dajet-blazor\dajet-blazor.csproj", "{8A5F5A93-10DD-4839-8B7B-CD351702693E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-blazor", "dajet-blazor\dajet-blazor.csproj", "{8A5F5A93-10DD-4839-8B7B-CD351702693E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
