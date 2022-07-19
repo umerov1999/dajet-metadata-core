@@ -1,5 +1,4 @@
-﻿using DaJet.Metadata.Model;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace DaJet.Metadata.Core
 {

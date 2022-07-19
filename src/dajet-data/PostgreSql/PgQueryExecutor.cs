@@ -5,7 +5,13 @@ namespace DaJet.Data.PostgreSql
 {
     public sealed class PgQueryExecutor : QueryExecutor
     {
-        public PgQueryExecutor(in string connectionString) : base(connectionString) { }
+        public PgQueryExecutor(string connectionString) : base(connectionString) { }
+        public override string GetDatabaseName()
+        {
+            string databaseName = new NpgsqlConnectionStringBuilder(_connectionString).Database!;
+
+            return (string.IsNullOrWhiteSpace(databaseName) ? string.Empty : databaseName);
+        }
         protected override DbConnection GetDbConnection()
         {
             return new NpgsqlConnection(_connectionString);

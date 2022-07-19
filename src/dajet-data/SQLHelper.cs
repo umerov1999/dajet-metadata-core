@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DaJet.Data
 {
-    public sealed class SqlFieldInfo
+    internal sealed class SqlFieldInfo
     {
         public SqlFieldInfo() { }
         public int ORDINAL_POSITION;
@@ -16,7 +16,7 @@ namespace DaJet.Data
         public bool IS_NULLABLE;
         public bool IsFound;
     }
-    public sealed class IndexInfo
+    internal sealed class IndexInfo
     {
         public IndexInfo(string name, bool unique, bool clustered, bool primaryKey)
         {
@@ -33,7 +33,7 @@ namespace DaJet.Data
         public List<IndexColumnInfo> Includes { get; } = new List<IndexColumnInfo>();
         public override string ToString() { return Name; }
     }
-    public sealed class IndexColumnInfo
+    internal sealed class IndexColumnInfo
     {
         public IndexColumnInfo(string name, string type, byte ordinal, bool included, bool nullable, bool descending)
         {
@@ -52,7 +52,7 @@ namespace DaJet.Data
         public bool IsDescending { get; private set; } // 0 - ASC, 1 - DESC
         public override string ToString() { return Name; }
     }
-    public sealed class ClusteredIndexInfo
+    internal sealed class ClusteredIndexInfo
     {
         public ClusteredIndexInfo() { }
         public string NAME;
@@ -84,7 +84,7 @@ namespace DaJet.Data
             return info;
         }
     }
-    public sealed class ClusteredIndexColumnInfo
+    internal sealed class ClusteredIndexColumnInfo
     {
         public ClusteredIndexColumnInfo() { }
         public byte KEY_ORDINAL;
@@ -94,7 +94,7 @@ namespace DaJet.Data
     }
     public static class SQLHelper
     {
-        public static List<SqlFieldInfo> GetSqlFields(string connectionString, string tableName)
+        internal static List<SqlFieldInfo> GetSqlFields(string connectionString, string tableName)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(@"SELECT");
@@ -139,7 +139,7 @@ namespace DaJet.Data
             }
             return list;
         }
-        public static ClusteredIndexInfo GetClusteredIndexInfo(string connectionString, string tableName)
+        internal static ClusteredIndexInfo GetClusteredIndexInfo(string connectionString, string tableName)
         {
             ClusteredIndexInfo info = null;
 
@@ -230,7 +230,7 @@ namespace DaJet.Data
 
             return sb.ToString();
         }
-        public static List<IndexInfo> GetIndexes(string connectionString, string tableName)
+        internal static List<IndexInfo> GetIndexes(string connectionString, string tableName)
         {
             List<IndexInfo> list = new List<IndexInfo>();
 

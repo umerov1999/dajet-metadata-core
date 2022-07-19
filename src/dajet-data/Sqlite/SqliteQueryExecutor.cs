@@ -1,22 +1,23 @@
-﻿using Microsoft.Data.SqlClient;
+﻿
+using Microsoft.Data.Sqlite;
 using System.Data.Common;
 
-namespace DaJet.Data.SqlServer
+namespace DaJet.Data.Sqlite
 {
-    public sealed class MsQueryExecutor : QueryExecutor
+    public sealed class SqliteQueryExecutor : QueryExecutor
     {
-        public MsQueryExecutor(string connectionString) : base(connectionString) { }
+        public SqliteQueryExecutor(string connectionString) : base(connectionString) { }
         public override string GetDatabaseName()
         {
-            return new SqlConnectionStringBuilder(_connectionString).InitialCatalog;
+            return new SqliteConnectionStringBuilder(_connectionString).DataSource;
         }
         protected override DbConnection GetDbConnection()
         {
-            return new SqlConnection(_connectionString);
+            return new SqliteConnection(_connectionString);
         }
         protected override void ConfigureQueryParameters(in DbCommand command, in Dictionary<string, object> parameters)
         {
-            if (command is not SqlCommand _command)
+            if (command is not SqliteCommand _command)
             {
                 throw new InvalidOperationException(nameof(command));
             }

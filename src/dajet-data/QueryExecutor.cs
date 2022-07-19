@@ -1,15 +1,36 @@
-﻿using System.Data;
+﻿using DaJet.Data.PostgreSql;
+using DaJet.Data.Sqlite;
+using DaJet.Data.SqlServer;
+using System.Data;
 using System.Data.Common;
 
 namespace DaJet.Data
 {
     public abstract class QueryExecutor : IQueryExecutor
     {
+        public static IQueryExecutor Create(DatabaseProvider provider, string connectionString)
+        {
+            if (provider == DatabaseProvider.SqlServer)
+            {
+                return new MsQueryExecutor(connectionString);
+            }
+            else if (provider == DatabaseProvider.PostgreSql)
+            {
+                return new PgQueryExecutor(connectionString);
+            }
+            else if (provider == DatabaseProvider.Sqlite)
+            {
+                return new SqliteQueryExecutor(connectionString);
+            }
+
+            return null!;
+        }
         protected readonly string _connectionString;
-        public QueryExecutor(in string connectionString)
+        public QueryExecutor(string connectionString)
         {
             _connectionString = connectionString;
         }
+        public abstract string GetDatabaseName();
         protected abstract DbConnection GetDbConnection();
         protected abstract void ConfigureQueryParameters(in DbCommand command, in Dictionary<string, object> parameters);
         public T ExecuteScalar<T>(in string script, int timeout)

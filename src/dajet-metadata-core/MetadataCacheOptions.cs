@@ -1,4 +1,6 @@
-﻿namespace DaJet.Metadata
+﻿using DaJet.Data;
+
+namespace DaJet.Metadata
 {
     public sealed class MetadataCacheOptions
     {
