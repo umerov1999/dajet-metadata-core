@@ -1,4 +1,5 @@
-﻿using DaJet.Http.DataMappers;
+﻿using DaJet.Data;
+using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
 using DaJet.Metadata.Core;

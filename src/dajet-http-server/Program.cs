@@ -1,6 +1,8 @@
+using DaJet.Data;
 using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
+using Microsoft.Extensions.FileProviders;
 
 namespace DaJet.Http.Server
 {
@@ -20,6 +22,7 @@ namespace DaJet.Http.Server
             builder.Host.UseWindowsService();
 
             ConfigureServices(builder.Services);
+            ConfigureFileProvider(builder.Services);
 
             // Add services to the container.
             builder.Services.AddControllers();
@@ -87,14 +90,13 @@ namespace DaJet.Http.Server
 
             services.AddSingleton<IMetadataService>(metadataService);
         }
+        private static void ConfigureFileProvider(IServiceCollection services)
+        {
+            string catalogPath = AppContext.BaseDirectory;
+            
+            PhysicalFileProvider fileProvider = new(catalogPath);
 
-        private static bool RouteToBlazor(HttpContext context)
-        {
-            return !context.Request.Path.StartsWithSegments("/md");
-        }
-        private static bool RouteToMetadataService(HttpContext context)
-        {
-            return context.Request.Path.StartsWithSegments("/md");
+            services.AddSingleton<IFileProvider>(fileProvider);
         }
     }
 }
