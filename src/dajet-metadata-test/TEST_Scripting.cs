@@ -18,14 +18,47 @@ namespace DaJet.Scripting.Test
                 using (StreamReader reader = new(filePath, Encoding.UTF8))
                 {
                     string script = reader.ReadToEnd();
-                    using (ScriptParser parser = new(script))
+                    using (ScriptScanner scanner = new(script))
                     {
-                        foreach (ScriptToken token in parser.Parse())
+                        foreach (ScriptToken token in scanner.Scan())
                         {
                             Console.WriteLine(token);
                         }
                     }
                 }
+            }
+        }
+        [TestMethod] public void Parse()
+        {
+            foreach (string filePath in Directory.GetFiles("C:\\temp\\scripting-test"))
+            {
+                Console.WriteLine("***");
+                Console.WriteLine(filePath);
+
+                using (StreamReader reader = new(filePath, Encoding.UTF8))
+                {
+                    string script = reader.ReadToEnd();
+                    using (ScriptParser parser = new(script))
+                    {
+                        SyntaxTree tree = parser.Parse();
+
+                        foreach (SyntaxNode node in tree.Nodes)
+                        {
+                            ShowSyntaxNode(node, 0);
+                        }
+                    }
+                }
+            }
+        }
+        private void ShowSyntaxNode(SyntaxNode node, int level)
+        {
+            string offset = "-".PadLeft(level + 1);
+
+            Console.WriteLine($"{offset} {node.Token.Text}");
+
+            foreach (SyntaxNode child in node.Children)
+            {
+                ShowSyntaxNode(child, level + 1);
             }
         }
     }

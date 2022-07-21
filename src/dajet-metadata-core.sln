@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-http-server", "dajet-
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dajet-blazor", "dajet-blazor\dajet-blazor.csproj", "{8A5F5A93-10DD-4839-8B7B-CD351702693E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dajet-scripting", "dajet-scripting\dajet-scripting.csproj", "{DE486792-DAF2-4E92-A440-A0322D134A52}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{8A5F5A93-10DD-4839-8B7B-CD351702693E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A5F5A93-10DD-4839-8B7B-CD351702693E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8A5F5A93-10DD-4839-8B7B-CD351702693E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE486792-DAF2-4E92-A440-A0322D134A52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE486792-DAF2-4E92-A440-A0322D134A52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE486792-DAF2-4E92-A440-A0322D134A52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE486792-DAF2-4E92-A440-A0322D134A52}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
