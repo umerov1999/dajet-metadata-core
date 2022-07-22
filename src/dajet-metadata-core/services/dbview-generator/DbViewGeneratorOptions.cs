@@ -5,7 +5,7 @@ namespace DaJet.Metadata.Services
     public sealed class DbViewGeneratorOptions
     {
         public string Schema { get; set; } = "dbo";
-        public bool EncodeNames { get; set; } = false;
+        public bool CodifyViewNames { get; set; } = false; // shorten view names for PostgreSql
         public string OutputFile { get; set; } = string.Empty;
         public string DatabaseProvider { get; set; } = string.Empty; // { SqlServer, PostgreSql }
         public string ConnectionString { get; set; } = string.Empty;
@@ -44,9 +44,9 @@ namespace DaJet.Metadata.Services
                 options.OutputFile = OutputFile ?? string.Empty;
             }
 
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.EncodeViewNames), out string EncodeViewNames))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.CodifyViewNames), out string CodifyViewNames))
             {
-                options.EncodeViewNames = (EncodeViewNames == "true");
+                options.CodifyViewNames = (CodifyViewNames == "true");
             }
         }
     }

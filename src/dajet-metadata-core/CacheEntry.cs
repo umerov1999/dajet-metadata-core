@@ -4,13 +4,15 @@ namespace DaJet.Metadata
 {
     internal sealed class CacheEntry
     {
+        private const long EXPIRATION_TIMEOUT = 600000L; // milliseconds = 10 minutes
+
         private readonly RWLockSlim _lock = new();
         private readonly InfoBaseOptions _options;
         private readonly WeakReference<MetadataCache> _value = new(null);
         private long _lastUpdate = 0L; // milliseconds
         internal CacheEntry(InfoBaseOptions options)
         {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _options = options;
         }
         internal InfoBaseOptions Options { get { return _options; } }
         internal RWLockSlim.UpgradeableLockToken UpdateLock() { return _lock.UpgradeableLock(); }
@@ -43,9 +45,9 @@ namespace DaJet.Metadata
         {
             get
             {
-                long elapsed = (Environment.TickCount64 - _lastUpdate) / 1000;
+                long elapsed = (Environment.TickCount64 - _lastUpdate);
 
-                return _options.Expiration < elapsed;
+                return EXPIRATION_TIMEOUT < elapsed;
             }
         }
         internal void Dispose()

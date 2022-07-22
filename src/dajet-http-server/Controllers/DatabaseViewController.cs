@@ -105,11 +105,11 @@ namespace DaJet.Http.Controllers
                 return NotFound($"File does not exist: {fileName}");
             }
 
-            byte[] content = System.IO.File.ReadAllBytes(file.PhysicalPath);
+            string content;
 
-            if (content == null || content.Length == 0)
+            using (StreamReader reader = new(file.PhysicalPath, Encoding.UTF8))
             {
-                return NotFound($"Script file is empty: {fileName}");
+                content = reader.ReadToEnd();
             }
 
             try
@@ -121,7 +121,7 @@ namespace DaJet.Http.Controllers
                 // do nothing
             }
 
-            return File(content, "application/sql", fileName);
+            return Content(content, "text/plain", Encoding.UTF8);
         }
 
         [HttpPost("{infobase}")] public ActionResult CreateViews([FromRoute] string infobase)
@@ -226,36 +226,6 @@ namespace DaJet.Http.Controllers
             string json = JsonSerializer.Serialize(entity, options);
 
             return Content(json);
-        }
-
-        [HttpGet("script/{infobase}/{type}/{name}")] public ActionResult Select([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            string fileName = "query.sql";
-
-            IFileInfo file = _fileProvider.GetFileInfo(fileName);
-
-            if (!file.Exists)
-            {
-                return NotFound($"File does not exist: {fileName}");
-            }
-
-            string content;
-
-            using (StreamReader reader = new(file.PhysicalPath, Encoding.UTF8))
-            {
-                content = reader.ReadToEnd();
-            }
-
-            try
-            {
-                System.IO.File.Delete(file.PhysicalPath);
-            }
-            catch
-            {
-                // do nothing
-            }
-
-            return Content(content, "text/plain", Encoding.UTF8);
         }
     }
 }

@@ -21,11 +21,11 @@ namespace DaJet.Http.Server
             builder.Host.UseSystemd();
             builder.Host.UseWindowsService();
 
-            ConfigureServices(builder.Services);
-            ConfigureFileProvider(builder.Services);
-
             // Add services to the container.
             builder.Services.AddControllers();
+
+            ConfigureServices(builder.Services);
+            ConfigureFileProvider(builder.Services);
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -43,26 +43,14 @@ namespace DaJet.Http.Server
             //app.UseHttpsRedirection();
             app.MapControllers();
 
-            //app.MapWhen(RouteToBlazor, builder =>
-            //{
-            //    builder.UseBlazorFrameworkFiles();
-            //    builder.UseStaticFiles();
+            //app.UseRouting();
 
-            //    builder.UseRouting();
-            //    builder.UseEndpoints(endpoints =>
-            //    {
-            //        endpoints.MapFallbackToFile("{*path:nonfile}", "index.html");
-            //    });
-            //});
+            //app.UseAuthentication();
+            //app.UseAuthorization();
 
-            //app.MapWhen(RouteToMetadataService, builder =>
+            //app.UseEndpoints(endpoints =>
             //{
-            //    app.UseRouting();
-            //    app.UseAuthorization();
-            //    app.UseEndpoints(endpoints =>
-            //    {
-            //        endpoints.MapControllers();
-            //    });
+            //    endpoints.MapControllers();
             //});
 
             app.Run();
