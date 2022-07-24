@@ -58,7 +58,7 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpPost("infobase")] public ActionResult Insert([FromBody] InfoBaseModel entity)
+        [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseModel entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
@@ -81,7 +81,7 @@ namespace DaJet.Http.Controllers
 
             return Created($"infobase/{entity.Name}", entity.Name);
         }
-        [HttpPut("infobase")] public ActionResult Update([FromBody] InfoBaseModel entity)
+        [HttpPut("")] public ActionResult Update([FromBody] InfoBaseModel entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
                 string.IsNullOrWhiteSpace(entity.ConnectionString) ||
@@ -112,7 +112,7 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpDelete("infobase")] public ActionResult Delete([FromBody] InfoBaseModel entity)
+        [HttpDelete("")] public ActionResult Delete([FromBody] InfoBaseModel entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name))
             {

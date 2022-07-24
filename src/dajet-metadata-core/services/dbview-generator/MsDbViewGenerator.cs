@@ -33,14 +33,14 @@ namespace DaJet.Metadata.Services
         {
             return $"[{_options.Schema}].[{viewName}]";
         }
-        public override string GenerateViewScript(in ApplicationObject metadata)
+        public override string GenerateViewScript(in ApplicationObject metadata, string viewName)
         {
             bool isTablePart = (metadata is TablePart);
 
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW [{_options.Schema}].[{Configurator.CreateViewName(metadata, _options.CodifyViewNames)}] AS SELECT");
+            script.AppendLine($"CREATE VIEW [{_options.Schema}].[{viewName}] AS SELECT");
 
             foreach (MetadataProperty property in metadata.Properties)
             {
@@ -65,15 +65,16 @@ namespace DaJet.Metadata.Services
             script.Append(fields);
 
             script.AppendLine($"FROM {metadata.TableName};");
+            //script.AppendLine("GO");
 
             return script.ToString();
         }
-        public override string GenerateEnumViewScript(in Enumeration enumeration)
+        public override string GenerateEnumViewScript(in Enumeration enumeration, string viewName)
         {
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW [{_options.Schema}].[{Configurator.CreateViewName(enumeration, _options.CodifyViewNames)}] AS");
+            script.AppendLine($"CREATE VIEW [{_options.Schema}].[{viewName}] AS");
 
             script.AppendLine("SELECT e._EnumOrder AS [Порядок], t.[Имя], t.[Синоним], t.[Значение]");
             script.AppendLine($"FROM {enumeration.TableName} AS e INNER JOIN");
@@ -101,7 +102,8 @@ namespace DaJet.Metadata.Services
             }
 
             script.Append(fields);
-            script.Append(") AS t ON e._IDRRef = t.[Значение];");
+            script.AppendLine(") AS t ON e._IDRRef = t.[Значение];");
+            //script.Append("GO");
 
             return script.ToString();
         }

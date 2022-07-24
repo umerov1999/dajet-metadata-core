@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using DaJet.Data;
+using System;
+using System.Collections.Generic;
 
 namespace DaJet.Metadata.Services
 {
@@ -7,7 +9,7 @@ namespace DaJet.Metadata.Services
         public string Schema { get; set; } = "dbo";
         public bool CodifyViewNames { get; set; } = false; // shorten view names for PostgreSql
         public string OutputFile { get; set; } = string.Empty;
-        public string DatabaseProvider { get; set; } = string.Empty; // { SqlServer, PostgreSql }
+        public DatabaseProvider DatabaseProvider { get; set; } = DatabaseProvider.SqlServer;
         public string ConnectionString { get; set; } = string.Empty;
         public List<string> MetadataTypes { get; set; } = new()
         {
@@ -24,27 +26,33 @@ namespace DaJet.Metadata.Services
         };
         public static void Configure(in DbViewGeneratorOptions options, Dictionary<string, string> values)
         {
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.DatabaseProvider), out string DatabaseProvider))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.DatabaseProvider), out string DatabaseProvider)
+                && !string.IsNullOrWhiteSpace(DatabaseProvider)
+                && Enum.TryParse(DatabaseProvider, out DatabaseProvider provider))
             {
-                options.DatabaseProvider = DatabaseProvider ?? string.Empty;
+                options.DatabaseProvider = provider;
             }
 
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.ConnectionString), out string ConnectionString))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.ConnectionString), out string ConnectionString)
+                && !string.IsNullOrWhiteSpace(ConnectionString))
             {
                 options.ConnectionString = ConnectionString ?? string.Empty;
             }
 
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.Schema), out string Schema))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.Schema), out string Schema)
+                && !string.IsNullOrWhiteSpace(Schema))
             {
                 options.Schema = Schema ?? string.Empty;
             }
 
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.OutputFile), out string OutputFile))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.OutputFile), out string OutputFile)
+                && !string.IsNullOrWhiteSpace(OutputFile))
             {
                 options.OutputFile = OutputFile ?? string.Empty;
             }
 
-            if (values.TryGetValue(nameof(DbViewGeneratorOptions.CodifyViewNames), out string CodifyViewNames))
+            if (values.TryGetValue(nameof(DbViewGeneratorOptions.CodifyViewNames), out string CodifyViewNames)
+                && !string.IsNullOrWhiteSpace(CodifyViewNames))
             {
                 options.CodifyViewNames = (CodifyViewNames == "true");
             }

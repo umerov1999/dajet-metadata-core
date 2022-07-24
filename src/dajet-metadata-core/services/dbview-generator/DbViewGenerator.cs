@@ -15,16 +15,11 @@ namespace DaJet.Metadata.Services
         {
             if(options == null) throw new ArgumentNullException(nameof(options));
 
-            if (!Enum.TryParse(options.DatabaseProvider, out DatabaseProvider provider))
-            {
-                throw new ArgumentException($"Unsupported database provider: [{options.DatabaseProvider}].");
-            }
-
-            if (provider == DatabaseProvider.SqlServer)
+            if (options.DatabaseProvider == DatabaseProvider.SqlServer)
             {
                 return new MsDbViewGenerator(options);
             }
-            else if (provider == DatabaseProvider.PostgreSql)
+            else if (options.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
                 return new PgDbViewGenerator(options);
             }
@@ -38,13 +33,9 @@ namespace DaJet.Metadata.Services
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
 
-            if (!Enum.TryParse(_options.DatabaseProvider, out DatabaseProvider provider))
-            {
-                throw new ArgumentException($"Unsupported database provider: [{_options.DatabaseProvider}].");
-            }
-
-            _executor = QueryExecutor.Create(provider, _options.ConnectionString);
+            _executor = QueryExecutor.Create(_options.DatabaseProvider, _options.ConnectionString);
         }
+        public DbViewGeneratorOptions Options { get { return _options; } }
 
         #region "ABSTRACT MEMBERS"
         protected abstract string DEFAULT_SCHEMA_NAME { get; }
@@ -54,8 +45,8 @@ namespace DaJet.Metadata.Services
         protected abstract string SCHEMA_EXISTS_SCRIPT { get; }
         protected abstract string CREATE_SCHEMA_SCRIPT { get; }
         protected abstract string FormatViewName(string viewName);
-        public abstract string GenerateViewScript(in ApplicationObject metadata);
-        public abstract string GenerateEnumViewScript(in Enumeration enumeration);
+        public abstract string GenerateViewScript(in ApplicationObject metadata, string viewName);
+        public abstract string GenerateEnumViewScript(in Enumeration enumeration, string viewName);
         #endregion
 
         #region "INTERFACE IMPLEMENTATION"
@@ -116,30 +107,46 @@ namespace DaJet.Metadata.Services
         {
             error = string.Empty;
 
+            List<string> scripts = new();
+            StringBuilder script = new();
+
             try
             {
                 string viewName = Configurator.CreateViewName(metadata, _options.CodifyViewNames);
 
-                List<string> scripts = new()
+                scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                if (_options.CodifyViewNames)
                 {
-                    string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName))
-                };
+                    script.AppendLine($"--{{{Configurator.CreateViewName(metadata)}}}");
+                }
 
                 if (metadata is Enumeration enumeration)
                 {
-                    scripts.Add(GenerateEnumViewScript(enumeration));
+                    script.AppendLine(GenerateEnumViewScript(enumeration, viewName));
+                    scripts.Add(script.ToString());
                 }
                 else
                 {
-                    scripts.Add(GenerateViewScript(metadata));
+                    script.AppendLine(GenerateViewScript(metadata, viewName));
+                    scripts.Add(script.ToString());
 
                     if (metadata is ITablePartOwner owner)
                     {
                         foreach (TablePart table in owner.TableParts)
                         {
-                            viewName = Configurator.CreateViewName(table, _options.CodifyViewNames);
+                            viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+
                             scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
-                            scripts.Add(GenerateViewScript(table));
+
+                            script.Clear();
+                            if (_options.CodifyViewNames)
+                            {
+                                script.AppendLine($"--{{{Configurator.CreateViewName(metadata, table)}}}");
+                            }
+                            script.AppendLine(GenerateViewScript(table, viewName));
+
+                            scripts.Add(script.ToString());
                         }
                     }
                 }
@@ -211,11 +218,22 @@ namespace DaJet.Metadata.Services
         }
         public void DropView(in ApplicationObject metadata)
         {
+            List<string> scripts = new();
+
             string viewName = Configurator.CreateViewName(metadata, _options.CodifyViewNames);
 
-            string script = string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName));
-            
-            _executor.ExecuteNonQuery(script, 10);
+            scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+            if (metadata is ITablePartOwner owner)
+            {
+                foreach (TablePart table in owner.TableParts)
+                {
+                    viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+                    scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+                }
+            }
+
+            _executor.TxExecuteNonQuery(scripts, 60);
         }
 
         public bool TryScriptViews(in MetadataCache cache, out int result, out List<string> errors)
@@ -255,32 +273,48 @@ namespace DaJet.Metadata.Services
         {
             error = string.Empty;
 
-            string viewName = Configurator.CreateViewName(in metadata, _options.CodifyViewNames);
+            StringBuilder script = new();
 
             try
             {
+                string viewName = Configurator.CreateViewName(in metadata, _options.CodifyViewNames);
+
                 writer.WriteLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
-                writer.WriteLine("GO");
+
+                if (_options.CodifyViewNames)
+                {
+                    script.AppendLine($"--{{{Configurator.CreateViewName(metadata)}}}");
+                }
 
                 if (metadata is Enumeration enumeration)
                 {
-                    writer.WriteLine(GenerateEnumViewScript(enumeration));
+                    script.Append(GenerateEnumViewScript(enumeration, viewName));
+                    writer.WriteLine(script.ToString());
                 }
                 else
                 {
-                    writer.WriteLine(GenerateViewScript(metadata));
+                    script.Append(GenerateViewScript(metadata, viewName));
+                    writer.WriteLine(script.ToString());
 
                     if (metadata is ITablePartOwner owner)
                     {
                         foreach (TablePart table in owner.TableParts)
                         {
-                            viewName = Configurator.CreateViewName(table, _options.CodifyViewNames);
-                            writer.WriteLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
-                            writer.WriteLine(GenerateViewScript(table));
+                            viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+
+                            script.Clear();
+                            script.AppendLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+
+                            if (_options.CodifyViewNames)
+                            {
+                                script.AppendLine($"--{{{Configurator.CreateViewName(metadata, table)}}}");
+                            }
+
+                            script.Append(GenerateViewScript(table, viewName));
+                            writer.WriteLine(script.ToString());
                         }
                     }
                 }
-                writer.WriteLine("GO");
             }
             catch (Exception exception)
             {

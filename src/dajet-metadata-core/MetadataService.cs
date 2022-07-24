@@ -4,6 +4,7 @@ using DaJet.Data.SqlServer;
 using DaJet.Metadata.Core;
 using DaJet.Metadata.Model;
 using DaJet.Metadata.Parsers;
+using DaJet.Metadata.Services;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace DaJet.Metadata
         bool TryGetInfoBase(string key, out InfoBase infoBase, out string error);
         bool TryGetMetadataCache(string key, out MetadataCache cache, out string error);
         bool TryGetQueryExecutor(string key, out IQueryExecutor executor, out string error);
+        bool TryGetDbViewGenerator(string key, out IDbViewGenerator generator, out string error);
     }
     public sealed class MetadataService : IMetadataService
     {
@@ -166,6 +168,37 @@ namespace DaJet.Metadata
             }
 
             return (executor != null);
+        }
+        public bool TryGetDbViewGenerator(string key, out IDbViewGenerator generator, out string error)
+        {
+            error = string.Empty;
+
+            if (!_cache.TryGetValue(key, out CacheEntry entry))
+            {
+                generator = null;
+
+                error = string.Format(ERROR_CASH_ENTRY_KEY_IS_NOT_FOUND, key);
+
+                return false;
+            }
+
+            DbViewGeneratorOptions options = new()
+            {
+                DatabaseProvider = entry.Options.DatabaseProvider,
+                ConnectionString = entry.Options.ConnectionString
+            };
+
+            try
+            {
+                generator = DbViewGenerator.Create(options);
+            }
+            catch (Exception exception)
+            {
+                generator = null;
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
+
+            return (generator != null);
         }
 
         public void Dispose()

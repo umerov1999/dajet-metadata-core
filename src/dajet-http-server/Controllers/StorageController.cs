@@ -12,11 +12,11 @@ namespace DaJet.Http.Controllers
     [Route("storage")]
     [Consumes("application/json")]
     [Produces("application/json")]
-    public class MetadataStorageController : ControllerBase
+    public class StorageController : ControllerBase
     {
         private readonly InfoBaseDataMapper _mapper = new();
         private readonly IMetadataService _metadataService;
-        public MetadataStorageController(IMetadataService metadataService)
+        public StorageController(IMetadataService metadataService)
         {
             _metadataService = metadataService;
         }

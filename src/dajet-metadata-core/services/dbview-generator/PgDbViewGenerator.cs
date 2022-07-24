@@ -35,14 +35,14 @@ namespace DaJet.Metadata.Services
         {
             return $"{_options.Schema}.\"{viewName}\"";
         }
-        public override string GenerateViewScript(in ApplicationObject metadata)
+        public override string GenerateViewScript(in ApplicationObject metadata, string viewName)
         {
             bool isTablePart = (metadata is TablePart);
 
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW \"{Configurator.CreateViewName(in metadata, _options.CodifyViewNames)}\" AS SELECT");
+            script.AppendLine($"CREATE VIEW \"{viewName}\" AS SELECT");
 
             foreach (MetadataProperty property in metadata.Properties)
             {
@@ -68,12 +68,12 @@ namespace DaJet.Metadata.Services
 
             return script.ToString();
         }
-        public override string GenerateEnumViewScript(in Enumeration enumeration)
+        public override string GenerateEnumViewScript(in Enumeration enumeration, string viewName)
         {
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW \"{Configurator.CreateViewName(enumeration, _options.CodifyViewNames)}\" AS");
+            script.AppendLine($"CREATE VIEW \"{viewName}\" AS");
 
             script.AppendLine("SELECT e._EnumOrder AS \"Порядок\", t.\"Имя\", t.\"Синоним\", t.\"Значение\"");
             script.AppendLine($"FROM {enumeration.TableName} AS e INNER JOIN");
