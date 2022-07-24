@@ -1,11 +1,11 @@
-﻿using DaJet.Data;
-using DaJet.Http.DataMappers;
+﻿using DaJet.Http.DataMappers;
 using DaJet.Http.Model;
 using DaJet.Metadata;
+using DaJet.Metadata.Core;
+using DaJet.Metadata.Model;
 using DaJet.Metadata.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
-using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -29,10 +29,14 @@ namespace DaJet.Http.Controllers
             _metadataService = metadataService;
         }
 
+        #region "SCRIPT VIEWS"
+
         [Produces("application/sql")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status206PartialContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [HttpGet("{infobase}")] public ActionResult ScriptViews([FromRoute] string infobase, [FromQuery] string? schema = null, [FromQuery] bool? codify = null)
+        [HttpGet("{infobase}")]
+        public ActionResult ScriptViews([FromRoute] string infobase, [FromQuery] string? schema = null, [FromQuery] bool? codify = null)
         {
             InfoBaseModel? record = _mapper.Select(infobase);
 
@@ -76,25 +80,27 @@ namespace DaJet.Http.Controllers
 
             if (codify.HasValue)
             {
-                generator.Options.CodifyViewNames = codify.Value;
+                generator.Options.Codify = codify.Value;
             }
             
             generator.Options.OutputFile = file.PhysicalPath;
 
-            if (!generator.TryScriptViews(in cache, out int result, out List<string> errors))
+            try
             {
-                if (result == 0)
+                using (StreamWriter writer = new(file.PhysicalPath, false, Encoding.UTF8))
                 {
-                    JsonSerializerOptions options = new()
+                    if (!generator.TryScriptViews(in cache, in writer, out error))
                     {
-                        WriteIndented = true,
-                        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-                    };
-
-                    string json = JsonSerializer.Serialize(errors, options);
-
-                    return Content(json);
+                        writer.WriteLine($"/* {error} */");
+                        Response.StatusCode = StatusCodes.Status206PartialContent;
+                    }
                 }
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ExceptionHelper.GetErrorMessage(exception));
             }
 
             byte[] content = System.IO.File.ReadAllBytes(file.PhysicalPath);
@@ -127,53 +133,106 @@ namespace DaJet.Http.Controllers
             //    FileDownloadName = fileName
             //};
         }
-        [Produces("application/sql")]
-        [HttpGet("{infobase}/{type}")] public ActionResult ScriptViews([FromRoute] string infobase, [FromRoute] string type)
+        
+        [Produces("text/plain")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status206PartialContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpGet("{infobase}/{type}/{name}")]
+        public ActionResult ScriptView(
+            [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name,
+            [FromQuery] string? schema = null, [FromQuery] bool? codify = null)
         {
-            string fileName = "query.sql";
-
-            IFileInfo file = _fileProvider.GetFileInfo(fileName);
-
-            if (!file.Exists)
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
             {
-                return NotFound($"File does not exist: {fileName}");
+                return BadRequest();
             }
 
-            byte[] content = System.IO.File.ReadAllBytes(file.PhysicalPath);
-
-            if (content == null || content.Length == 0)
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
             {
-                return NotFound($"Script file is empty: {fileName}");
+                return NotFound(error);
             }
+
+            Guid uuid = MetadataTypes.ResolveName(type);
+
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            MetadataObject metadata;
 
             try
             {
-                System.IO.File.Delete(file.PhysicalPath);
+                metadata = cache.GetMetadataObject($"{type}.{name}");
             }
-            catch
+            catch (Exception exception)
             {
-                // do nothing
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
             }
 
-            return File(content, "application/sql", fileName);
-        }
-        [Produces("application/json")]
-        [HttpGet("{infobase}/{type}/{name}")] public ActionResult ScriptViews([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            string fileName = "query.sql";
+            if (metadata is not ApplicationObject @object)
+            {
+                return NotFound();
+            }
+
+            string fileName = $"view_{infobase}_{type}_{name}.sql";
 
             IFileInfo file = _fileProvider.GetFileInfo(fileName);
 
-            if (!file.Exists)
+            if (file.Exists)
             {
-                return NotFound($"File does not exist: {fileName}");
+                try
+                {
+                    System.IO.File.Delete(file.PhysicalPath);
+                }
+                catch (Exception exception)
+                {
+                    return StatusCode(
+                        StatusCodes.Status500InternalServerError,
+                        ExceptionHelper.GetErrorMessage(exception));
+                }
             }
 
-            string content;
-
-            using (StreamReader reader = new(file.PhysicalPath, Encoding.UTF8))
+            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
             {
-                content = reader.ReadToEnd();
+                return BadRequest(error);
+            }
+
+            if (!string.IsNullOrWhiteSpace(schema))
+            {
+                generator.Options.Schema = schema;
+            }
+
+            if (codify.HasValue)
+            {
+                generator.Options.Codify = codify.Value;
+            }
+            
+            try
+            {
+                using (StreamWriter writer = new(file.PhysicalPath, false, Encoding.UTF8))
+                {
+                    if (!generator.TryScriptView(in @object, in writer, out error))
+                    {
+                        writer.WriteLine($"/* {error} */");
+                        Response.StatusCode = StatusCodes.Status206PartialContent;
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            string content = System.IO.File.ReadAllText(file.PhysicalPath, Encoding.UTF8);
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return NotFound($"Script file is empty: {fileName}");
             }
 
             try
@@ -188,7 +247,12 @@ namespace DaJet.Http.Controllers
             return Content(content, "text/plain", Encoding.UTF8);
         }
 
-        [HttpPost("{infobase}")] public ActionResult CreateViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
+        #endregion
+
+        #region "CREATE VIEWS"
+
+        [HttpPost("{infobase}")]
+        public ActionResult CreateViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
         {
             InfoBaseModel? record = _mapper.Select(infobase);
 
@@ -212,9 +276,9 @@ namespace DaJet.Http.Controllers
                 generator.Options.Schema = options.Schema;
             }
 
-            if (options.CodifyViewNames)
+            if (options.Codify)
             {
-                generator.Options.CodifyViewNames = options.CodifyViewNames;
+                generator.Options.Codify = options.Codify;
             }
 
             if (!generator.TryCreateViews(in cache, out int result, out List<string> errors))
@@ -233,7 +297,9 @@ namespace DaJet.Http.Controllers
 
             return Created($"view/{infobase}", infobase);
         }
-        [HttpPost("{infobase}/{type}")] public ActionResult CreateViews([FromRoute] string infobase, [FromRoute] string type)
+        
+        [HttpPost("{infobase}/{type}/{name}")]
+        public ActionResult CreateView([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
         {
             InfoBaseModel entity = new()
             {
@@ -250,25 +316,16 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
-        [HttpPost("{infobase}/{type}/{name}")] public ActionResult CreateViews([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            InfoBaseModel entity = new()
-            {
-                Name = infobase
-            };
 
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
+        #endregion
 
-            string json = JsonSerializer.Serialize(entity, options);
+        #region "DELETE VIEWS"
 
-            return Content(json);
-        }
-
-        [HttpDelete("{infobase}")] public ActionResult DeleteViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpDelete("{infobase}")]
+        public ActionResult DeleteViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
         {
             InfoBaseModel? record = _mapper.Select(infobase);
 
@@ -276,11 +333,6 @@ namespace DaJet.Http.Controllers
             {
                 return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
             }
-
-            //if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
-            //{
-            //    return BadRequest(error);
-            //}
 
             if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out string error))
             {
@@ -290,11 +342,6 @@ namespace DaJet.Http.Controllers
             if (!string.IsNullOrWhiteSpace(options.Schema))
             {
                 generator.Options.Schema = options.Schema;
-            }
-
-            if (options.CodifyViewNames)
-            {
-                generator.Options.CodifyViewNames = options.CodifyViewNames;
             }
 
             try
@@ -310,39 +357,81 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        [HttpDelete("{infobase}/{type}")] public ActionResult DeleteViews([FromRoute] string infobase, [FromRoute] string type)
+        
+        [HttpDelete("{infobase}/{type}/{name}")]
+        public ActionResult DeleteView(
+            [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name,
+            [FromBody] DbViewGeneratorOptions options)
         {
-            InfoBaseModel entity = new()
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
             {
-                Name = infobase
-            };
+                return BadRequest();
+            }
 
-            JsonSerializerOptions options = new()
+            InfoBaseModel? record = _mapper.Select(infobase);
+
+            if (record == null)
             {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
+                return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
+            }
 
-            string json = JsonSerializer.Serialize(entity, options);
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            {
+                return NotFound(error);
+            }
 
-            return Content(json);
+            Guid uuid = MetadataTypes.ResolveName(type);
+
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            MetadataObject metadata;
+
+            try
+            {
+                metadata = cache.GetMetadataObject($"{type}.{name}");
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (metadata is not ApplicationObject @object)
+            {
+                return NotFound();
+            }
+
+            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            {
+                return BadRequest(error);
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Schema))
+            {
+                generator.Options.Schema = options.Schema;
+            }
+
+            if (options.Codify)
+            {
+                generator.Options.Codify = options.Codify;
+            }
+
+            try
+            {
+                generator.DropView(in @object);
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            return Ok();
         }
-        [HttpDelete("{infobase}/{type}/{name}")] public ActionResult DeleteViews([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            InfoBaseModel entity = new()
-            {
-                Name = infobase
-            };
 
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(entity, options);
-
-            return Content(json);
-        }
+        #endregion
     }
 }

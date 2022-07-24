@@ -1,0 +1,456 @@
+{
+	"info": {
+		"_postman_id": "7f4ce5de-3650-41b3-9db7-030de1813c15",
+		"name": "DaJet Web API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "5307844"
+	},
+	"item": [
+		{
+			"name": "md",
+			"item": [
+				{
+					"name": "InfoBase list",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "InfoBase properties",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-ms",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-ms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "InfoBase reset cache",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/reset/dajet-metadata-ms",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"reset",
+								"dajet-metadata-ms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Metadata types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-pg/Справочник",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-pg",
+								"Справочник"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Metadata object",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/md/dajet-metadata-ms/Справочник/Номенклатура",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md",
+								"dajet-metadata-ms",
+								"Справочник",
+								"Номенклатура"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register new InfoBase",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Name\":\"dajet-metadata-pg\",\r\n    \"Description\":\"Тестовая база данных (pg)\",\r\n    \"DatabaseProvider\":\"PostgreSql\",\r\n    \"ConnectionString\":\"Host=127.0.0.1;Port=5432;Database=dajet-metadata-pg;Username=postgres;Password=postgres;\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/md",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update InfoBase",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Name\":\"dajet-metadata-ms\",\r\n    \"Description\":\"Тестовая база данных (ms)\",\r\n    \"DatabaseProvider\":\"SqlServer\",\r\n    \"ConnectionString\":\"Data Source=localhost;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/md",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unregister InfoBase",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Name\":\"dajet-metadata-pg\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/md",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"md"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "schema",
+			"item": [
+				{
+					"name": "Select schemas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/schema/dajet-metadata-ms",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"schema",
+								"dajet-metadata-ms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create schema",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/schema/dajet-metadata-pg/test",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"schema",
+								"dajet-metadata-pg",
+								"test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete schema",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/schema/dajet-metadata-pg/test",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"schema",
+								"dajet-metadata-pg",
+								"test"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "view",
+			"item": [
+				{
+					"name": "Script database views",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-ms?schema=test",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-ms"
+							],
+							"query": [
+								{
+									"key": "schema",
+									"value": "test"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create database views",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-ms",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-ms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete database views",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Schema\":\"test\"\r\n}"
+						},
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-pg",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-pg"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Script object view",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-ms/Справочник/Номенклатура",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-ms",
+								"Справочник",
+								"Номенклатура"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete object view",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"Codify\":true\r\n}"
+						},
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-pg/Документ/ЗаказКлиента",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-pg",
+								"Документ",
+								"ЗаказКлиента"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "swagger",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://localhost:5001/swagger/index.html",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"swagger",
+						"index.html"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Blazor UI",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/index.html",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"index.html"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

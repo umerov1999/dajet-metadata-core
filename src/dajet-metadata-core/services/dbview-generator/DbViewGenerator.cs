@@ -13,18 +13,29 @@ namespace DaJet.Metadata.Services
     {
         public static IDbViewGenerator Create(DbViewGeneratorOptions options)
         {
-            if(options == null) throw new ArgumentNullException(nameof(options));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+
+            DbViewGenerator generator = null;
 
             if (options.DatabaseProvider == DatabaseProvider.SqlServer)
             {
-                return new MsDbViewGenerator(options);
+                generator = new MsDbViewGenerator(options);
             }
             else if (options.DatabaseProvider == DatabaseProvider.PostgreSql)
             {
-                return new PgDbViewGenerator(options);
+                generator = new PgDbViewGenerator(options);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: [{options.DatabaseProvider}].");
             }
 
-            throw new InvalidOperationException($"Unsupported database provider: [{options.DatabaseProvider}].");
+            if (string.IsNullOrWhiteSpace(options.Schema))
+            {
+                generator.Options.Schema = generator.DEFAULT_SCHEMA_NAME;
+            }
+
+            return generator;
         }
 
         protected readonly IQueryExecutor _executor;
@@ -44,6 +55,7 @@ namespace DaJet.Metadata.Services
         protected abstract string DROP_SCHEMA_SCRIPT { get; }
         protected abstract string SCHEMA_EXISTS_SCRIPT { get; }
         protected abstract string CREATE_SCHEMA_SCRIPT { get; }
+        protected abstract string SELECT_SCHEMA_SCRIPT { get; }
         protected abstract string FormatViewName(string viewName);
         public abstract string GenerateViewScript(in ApplicationObject metadata, string viewName);
         public abstract string GenerateEnumViewScript(in Enumeration enumeration, string viewName);
@@ -51,6 +63,24 @@ namespace DaJet.Metadata.Services
 
         #region "INTERFACE IMPLEMENTATION"
 
+        public List<string> SelectSchemas()
+        {
+            List<string> list = new();
+
+            int SCHEMA_NAME = 0;
+
+            foreach (IDataReader reader in _executor.ExecuteReader(SELECT_SCHEMA_SCRIPT, 10))
+            {
+                if (reader.IsDBNull(SCHEMA_NAME))
+                {
+                    continue;
+                }
+
+                list.Add(reader.GetString(SCHEMA_NAME));
+            }
+
+            return list;
+        }
         public bool SchemaExists(string name)
         {
             string script = string.Format(SCHEMA_EXISTS_SCRIPT, name);
@@ -74,35 +104,7 @@ namespace DaJet.Metadata.Services
 
             _executor.ExecuteNonQuery(in script, 10);
         }
-        public bool TryCreateSchemaIfNotExists(out string error)
-        {
-            error = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(_options.Schema))
-            {
-                _options.Schema = DEFAULT_SCHEMA_NAME;
-            }
-
-            if (_options.Schema == DEFAULT_SCHEMA_NAME)
-            {
-                return true;
-            }
-
-            try
-            {
-                if (!SchemaExists(_options.Schema))
-                {
-                    CreateSchema(_options.Schema);
-                }
-            }
-            catch (Exception exception)
-            {
-                error = $"Failed to create schema [{_options.Schema}]: {ExceptionHelper.GetErrorMessage(exception)}";
-            }
-
-            return string.IsNullOrEmpty(error);
-        }
-
+        
         public bool TryCreateView(in ApplicationObject metadata, out string error)
         {
             error = string.Empty;
@@ -112,11 +114,11 @@ namespace DaJet.Metadata.Services
 
             try
             {
-                string viewName = Configurator.CreateViewName(metadata, _options.CodifyViewNames);
+                string viewName = Configurator.CreateViewName(metadata, _options.Codify);
 
                 scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
 
-                if (_options.CodifyViewNames)
+                if (_options.Codify)
                 {
                     script.AppendLine($"--{{{Configurator.CreateViewName(metadata)}}}");
                 }
@@ -135,12 +137,12 @@ namespace DaJet.Metadata.Services
                     {
                         foreach (TablePart table in owner.TableParts)
                         {
-                            viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+                            viewName = Configurator.CreateViewName(metadata, table, _options.Codify);
 
                             scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
 
                             script.Clear();
-                            if (_options.CodifyViewNames)
+                            if (_options.Codify)
                             {
                                 script.AppendLine($"--{{{Configurator.CreateViewName(metadata, table)}}}");
                             }
@@ -220,7 +222,7 @@ namespace DaJet.Metadata.Services
         {
             List<string> scripts = new();
 
-            string viewName = Configurator.CreateViewName(metadata, _options.CodifyViewNames);
+            string viewName = Configurator.CreateViewName(metadata, _options.Codify);
 
             scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
 
@@ -228,7 +230,7 @@ namespace DaJet.Metadata.Services
             {
                 foreach (TablePart table in owner.TableParts)
                 {
-                    viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+                    viewName = Configurator.CreateViewName(metadata, table, _options.Codify);
                     scripts.Add(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
                 }
             }
@@ -236,12 +238,11 @@ namespace DaJet.Metadata.Services
             _executor.TxExecuteNonQuery(scripts, 60);
         }
 
-        public bool TryScriptViews(in MetadataCache cache, out int result, out List<string> errors)
+        public bool TryScriptViews(in MetadataCache cache, in StreamWriter writer, out string error)
         {
-            result = 0;
-            errors = new();
+            error = string.Empty;
 
-            using (StreamWriter writer = new(_options.OutputFile, false, Encoding.UTF8))
+            try
             {
                 foreach (string typeName in _options.MetadataTypes)
                 {
@@ -249,69 +250,83 @@ namespace DaJet.Metadata.Services
 
                     if (type == Guid.Empty)
                     {
-                        errors.Add($"Metadata type [{typeName}] is not supported.");
+                        writer.WriteLine($"-- Metadata type [{typeName}] is not supported.");
                         continue;
                     }
 
                     foreach (ApplicationObject metadata in cache.GetMetadataObjects(type))
                     {
-                        if (TryScriptView(in writer, in metadata, out string error))
+                        if (!TryScriptView(in metadata, in writer, out string errorMessage))
                         {
-                            result++;
-                        }
-                        else
-                        {
-                            errors.Add(error);
+                            writer.WriteLine($"/* {errorMessage} */");
                         }
                     }
                 }
             }
+            catch (Exception exception)
+            {
+                error = ExceptionHelper.GetErrorMessage(exception);
+            }
 
-            return (errors.Count == 0);
+            return string.IsNullOrWhiteSpace(error);
         }
-        public bool TryScriptView(in StreamWriter writer, in ApplicationObject metadata, out string error)
+        public bool TryScriptView(in ApplicationObject metadata, in StreamWriter writer, out string error)
         {
             error = string.Empty;
 
-            StringBuilder script = new();
-
             try
             {
-                string viewName = Configurator.CreateViewName(in metadata, _options.CodifyViewNames);
+                string viewName = Configurator.CreateViewName(in metadata, _options.Codify);
 
                 writer.WriteLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
-
-                if (_options.CodifyViewNames)
+                if (_options.DatabaseProvider == DatabaseProvider.SqlServer)
                 {
-                    script.AppendLine($"--{{{Configurator.CreateViewName(metadata)}}}");
+                    writer.WriteLine("GO");
+                }
+
+                if (_options.Codify)
+                {
+                    writer.WriteLine($"--{{{Configurator.CreateViewName(metadata)}}}");
                 }
 
                 if (metadata is Enumeration enumeration)
                 {
-                    script.Append(GenerateEnumViewScript(enumeration, viewName));
-                    writer.WriteLine(script.ToString());
+                    writer.WriteLine(GenerateEnumViewScript(enumeration, viewName));
+                    if (_options.DatabaseProvider == DatabaseProvider.SqlServer)
+                    {
+                        writer.WriteLine("GO");
+                    }
                 }
                 else
                 {
-                    script.Append(GenerateViewScript(metadata, viewName));
-                    writer.WriteLine(script.ToString());
+                    writer.WriteLine(GenerateViewScript(metadata, viewName));
+                    if (_options.DatabaseProvider == DatabaseProvider.SqlServer)
+                    {
+                        writer.WriteLine("GO");
+                    }
 
                     if (metadata is ITablePartOwner owner)
                     {
                         foreach (TablePart table in owner.TableParts)
                         {
-                            viewName = Configurator.CreateViewName(metadata, table, _options.CodifyViewNames);
+                            viewName = Configurator.CreateViewName(metadata, table, _options.Codify);
 
-                            script.Clear();
-                            script.AppendLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
-
-                            if (_options.CodifyViewNames)
+                            writer.WriteLine(string.Format(DROP_VIEW_SCRIPT, FormatViewName(viewName)));
+                            if (_options.DatabaseProvider == DatabaseProvider.SqlServer)
                             {
-                                script.AppendLine($"--{{{Configurator.CreateViewName(metadata, table)}}}");
+                                writer.WriteLine("GO");
                             }
 
-                            script.Append(GenerateViewScript(table, viewName));
-                            writer.WriteLine(script.ToString());
+                            if (_options.Codify)
+                            {
+                                writer.WriteLine($"--{{{Configurator.CreateViewName(metadata, table)}}}");
+                            }
+
+                            writer.WriteLine(GenerateViewScript(table, viewName));
+                            if (_options.DatabaseProvider == DatabaseProvider.SqlServer)
+                            {
+                                writer.WriteLine("GO");
+                            }
                         }
                     }
                 }

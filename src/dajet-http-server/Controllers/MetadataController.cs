@@ -58,6 +58,113 @@ namespace DaJet.Http.Controllers
 
             return Content(json);
         }
+        [HttpGet("reset/{infobase}")] public ActionResult ResetCache([FromRoute] string infobase)
+        {
+            InfoBaseModel? options = _mapper.Select(infobase);
+
+            if (options == null)
+            {
+                return NotFound();
+            }
+
+            if (!Enum.TryParse(options.DatabaseProvider, out DatabaseProvider provider))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Unsupported database privider: {options.DatabaseProvider}");
+            }
+
+            _metadataService.Remove(infobase);
+
+            _metadataService.Add(new InfoBaseOptions()
+            {
+                Key = infobase,
+                DatabaseProvider = provider,
+                ConnectionString = options.ConnectionString
+            });
+
+            return Ok();
+        }
+        [HttpGet("{infobase}/{type}")] public ActionResult SelectMetadataItems([FromRoute] string infobase, [FromRoute] string type)
+        {
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type))
+            {
+                return BadRequest();
+            }
+
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            {
+                return NotFound(error);
+            }
+
+            Guid uuid = MetadataTypes.ResolveName(type);
+
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            List<MetadataItem> list = new();
+
+            foreach (MetadataItem item in cache.GetMetadataItems(uuid))
+            {
+                list.Add(item);
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            string json = JsonSerializer.Serialize(list, options);
+
+            return Content(json);
+        }
+        [HttpGet("{infobase}/{type}/{name}")] public ActionResult SelectMetadataObject([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
+        {
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
+            }
+
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
+            {
+                return NotFound(error);
+            }
+
+            Guid uuid = MetadataTypes.ResolveName(type);
+
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            MetadataObject @object;
+
+            try
+            {
+                @object = cache.GetMetadataObject($"{type}.{name}");
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (@object == null)
+            {
+                return NotFound();
+            }
+
+            JsonSerializerOptions options = new()
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+            };
+
+            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
+
+            return Content(json);
+        }
+
         [HttpPost("")] public ActionResult Insert([FromBody] InfoBaseModel entity)
         {
             if (string.IsNullOrWhiteSpace(entity.Name) ||
@@ -134,114 +241,6 @@ namespace DaJet.Http.Controllers
             _metadataService.Remove(entity.Name);
 
             return Ok();
-        }
-
-        [HttpGet("{infobase}/reset")] public ActionResult ResetCache([FromRoute] string infobase)
-        {
-            InfoBaseModel? options = _mapper.Select(infobase);
-
-            if (options == null)
-            {
-                return NotFound();
-            }
-
-            if (!Enum.TryParse(options.DatabaseProvider, out DatabaseProvider provider))
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Unsupported database privider: {options.DatabaseProvider}");
-            }
-
-            _metadataService.Remove(infobase);
-
-            _metadataService.Add(new InfoBaseOptions()
-            {
-                Key = infobase,
-                DatabaseProvider = provider,
-                ConnectionString = options.ConnectionString
-            });
-
-            return Ok();
-        }
-
-        [HttpGet("{infobase}/{type}")] public ActionResult SelectMetadataItems([FromRoute] string infobase, [FromRoute] string type)
-        {
-            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type))
-            {
-                return BadRequest();
-            }
-
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
-            {
-                return NotFound(error);
-            }
-
-            Guid uuid = MetadataTypes.ResolveName(type);
-
-            if (uuid == Guid.Empty)
-            {
-                return NotFound(type);
-            }
-
-            List<MetadataItem> list = new();
-
-            foreach (MetadataItem item in cache.GetMetadataItems(uuid))
-            {
-                list.Add(item);
-            }
-            
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(list, options);
-
-            return Content(json);
-        }
-        [HttpGet("{infobase}/{type}/{name}")] public ActionResult SelectMetadataObject([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
-            {
-                return BadRequest();
-            }
-
-            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
-            {
-                return NotFound(error);
-            }
-
-            Guid uuid = MetadataTypes.ResolveName(type);
-
-            if (uuid == Guid.Empty)
-            {
-                return NotFound(type);
-            }
-
-            MetadataObject @object;
-
-            try
-            {
-                @object = cache.GetMetadataObject($"{type}.{name}");
-            }
-            catch (Exception exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
-            }
-
-            if (@object == null)
-            {
-                return NotFound();
-            }
-
-            JsonSerializerOptions options = new()
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
-
-            string json = JsonSerializer.Serialize(@object, @object.GetType(), options);
-
-            return Content(json);
         }
     }
 }

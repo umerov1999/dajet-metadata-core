@@ -26,6 +26,18 @@ namespace DaJet.Metadata.Services
         protected override string SCHEMA_EXISTS_SCRIPT { get { return "SELECT 1 FROM sys.schemas WHERE name = N'{0}';"; } }
         protected override string CREATE_SCHEMA_SCRIPT { get { return "CREATE SCHEMA {0};"; } }
         protected override string DROP_SCHEMA_SCRIPT { get { return "DROP SCHEMA {0};"; } }
+        protected override string SELECT_SCHEMA_SCRIPT
+        {
+            get
+            {
+                return
+                    "SELECT s.name FROM sys.schemas s " +
+                    "INNER JOIN sys.database_principals p " +
+                    "ON s.principal_id = p.principal_id " +
+                    "AND p.is_fixed_role = 0 " +
+                    "AND s.name NOT IN (N'sys', N'INFORMATION_SCHEMA');";
+            }
+        }
 
         #endregion
 
@@ -64,8 +76,7 @@ namespace DaJet.Metadata.Services
 
             script.Append(fields);
 
-            script.AppendLine($"FROM {metadata.TableName};");
-            //script.AppendLine("GO");
+            script.Append($"FROM {metadata.TableName};");
 
             return script.ToString();
         }
@@ -102,8 +113,7 @@ namespace DaJet.Metadata.Services
             }
 
             script.Append(fields);
-            script.AppendLine(") AS t ON e._IDRRef = t.[Значение];");
-            //script.Append("GO");
+            script.Append(") AS t ON e._IDRRef = t.[Значение];");
 
             return script.ToString();
         }

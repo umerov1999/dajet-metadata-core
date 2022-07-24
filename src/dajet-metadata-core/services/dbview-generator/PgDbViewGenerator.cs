@@ -28,6 +28,16 @@ namespace DaJet.Metadata.Services
         }
         protected override string CREATE_SCHEMA_SCRIPT { get { return "CREATE SCHEMA {0};"; } }
         protected override string DROP_SCHEMA_SCRIPT { get { return "DROP SCHEMA {0};"; } }
+        protected override string SELECT_SCHEMA_SCRIPT
+        {
+            get
+            {
+                return
+                    "SELECT nspname FROM pg_catalog.pg_namespace " +
+                    "WHERE nspname NOT LIKE 'pg_%' " +
+                    "AND nspname NOT IN ('pg_catalog', 'information_schema');";
+            }
+        }
 
         #endregion
 
@@ -42,7 +52,7 @@ namespace DaJet.Metadata.Services
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW \"{viewName}\" AS SELECT");
+            script.AppendLine($"CREATE VIEW {_options.Schema}.\"{viewName}\" AS SELECT");
 
             foreach (MetadataProperty property in metadata.Properties)
             {
@@ -64,7 +74,7 @@ namespace DaJet.Metadata.Services
 
             script.Append(fields);
 
-            script.AppendLine($"FROM {metadata.TableName};");
+            script.Append($"FROM {metadata.TableName};");
 
             return script.ToString();
         }
@@ -73,7 +83,7 @@ namespace DaJet.Metadata.Services
             StringBuilder script = new();
             StringBuilder fields = new();
 
-            script.AppendLine($"CREATE VIEW \"{viewName}\" AS");
+            script.AppendLine($"CREATE VIEW {_options.Schema}.\"{viewName}\" AS");
 
             script.AppendLine("SELECT e._EnumOrder AS \"Порядок\", t.\"Имя\", t.\"Синоним\", t.\"Значение\"");
             script.AppendLine($"FROM {enumeration.TableName} AS e INNER JOIN");
