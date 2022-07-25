@@ -1,6 +1,6 @@
 ﻿//using OneCSharp.DDL.Attributes;
 
-//namespace Zhichkin.OneCSharp
+//namespace DaJet.CSharp.Generator
 //{
 //	[Entity(TableName = "MyTable")] public sealed class MyTestClass : ReferenceObject
 //	{

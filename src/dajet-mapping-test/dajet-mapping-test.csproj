@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\dajet-cscode-generator\dajet-cscode-generator.csproj" />
     <ProjectReference Include="..\dajet-data-mapping\dajet-data-mapping.csproj" />
   </ItemGroup>
 

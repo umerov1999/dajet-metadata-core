@@ -1,20 +1,14 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using DaJet.Data;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-using OneCSharp.DDL.Attributes;
-using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 
-namespace OneCSharp.DDL.Services
+namespace DaJet.CSharp.Generator
 {
     internal sealed class Compiler
     {
-        public byte[] Compile(string sourceCode, string assemblyName)
+        public byte[] Compile(string sourceCode, string assemblyName, in List<string> errors)
         {
-            //var sourceCode = File.ReadAllText(filepath);
-
             using (var stream = new MemoryStream())
             {
                 var result = GenerateCode(sourceCode, assemblyName).Emit(stream);
@@ -27,9 +21,9 @@ namespace OneCSharp.DDL.Services
 
                     foreach (var diagnostic in failures)
                     {
-                        //Console.Error.WriteLine("{0}: {1}", diagnostic.Id, diagnostic.GetMessage());
+                        errors.Add(string.Format("{0}: {1}", diagnostic.Id, diagnostic.GetMessage()));
                     }
-                    return null;
+                    return null!;
                 }
                 stream.Seek(0, SeekOrigin.Begin);
                 return stream.ToArray();
@@ -43,17 +37,17 @@ namespace OneCSharp.DDL.Services
 
             var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
 
-            //var dotNetCoreDir = Path.GetDirectoryName(typeof(object).GetTypeInfo().Assembly.Location);
+            //The location of the .NET assemblies
+            var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location); // System.Private.CoreLib.dll
 
             var references = new MetadataReference[]
             {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(EntityAttribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(RuntimeReflectionExtensions).Assembly.Location)
-                //MetadataReference.CreateFromFile(Path.Combine(dotNetCoreDir, "System.Runtime.dll"))
+                MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Runtime.dll")),
+                MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Reflection.dll")),
+                MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Private.CoreLib.dll")), // aka mscorlib
+                MetadataReference.CreateFromFile(typeof(EntityRef).Assembly.Location)
             };
-
+            
             return CSharpCompilation.Create($"{assemblyName}",
                 new[] { parsedSyntaxTree },
                 references: references,

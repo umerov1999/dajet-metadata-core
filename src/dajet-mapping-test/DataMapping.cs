@@ -4,14 +4,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DaJet.Data.Mapping.Test
 {
-    [TestClass] public class UnitTest1
+    [TestClass] public class DataMapping
     {
         private const string IB_KEY = "dajet-metadata-ms";
         private readonly InfoBase _infoBase;
         private readonly MetadataCache _cache;
         private readonly MetadataService _service = new();
         private const string MS_CONNECTION_STRING = "Data Source=ZHICHKIN;Initial Catalog=dajet-metadata-ms;Integrated Security=True;Encrypt=False;";
-        public UnitTest1()
+        public DataMapping()
         {
             _service.Add(new InfoBaseOptions()
             {

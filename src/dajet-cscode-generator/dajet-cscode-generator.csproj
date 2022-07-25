@@ -2,14 +2,22 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>DaJet.CsCode.Generator</RootNamespace>
+    <RootNamespace>DaJet.CSharp.Generator</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>DaJet.CsCode.Generator</AssemblyName>
+    <AssemblyName>DaJet.CSharp.Generator</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>Zhichkin</Company>
+    <Description>Entity classes generation tool</Description>
+    <Copyright>Zhichkin © 2022</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis" Version="4.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dajet-metadata-core\dajet-metadata-core.csproj" />
   </ItemGroup>
 
 </Project>

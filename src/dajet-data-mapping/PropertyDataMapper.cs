@@ -7,7 +7,7 @@ namespace DaJet.Data.Mapping
     internal readonly struct PropertyDataMapper
     {
         private readonly int _uuid = -1;   // binary(16)
-        private readonly int _binary = -1; // BASE64
+        private readonly int _binary = -1; // BASE64 _B
         private readonly int _Pointer = -1; // _TYPE
         private readonly int _boolean = -1;       // _L
         private readonly int _numeric = -1;       // _N
