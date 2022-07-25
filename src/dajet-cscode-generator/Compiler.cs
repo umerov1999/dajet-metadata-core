@@ -39,7 +39,7 @@ namespace OneCSharp.DDL.Services
         private static CSharpCompilation GenerateCode(string sourceCode, string assemblyName)
         {
             var codeString = SourceText.From(sourceCode);
-            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp7_3);
+            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp10);
 
             var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
 

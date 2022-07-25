@@ -251,6 +251,16 @@ namespace DaJet.Http.Controllers
 
         #region "CREATE VIEWS"
 
+        public sealed class CreateViewsResponse
+        {
+            public int Result { get; set; }
+            public List<string> Errors { get; set; } = new();
+        }
+
+        [Produces("application/json")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpPost("{infobase}")]
         public ActionResult CreateViews([FromRoute] string infobase, [FromBody] DbViewGeneratorOptions options)
         {
@@ -281,40 +291,104 @@ namespace DaJet.Http.Controllers
                 generator.Options.Codify = options.Codify;
             }
 
-            if (!generator.TryCreateViews(in cache, out int result, out List<string> errors))
+            _ = generator.TryCreateViews(in cache, out int result, out List<string> errors);
+
+            CreateViewsResponse response = new()
             {
-                if (result == 0)
+                Result = result,
+                Errors = errors
+            };
+
+            Response.StatusCode = StatusCodes.Status201Created;
+
+            string json = JsonSerializer.Serialize(response,
+                new JsonSerializerOptions()
                 {
-                    string json = JsonSerializer.Serialize(errors,
-                        new JsonSerializerOptions()
-                        {
-                            WriteIndented = true,
-                            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-                        });
-                    return Content(json);
-                }
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+                });
+
+            return Content(json, "application/json; charset=utf-8", Encoding.UTF8);
+        }
+
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpPost("{infobase}/{type}/{name}")]
+        public ActionResult CreateView(
+            [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name,
+            [FromBody] DbViewGeneratorOptions options)
+        {
+            if (string.IsNullOrWhiteSpace(infobase) || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest();
             }
 
-            return Created($"view/{infobase}", infobase);
-        }
-        
-        [HttpPost("{infobase}/{type}/{name}")]
-        public ActionResult CreateView([FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name)
-        {
-            InfoBaseModel entity = new()
+            InfoBaseModel? record = _mapper.Select(infobase);
+
+            if (record == null)
             {
-                Name = infobase
-            };
+                return NotFound(string.Format(INFOBASE_IS_NOT_FOUND_ERROR, infobase));
+            }
 
-            JsonSerializerOptions options = new()
+            if (!_metadataService.TryGetMetadataCache(infobase, out MetadataCache cache, out string error))
             {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-            };
+                return NotFound(error);
+            }
 
-            string json = JsonSerializer.Serialize(entity, options);
+            Guid uuid = MetadataTypes.ResolveName(type);
 
-            return Content(json);
+            if (uuid == Guid.Empty)
+            {
+                return NotFound(type);
+            }
+
+            MetadataObject metadata;
+
+            try
+            {
+                metadata = cache.GetMetadataObject($"{type}.{name}");
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            if (metadata is not ApplicationObject @object)
+            {
+                return NotFound();
+            }
+
+            if (!_metadataService.TryGetDbViewGenerator(infobase, out IDbViewGenerator generator, out error))
+            {
+                return BadRequest(error);
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Schema))
+            {
+                generator.Options.Schema = options.Schema;
+            }
+
+            if (options.Codify)
+            {
+                generator.Options.Codify = options.Codify;
+            }
+
+            try
+            {
+                if (!generator.TryCreateView(in @object, out error))
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, error);
+                }
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    ExceptionHelper.GetErrorMessage(exception));
+            }
+
+            return Created("view", null);
         }
 
         #endregion
@@ -357,7 +431,10 @@ namespace DaJet.Http.Controllers
 
             return Ok();
         }
-        
+
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpDelete("{infobase}/{type}/{name}")]
         public ActionResult DeleteView(
             [FromRoute] string infobase, [FromRoute] string type, [FromRoute] string name,

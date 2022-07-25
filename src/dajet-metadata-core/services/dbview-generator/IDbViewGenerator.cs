@@ -19,8 +19,8 @@ namespace DaJet.Metadata.Services
         bool TryScriptView(in ApplicationObject metadata, in StreamWriter writer, out string error);
         bool TryScriptViews(in MetadataCache cache, in StreamWriter writer, out string error);
 
-        bool TryCreateView(in ApplicationObject metadata, out string error); // TODO
-        bool TryCreateViews(in MetadataCache cache, out int result, out List<string> errors); // TODO
+        bool TryCreateView(in ApplicationObject metadata, out string error);
+        bool TryCreateViews(in MetadataCache cache, out int result, out List<string> errors);
         
         int DropViews();
         void DropView(in ApplicationObject metadata);

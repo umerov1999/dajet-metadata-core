@@ -186,7 +186,7 @@ namespace DaJet.Http.Controllers
                 ConnectionString = entity.ConnectionString
             });
 
-            return Created($"infobase/{entity.Name}", entity.Name);
+            return Created($"infobase", null);
         }
         [HttpPut("")] public ActionResult Update([FromBody] InfoBaseModel entity)
         {

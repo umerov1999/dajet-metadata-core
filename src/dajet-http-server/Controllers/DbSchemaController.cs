@@ -72,7 +72,7 @@ namespace DaJet.Http.Controllers
                     ExceptionHelper.GetErrorMessage(exception));
             }
 
-            return Created($"schema/{infobase}/{schema}", schema);
+            return Created($"schema", null);
         }
         [HttpDelete("{infobase}/{schema}")] public ActionResult Delete([FromRoute] string infobase, [FromRoute] string schema)
         {

@@ -230,7 +230,7 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "https://localhost:5001/schema/dajet-metadata-pg/test",
+							"raw": "https://localhost:5001/schema/dajet-metadata-ms/test",
 							"protocol": "https",
 							"host": [
 								"localhost"
@@ -238,7 +238,7 @@
 							"port": "5001",
 							"path": [
 								"schema",
-								"dajet-metadata-pg",
+								"dajet-metadata-ms",
 								"test"
 							]
 						}
@@ -251,7 +251,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "https://localhost:5001/schema/dajet-metadata-pg/test",
+							"raw": "https://localhost:5001/schema/dajet-metadata-ms/test",
 							"protocol": "https",
 							"host": [
 								"localhost"
@@ -259,7 +259,7 @@
 							"port": "5001",
 							"path": [
 								"schema",
-								"dajet-metadata-pg",
+								"dajet-metadata-ms",
 								"test"
 							]
 						}
@@ -340,7 +340,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"Schema\":\"test\"\r\n}"
+							"raw": "{}"
 						},
 						"url": {
 							"raw": "https://localhost:5001/view/dajet-metadata-pg",
@@ -392,10 +392,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"Codify\":true\r\n}"
+							"raw": "{}"
 						},
 						"url": {
-							"raw": "https://localhost:5001/view/dajet-metadata-pg/Документ/ЗаказКлиента",
+							"raw": "https://localhost:5001/view/dajet-metadata-ms/Документ/ЗаказКлиента",
 							"protocol": "https",
 							"host": [
 								"localhost"
@@ -403,7 +403,39 @@
 							"port": "5001",
 							"path": [
 								"view",
-								"dajet-metadata-pg",
+								"dajet-metadata-ms",
+								"Документ",
+								"ЗаказКлиента"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create object view",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "https://localhost:5001/view/dajet-metadata-ms/Документ/ЗаказКлиента",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"view",
+								"dajet-metadata-ms",
 								"Документ",
 								"ЗаказКлиента"
 							]
